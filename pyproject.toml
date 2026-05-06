@@ -1,0 +1,107 @@
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "I",   # import sorting
+  "B",   # bugbear
+  "UP",  # pyupgrade
+]
+ignore = [
+  "E501", # linha longa (Black resolve)
+]
+
+# evita conflito Ruff x Black
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+
+# baseline equilibrado (não explode arquitetura)
+warn_unused_ignores = true
+warn_return_any = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+# importante: NÃO usar strict global
+exclude = ["tests"]
+
+# =========================
+# CORE (onde strict faz sentido)
+# =========================
+[[tool.mypy.overrides]]
+module = [
+  "app.domain.*",
+  "app.services.*"
+]
+strict = true
+
+# =========================
+# API (FastAPI / Schemas)
+# =========================
+[[tool.mypy.overrides]]
+module = [
+  "app.api.*",
+  "app.schemas.*"
+]
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+ignore_missing_imports = true
+
+# =========================
+# INFRA (db, externos)
+# =========================
+[[tool.mypy.overrides]]
+module = [
+  "app.infrastructure.*"
+]
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+# =========================
+# LIBS PROBLEMÁTICAS
+# =========================
+[[tool.mypy.overrides]]
+module = [
+  "fastapi.*",
+  "pydantic.*"
+]
+ignore_missing_imports = true
+
+# =========================
+# TESTS (isolado)
+# =========================
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_calls = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transactional-orders"
+version = "0.0.0"
+description = "Transactional orders reference implementation"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
