@@ -1,10 +1,10 @@
-def checkout(*args, **kwargs):
-    pass
+def checkout(*args: object, **kwargs: object) -> None:
+    raise NotImplementedError("order.checkout is not implemented")
 
 
-def get_order(*args, **kwargs):
-    pass
+def get_order(*args: object, **kwargs: object) -> None:
+    raise NotImplementedError("order.get_order is not implemented")
 
 
-def list_orders(*args, **kwargs):
-    pass
+def list_orders(*args: object, **kwargs: object) -> None:
+    raise NotImplementedError("order.list_orders is not implemented")

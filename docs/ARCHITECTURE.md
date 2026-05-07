@@ -109,3 +109,10 @@ A module is a boundary around one aggregate root: domain models, repository, sch
 - order: checkout and order retrieval.
 - payment: payment processing orchestration.
 - inventory (optional): stock tracking for products.
+- user: user aggregate root lifecycle.
+- auth: token login/logout orchestration.
+- product: product catalog with CRUD operations (create, read, update, delete).
+- cart: cart aggregate root and its CartItem collection.
+- order: checkout and order retrieval.
+- payment: payment processing orchestration and retrieval.
+- inventory (optional): stock tracking for products.

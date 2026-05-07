@@ -4,6 +4,7 @@
 
 - [POST] /users → create_user
 - [GET] /users/{user_id} → get_user
+- [GET] /users → list_users
 - [PATCH] /users/{user_id} → update_user
 - [DELETE] /users/{user_id} → delete_user
 
@@ -16,6 +17,9 @@
 
 - [GET] /products → list_products
 - [GET] /products/{id} → get_product
+- [POST] /products → create_product
+- [PATCH] /products/{id} → update_product
+- [DELETE] /products/{id} → delete_product
 
 ## cart
 
@@ -33,3 +37,4 @@
 ## payment
 
 - [POST] /payments → process_payment
+- [GET] /payments/{id} → get_payment

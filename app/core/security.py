@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any
 
 from jose import jwt
 from passlib.context import CryptContext
@@ -13,11 +13,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 
 
 def hash_password(password: str) -> str:
-    return cast(str, pwd_context.hash(password))
+    return pwd_context.hash(password)
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return cast(bool, pwd_context.verify(password, hashed))
+    return pwd_context.verify(password, hashed)
 
 
 def create_access_token(
@@ -28,4 +28,4 @@ def create_access_token(
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
-    return cast(str, jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
