@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.routers.product import router as product_router
 from app.core.database import Base, engine
 
 
@@ -15,6 +16,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="ecommerce-backend", lifespan=lifespan)
+
+    app.include_router(product_router)
 
     def healthz() -> dict[str, str]:
         return {"status": "ok"}

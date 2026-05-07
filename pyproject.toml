@@ -15,10 +15,10 @@ select = [
   "UP",  # pyupgrade
 ]
 ignore = [
-  "E501", # linha longa (Black resolve)
+  "E501", # long line (handled by Black)
 ]
 
-# evita conflito Ruff x Black
+# avoid Ruff/Black formatter conflicts
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -27,18 +27,17 @@ line-ending = "auto"
 [tool.mypy]
 python_version = "3.12"
 
-# baseline equilibrado (não explode arquitetura)
+# balanced baseline (doesn't blow up the architecture)
 warn_unused_ignores = true
 warn_return_any = true
 warn_redundant_casts = true
 no_implicit_optional = true
 check_untyped_defs = true
 
-# importante: NÃO usar strict global
-exclude = ["tests"]
+# important: do NOT enable global strict
 
 # =========================
-# CORE (onde strict faz sentido)
+# CORE (where strict makes sense)
 # =========================
 [[tool.mypy.overrides]]
 module = [
@@ -60,7 +59,7 @@ disallow_untyped_calls = false
 ignore_missing_imports = true
 
 # =========================
-# INFRA (db, externos)
+# INFRA (db, external deps)
 # =========================
 [[tool.mypy.overrides]]
 module = [
@@ -70,7 +69,7 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 
 # =========================
-# LIBS PROBLEMÁTICAS
+# PROBLEMATIC LIBS
 # =========================
 [[tool.mypy.overrides]]
 module = [
@@ -80,7 +79,7 @@ module = [
 ignore_missing_imports = true
 
 # =========================
-# TESTS (isolado)
+# TESTS (isolated)
 # =========================
 [[tool.mypy.overrides]]
 module = "tests.*"

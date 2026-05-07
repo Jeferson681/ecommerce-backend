@@ -1,18 +1,41 @@
-def get_by_id(*args, **kwargs):
-    pass
+"""Product repository for managing product data."""
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.modules.product.domain.models import Product
 
 
-def list(*args, **kwargs):
-    pass
+class ProductRepository:
+    """Repository for managing product data."""
 
+    def __init__(self, session: Session):
+        self.session = session
 
-def add(*args, **kwargs):
-    pass
+    def create(self, product: Product) -> Product:
+        self.session.add(product)
+        self.session.flush()
 
+        return product
 
-def update(*args, **kwargs):
-    pass
+    def get_by_id(self, product_id: int) -> Product | None:
+        statement = select(Product).where(Product.id == product_id)
 
+        result = self.session.execute(statement)
+        return result.scalar_one_or_none()
 
-def delete(*args, **kwargs):
-    pass
+    def list(self) -> list[Product]:
+        statement = select(Product).order_by(Product.id)
+
+        result = self.session.execute(statement)
+        return list(result.scalars().all())
+
+    def update(self, product: Product) -> Product:
+        self.session.add(product)
+        self.session.flush()
+
+        return product
+
+    def delete(self, product: Product) -> None:
+        self.session.delete(product)
+        self.session.flush()
