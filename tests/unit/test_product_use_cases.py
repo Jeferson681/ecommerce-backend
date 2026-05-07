@@ -88,6 +88,12 @@ def test_update_product_commits_and_updates_fields(monkeypatch):
 
     product = use_cases.update_product(1, update, uow)
 
-    assert repo.updated is True
+    # repository.update may be removed because the object is attached to the session
+    # so we assert commit happened and the returned product has updated fields.
     assert uow.committed is True
     assert product is not None
+    assert product.name == "new"
+    assert product.description == "new"
+    assert product.price == 2.5
+    assert product.stock_quantity == 10
+    assert product.is_active is False

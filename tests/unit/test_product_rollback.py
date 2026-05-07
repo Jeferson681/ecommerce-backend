@@ -62,12 +62,15 @@ def test_update_rolls_back_on_exception(monkeypatch):
         def get_by_id(self, pk):
             return type("P", (), {"id": pk, "name": "old"})()
 
-        def update(self, product):
-            raise RuntimeError("update fail")
+        # update is no longer required in use case; simulate commit failure instead
 
     monkeypatch.setattr(use_cases, "ProductRepository", Repo)
 
-    uow = DummyUoW()
+    class FailingUoW(DummyUoW):
+        def commit(self):
+            raise RuntimeError("commit fail")
+
+    uow = FailingUoW()
     update = ProductUpdate(name="n")
 
     with pytest.raises(RuntimeError):

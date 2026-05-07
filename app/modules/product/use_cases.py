@@ -48,20 +48,11 @@ def update_product(
     if not product:
         raise ValueError("Product not found.")
 
-    # Update fields if provided
-    if product_data.name is not None:
-        product.name = product_data.name
-    if product_data.description is not None:
-        product.description = product_data.description
-    if product_data.price is not None:
-        product.price = product_data.price
-    if product_data.stock_quantity is not None:
-        product.stock_quantity = product_data.stock_quantity
-    if product_data.is_active is not None:
-        product.is_active = product_data.is_active
+    update_data = product_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(product, field, value)
 
     try:
-        repository.update(product)
         uow.commit()
     except Exception:
         uow.rollback()
