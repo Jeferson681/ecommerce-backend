@@ -17,10 +17,22 @@ repos:
       - id: mypy
         name: mypy (app)
         files: ^app/
+        additional_dependencies:
+          - pydantic
+          - pydantic-settings
+          - sqlalchemy
+          - python-jose[cryptography]
+          - passlib[bcrypt]
 
       - id: mypy
         name: mypy (tests)
         files: ^tests/
+        additional_dependencies:
+          - pydantic
+          - pydantic-settings
+          - sqlalchemy
+          - python-jose[cryptography]
+          - passlib[bcrypt]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.8
