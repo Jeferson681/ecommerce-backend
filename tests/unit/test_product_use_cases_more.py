@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.core.exceptions import NotFoundError
 from app.modules.product import use_cases
 from app.modules.product.schemas import ProductUpdate
 
@@ -73,7 +74,7 @@ def test_update_product_raises_if_missing(monkeypatch):
     uow = DummyUoW2()
     update = ProductUpdate(name="a")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NotFoundError):
         use_cases.update_product(1, update, uow)
 
 
@@ -92,5 +93,6 @@ def test_delete_product_commits_and_calls_delete(monkeypatch):
 
     result = use_cases.delete_product(1, uow)
 
-    assert result is True
+    # delete_product intentionally returns None on success (silence on success)
+    assert result is None
     assert uow.committed is True
