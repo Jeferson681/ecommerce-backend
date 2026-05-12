@@ -1,18 +1,39 @@
-def get_by_id(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("user_repository.get_by_id is not implemented")
+"""User repository for managing user data."""
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.modules.user.domain.models import User
 
 
-def list(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("user_repository.list is not implemented")
+class UserRepository:
+    def __init__(self, session: Session):
+        self.session = session
 
+    def create(self, user: User) -> User:
+        self.session.add(user)
+        self.session.flush()
 
-def add(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("user_repository.add is not implemented")
+        return user
 
+    def get_by_id(self, user_id: int) -> User | None:
+        statement = select(User).where(User.id == user_id)
 
-def update(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("user_repository.update is not implemented")
+        result = self.session.execute(statement)
+        return result.scalar_one_or_none()
 
+    def list(self, limit: int = 20, offset: int = 0) -> list[User]:
+        statement = select(User).order_by(User.id).limit(limit).offset(offset)
 
-def delete(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("user_repository.delete is not implemented")
+        result = self.session.execute(statement)
+        return list(result.scalars().all())
+
+    def update(self, user: User) -> User:
+        self.session.add(user)
+        self.session.flush()
+
+        return user
+
+    def delete(self, user: User) -> None:
+        self.session.delete(user)
+        self.session.flush()
