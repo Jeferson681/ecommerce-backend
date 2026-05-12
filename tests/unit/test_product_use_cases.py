@@ -12,10 +12,25 @@ class DummyRepo:
         self.updated = False
 
     def create(self, product: Product):
+        # simulate DB behavior: set id and timestamps/flags so ProductRead validation succeeds
         self.created = True
+        try:
+            product.id = 1
+        except Exception:
+            pass
+        product.is_active = getattr(product, "is_active", True)
+        from datetime import datetime
+
+        now = datetime.utcnow()
+        product.created_at = getattr(product, "created_at", now)
+        product.updated_at = getattr(product, "updated_at", now)
 
     def get_by_id(self, product_id: int):
         # return a product-like object for update tests
+        from datetime import datetime
+
+        now = datetime.utcnow()
+
         return SimpleNamespace(
             id=product_id,
             name="old",
@@ -23,6 +38,8 @@ class DummyRepo:
             price=1.0,
             stock_quantity=1,
             is_active=True,
+            created_at=now,
+            updated_at=now,
         )
 
     def update(self, product: Product):
