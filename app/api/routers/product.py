@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_uow
 from app.application.uow.unit_of_work import UnitOfWork
+from app.core.exceptions import Messages, NotFoundError
 from app.modules.product.schemas import ProductCreate, ProductRead, ProductUpdate
 from app.modules.product.use_cases import (
     create_product,
@@ -25,8 +26,8 @@ def create_product_endpoint(
 ) -> ProductRead:
     """Endpoint to create a new product."""
     try:
-        product = create_product(product_data, uow)
-        return ProductRead.model_validate(product)
+        return create_product(product_data, uow)
+
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -35,7 +36,7 @@ def create_product_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error.",
+            detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e
 
 
@@ -48,10 +49,10 @@ def get_product_endpoint(
 
     if not product:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.PRODUCT_NOT_FOUND
         )
 
-    return ProductRead.model_validate(product)
+    return product
 
 
 @router.get("", response_model=list[ProductRead])
@@ -59,8 +60,7 @@ def list_products_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> list[ProductRead]:
     """Endpoint to list all products."""
-    products = list_products(uow)
-    return [ProductRead.model_validate(product) for product in products]
+    return list_products(uow)
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
@@ -71,9 +71,8 @@ def update_product_endpoint(
 ) -> ProductRead:
     """Endpoint to update an existing product."""
     try:
-        product = update_product(product_id, product_data, uow)
-        return ProductRead.model_validate(product)
-    except ValueError as e:
+        return update_product(product_id, product_data, uow)
+    except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except IntegrityError as e:
         raise HTTPException(
@@ -83,7 +82,7 @@ def update_product_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error.",
+            detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e
 
 
@@ -94,7 +93,7 @@ def delete_product_endpoint(
     """Endpoint to delete a product."""
     try:
         delete_product(product_id, uow)
-    except ValueError as e:
+    except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except IntegrityError as e:
         raise HTTPException(
@@ -104,5 +103,5 @@ def delete_product_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error.",
+            detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e
