@@ -16,6 +16,8 @@ class Messages:
 
     EMAIL_ALREADY_EXISTS = "Email already exists."
 
+    EMAIL_OR_PASSWORD_INVALID = "Invalid email or password."  # nosec B105
+
     PRODUCT_NOT_FOUND = "Product not found."
 
     INVALID_CREDENTIAL_POLICY = "Credential does not meet the required policy."
