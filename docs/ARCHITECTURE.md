@@ -2,88 +2,87 @@
 
 ## Folder structure
 
+Snapshot: 2026-05-15 (working tree), branch: feat/auth
+
+```
 app/
 ├── main.py
+│
+├── api/
+│   └── routers/
+│       ├── auth.py
+│       ├── user.py
+│       ├── product.py
+│       ├── cart.py
+│       ├── order.py
+│       └── payment.py
+│
+├── application/
+│   └── uow/
+│       ├── unit_of_work.py
+│       └── dependencies.py
 │
 ├── core/
 │   ├── config.py
 │   ├── database.py
-│   ├── security.py
-│   └── exceptions.py
-│
-├── modules/
-│   ├── user/
-│   │   ├── domain/
-│   │   │   └── models.py
-│   │   ├── repositories/
-│   │   │   └── user_repository.py
-│   │   ├── use_cases.py
-│   │   └── schemas.py
-│   │
-│   ├── product/
-│   │   ├── domain/
-│   │   │   └── models.py
-│   │   ├── repositories/
-│   │   │   └── product_repository.py
-│   │   ├── use_cases.py
-│   │   └── schemas.py
-│   │
-│   ├── cart/
-│   │   ├── domain/
-│   │   │   └── models.py
-│   │   ├── repositories/
-│   │   │   └── cart_repository.py
-│   │   ├── use_cases.py
-│   │   └── schemas.py
-│   │
-│   ├── order/
-│   │   ├── domain/
-│   │   │   └── models.py
-│   │   ├── repositories/
-│   │   │   └── order_repository.py
-│   │   ├── use_cases.py
-│   │   └── schemas.py
-│   │
-│   ├── payment/
-│   │   ├── domain/
-│   │   │   └── models.py
-│   │   ├── repositories/
-│   │   │   └── payment_repository.py
-│   │   ├── use_cases.py
-│   │   └── schemas.py
-│   │
-│   └── inventory/                # optional
-│       ├── domain/
-│       │   └── models.py
-│       ├── repositories/
-│       │   └── inventory_repository.py
-│       ├── use_cases.py
-│       └── schemas.py
-│
-├── api/
-│   ├── deps.py
-│   └── routers/
-│       ├── user.py
-│       ├── auth.py
-│       ├── product.py
-│       ├── cart.py
-│       ├── order.py
-│       ├── payment.py
-│       └── inventory.py           # optional
-│
-├── application/
-│   └── uow/
-│       └── unit_of_work.py
+│   ├── exceptions.py
+│   └── security.py
 │
 ├── infrastructure/
 │   └── db/
-│       └── session.py
+│       ├── session.py
+│       └── dependencies.py
 │
-├── observability/
-│   └── request_logging.py
+├── idempotency/
+│   └── service.py
 │
-└── idempotency/
-    └── service.py
+├── modules/
+│   ├── auth/
+│   │   ├── schemas.py
+│   │   ├── tokens.py
+│   │   ├── use_cases.py
+│   │   ├── security.py
+│   │   ├── validators.py
+│   │   └── deps.py
+│   │
+│   ├── user/
+│   │   ├── use_cases.py
+│   │   ├── repositories/
+│   │   │   └── user_repository.py
+│   │   └── domain/
+│   │       └── models.py
+│   │
+│   ├── product/
+│   │   ├── use_cases.py
+│   │   ├── repositories/
+│   │   │   └── product_repository.py
+│   │   └── domain/
+│   │       └── models.py
+│   │
+│   ├── cart/
+│   │   ├── use_cases.py
+│   │   ├── repositories/
+│   │   │   └── cart_repository.py
+│   │   └── domain/
+│   │       └── models.py
+│   │
+│   ├── order/
+│   │   ├── use_cases.py
+│   │   ├── repositories/
+│   │   │   └── order_repository.py
+│   │   └── domain/
+│   │       └── models.py
+│   │
+│   └── payment/
+│       ├── use_cases.py
+│       ├── repositories/
+│       │   └── payment_repository.py
+│       └── domain/
+│           └── models.py
+│
+└── observability/
+    └── request_logging.py
+```
 
 ## Modules
 
@@ -102,13 +101,6 @@ A module is a boundary around one aggregate root: domain models, repository, sch
 
 ## Module summary
 
-- user: user aggregate root lifecycle.
-- auth: token login/logout orchestration.
-- product: product catalog read access.
-- cart: cart aggregate root and its CartItem collection.
-- order: checkout and order retrieval.
-- payment: payment processing orchestration.
-- inventory (optional): stock tracking for products.
 - user: user aggregate root lifecycle.
 - auth: token login/logout orchestration.
 - product: product catalog with CRUD operations (create, read, update, delete).

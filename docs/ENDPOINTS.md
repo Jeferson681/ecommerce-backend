@@ -3,14 +3,17 @@
 ## user
 
 - [POST] /users → create_user
+- [GET] /users/me → get_current_user
 - [GET] /users/{user_id} → get_user
 - [GET] /users → list_users
 - [PATCH] /users/{user_id} → update_user
+- [POST] /users/{user_id}/change-password → change_password
 - [DELETE] /users/{user_id} → delete_user
 
 ## auth
 
 - [POST] /auth/token → login
+- [POST] /auth/refresh → refresh_access_token
 - [POST] /auth/logout → logout
 
 ## product
