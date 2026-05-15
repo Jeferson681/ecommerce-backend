@@ -9,12 +9,42 @@ from app.modules.user.schemas import UserChangePassword, UserCreate, UserUpdate
 @pytest.mark.parametrize(
     "data",
     [
-        {"first_name": "", "last_name": "Silva", "email": "a@b.com", "password": "Abcd1234!"},
-        {"first_name": "A", "last_name": "Silva", "email": "a@b.com", "password": "Abcd1234!"},
-        {"first_name": "Ana", "last_name": "", "email": "a@b.com", "password": "Abcd1234!"},
-        {"first_name": "Ana", "last_name": "S", "email": "a@b.com", "password": "Abcd1234!"},
-        {"first_name": "Ana", "last_name": "Silva", "email": "not-an-email", "password": "Abcd1234!"},
-        {"first_name": "Ana", "last_name": "Silva", "email": "a@b.com", "password": "short"},
+        {
+            "first_name": "",
+            "last_name": "Silva",
+            "email": "a@b.com",
+            "password": "Abcd1234!",
+        },
+        {
+            "first_name": "A",
+            "last_name": "Silva",
+            "email": "a@b.com",
+            "password": "Abcd1234!",
+        },
+        {
+            "first_name": "Ana",
+            "last_name": "",
+            "email": "a@b.com",
+            "password": "Abcd1234!",
+        },
+        {
+            "first_name": "Ana",
+            "last_name": "S",
+            "email": "a@b.com",
+            "password": "Abcd1234!",
+        },
+        {
+            "first_name": "Ana",
+            "last_name": "Silva",
+            "email": "not-an-email",
+            "password": "Abcd1234!",
+        },
+        {
+            "first_name": "Ana",
+            "last_name": "Silva",
+            "email": "a@b.com",
+            "password": "short",
+        },
     ],
 )
 def test_user_create_invalid(data: dict[str, object]) -> None:
