@@ -5,9 +5,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import get_uow
+from app.application.uow.dependencies import get_uow
 from app.application.uow.unit_of_work import UnitOfWork
 from app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
+from app.modules.auth.deps import get_current_user_id
 from app.modules.user.schemas import (
     UserChangePassword,
     UserCreate,
@@ -34,6 +35,24 @@ from app.modules.user.use_cases import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/me", response_model=UserRead)
+def get_current_user_endpoint(
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> UserRead:
+    """Get the current authenticated user.
+
+    Requires Bearer token in Authorization header.
+    """
+    try:
+        return get_user_use_case(user_id, uow)
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
 
 
 @router.post(
@@ -83,7 +102,7 @@ def list_users_endpoint(
     return list_users_use_case(uow)
 
 
-@router.put("/{user_id}", response_model=UserRead)
+@router.patch("/{user_id}", response_model=UserRead)
 def update_user_endpoint(
     user_id: int,
     user_data: UserUpdate,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -85,7 +85,7 @@ def test_change_password_raises_invalid_policy(monkeypatch) -> None:
             pass
 
         def get_by_id(self, user_id: int) -> object:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return SimpleNamespace(
                 id=user_id,
                 first_name="Ana",
@@ -110,7 +110,7 @@ def test_delete_user_commits_when_exists(monkeypatch) -> None:
             self.deleted = False
 
         def get_by_id(self, user_id: int) -> object:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return SimpleNamespace(
                 id=user_id,
                 first_name="Ana",

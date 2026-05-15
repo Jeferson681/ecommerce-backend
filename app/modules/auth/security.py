@@ -1,4 +1,4 @@
-"""Security utilities for authentication and authorization."""
+"""Security utilities for authentication and authorization for Users."""
 
 from passlib.context import CryptContext
 

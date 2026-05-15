@@ -1,3 +1,4 @@
+from datetime import UTC
 from types import SimpleNamespace
 
 from app.modules.product import use_cases
@@ -21,7 +22,7 @@ class DummyRepo:
         product.is_active = getattr(product, "is_active", True)
         from datetime import datetime
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         product.created_at = getattr(product, "created_at", now)
         product.updated_at = getattr(product, "updated_at", now)
 
@@ -29,7 +30,7 @@ class DummyRepo:
         # return a product-like object for update tests
         from datetime import datetime
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         return SimpleNamespace(
             id=product_id,

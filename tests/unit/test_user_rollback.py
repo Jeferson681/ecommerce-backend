@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -54,7 +54,7 @@ def test_update_user_rolls_back_on_commit_error(monkeypatch) -> None:
             pass
 
         def get_by_id(self, user_id: int) -> object:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return SimpleNamespace(
                 id=user_id,
                 first_name="Ana",
@@ -82,7 +82,7 @@ def test_change_password_rolls_back_on_commit_error(monkeypatch) -> None:
             pass
 
         def get_by_id(self, user_id: int) -> object:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return SimpleNamespace(
                 id=user_id,
                 first_name="Ana",
@@ -112,7 +112,7 @@ def test_delete_user_rolls_back_on_repo_error(monkeypatch) -> None:
             pass
 
         def get_by_id(self, user_id: int) -> object:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return SimpleNamespace(
                 id=user_id,
                 first_name="Ana",

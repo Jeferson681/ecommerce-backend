@@ -22,6 +22,12 @@ class UserRepository:
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
+    def get_by_email(self, email: str) -> User | None:
+        statement = select(User).where(User.email == email)
+
+        result = self.session.execute(statement)
+        return result.scalar_one_or_none()
+
     def list(self, limit: int = 20, offset: int = 0) -> list[User]:
         statement = select(User).order_by(User.id).limit(limit).offset(offset)
 

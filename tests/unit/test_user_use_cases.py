@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from app.modules.user import use_cases
@@ -14,7 +14,7 @@ class DummyRepo:
 
     def create(self, user: object) -> object:
         self.created = True
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         user.id = 1
         user.is_active = True
         user.created_at = now
@@ -22,7 +22,7 @@ class DummyRepo:
         return user
 
     def get_by_id(self, user_id: int) -> object:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return SimpleNamespace(
             id=user_id,
             first_name="Ana",
@@ -35,7 +35,7 @@ class DummyRepo:
         )
 
     def list(self, limit: int = 20, offset: int = 0) -> list[object]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return [
             SimpleNamespace(
                 id=1,
