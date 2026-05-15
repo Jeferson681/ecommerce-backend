@@ -6,7 +6,6 @@ import pytest
 
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import use_cases
-from app.modules.auth.schemas import LoginRequest
 
 
 class DummyUserRepo:

@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import get_uow
+from app.application.uow.dependencies import get_uow
 from app.application.uow.unit_of_work import UnitOfWork
 from app.core.exceptions import Messages, NotFoundError
 from app.modules.product.schemas import ProductCreate, ProductRead, ProductUpdate
