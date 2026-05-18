@@ -12,8 +12,7 @@ from jose import JWTError
 from app.application.uow.dependencies import get_uow
 from app.application.uow.unit_of_work import UnitOfWork
 from app.core.exceptions import AuthenticationError
-from app.modules.auth import schemas as auth_schemas
-from app.modules.auth import use_cases as auth_use_cases
+from app.modules.auth import schemas as auth_schemas, use_cases as auth_use_cases
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

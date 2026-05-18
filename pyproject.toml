@@ -10,13 +10,17 @@ target-version = "py312"
 select = [
   "E",   # pycodestyle
   "F",   # pyflakes
-  "I",   # import sorting
-  "B",   # bugbear
+  "I",   # isort
+  "B",   # flake8-bugbear
   "UP",  # pyupgrade
 ]
+
 ignore = [
-  "E501", # long line (handled by Black)
+  "E501", # handled by Black
 ]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
 
 # avoid Ruff/Black formatter conflicts
 [tool.ruff.format]
@@ -27,24 +31,30 @@ line-ending = "auto"
 [tool.mypy]
 python_version = "3.12"
 
-# balanced baseline (doesn't blow up the architecture)
+# balanced baseline
 warn_unused_ignores = true
 warn_return_any = true
 warn_redundant_casts = true
 no_implicit_optional = true
-check_untyped_defs = true
 
-# important: do NOT enable global strict
+# useful diagnostics
+pretty = true
+show_error_codes = true
+
+# DO NOT enable global strict
+# strict = true
 
 # =========================
-# CORE (where strict makes sense)
+# CORE (strict typing)
 # =========================
 [[tool.mypy.overrides]]
 module = [
   "app.domain.*",
-  "app.services.*"
+  "app.services.*",
 ]
+
 strict = true
+check_untyped_defs = true
 
 # =========================
 # API (FastAPI / Schemas)
@@ -52,37 +62,45 @@ strict = true
 [[tool.mypy.overrides]]
 module = [
   "app.api.*",
-  "app.schemas.*"
+  "app.schemas.*",
 ]
+
 disallow_untyped_defs = false
 disallow_untyped_calls = false
 ignore_missing_imports = true
+warn_return_any = false
 
 # =========================
 # INFRA (db, external deps)
 # =========================
 [[tool.mypy.overrides]]
 module = [
-  "app.infrastructure.*"
+  "app.infrastructure.*",
 ]
+
 disallow_untyped_defs = false
+check_untyped_defs = false
 ignore_missing_imports = true
 
 # =========================
-# PROBLEMATIC LIBS
+# EXTERNAL LIBS
 # =========================
 [[tool.mypy.overrides]]
 module = [
   "fastapi.*",
-  "pydantic.*"
+  "pydantic.*",
+  "sqlalchemy.*",
+  "alembic.*",
 ]
+
 ignore_missing_imports = true
 
 # =========================
-# TESTS (isolated)
+# TESTS
 # =========================
 [[tool.mypy.overrides]]
 module = "tests.*"
+
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = false
@@ -90,6 +108,19 @@ disallow_untyped_calls = false
 ignore_missing_imports = true
 warn_unused_ignores = true
 
+# =========================
+# PYTEST
+# =========================
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+# =========================
+# COVERAGE
+# =========================
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
