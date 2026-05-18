@@ -1,20 +1,12 @@
 """Use cases for User management."""
 
 from app.application.uow.unit_of_work import UnitOfWork
-from app.core.exceptions import (
-    InvalidPasswordError,
-    Messages,
-    NotFoundError,
-)
+from app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
 from app.modules.auth.security import hash_password
 from app.modules.auth.validators import validate_password_policy
 from app.modules.user.domain.models import User
 from app.modules.user.repositories.user_repository import UserRepository
-from app.modules.user.schemas import (
-    UserCreate,
-    UserRead,
-    UserUpdate,
-)
+from app.modules.user.schemas import UserCreate, UserRead, UserUpdate
 
 
 def create_user(

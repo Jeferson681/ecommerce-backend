@@ -15,24 +15,12 @@ from app.modules.user.schemas import (
     UserRead,
     UserUpdate,
 )
-from app.modules.user.use_cases import (
-    change_password as change_user_password,
-)
-from app.modules.user.use_cases import (
-    create_user as create_user_use_case,
-)
-from app.modules.user.use_cases import (
-    delete_user as delete_user_use_case,
-)
-from app.modules.user.use_cases import (
-    get_user as get_user_use_case,
-)
-from app.modules.user.use_cases import (
-    list_users as list_users_use_case,
-)
-from app.modules.user.use_cases import (
-    update_user as update_user_use_case,
-)
+from app.modules.user.use_cases import change_password as change_user_password
+from app.modules.user.use_cases import create_user as create_user_use_case
+from app.modules.user.use_cases import delete_user as delete_user_use_case
+from app.modules.user.use_cases import get_user as get_user_use_case
+from app.modules.user.use_cases import list_users as list_users_use_case
+from app.modules.user.use_cases import update_user as update_user_use_case
 
 router = APIRouter(prefix="/users", tags=["users"])
 
