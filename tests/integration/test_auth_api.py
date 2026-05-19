@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine
-from app.main import app
+from backend.app.core.database import Base, engine
+from backend.app.main import app
 
 client = TestClient(app)
 

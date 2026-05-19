@@ -49,8 +49,8 @@ show_error_codes = true
 # =========================
 [[tool.mypy.overrides]]
 module = [
-  "app.domain.*",
-  "app.services.*",
+  "backend.app.domain.*",
+  "backend.app.services.*",
 ]
 
 strict = true
@@ -61,8 +61,8 @@ check_untyped_defs = true
 # =========================
 [[tool.mypy.overrides]]
 module = [
-  "app.api.*",
-  "app.schemas.*",
+  "backend.app.api.*",
+  "backend.app.schemas.*",
 ]
 
 disallow_untyped_defs = false
@@ -75,7 +75,7 @@ warn_return_any = false
 # =========================
 [[tool.mypy.overrides]]
 module = [
-  "app.infrastructure.*",
+  "backend.app.infrastructure.*",
 ]
 
 disallow_untyped_defs = false
@@ -119,7 +119,7 @@ testpaths = ["tests"]
 # COVERAGE
 # =========================
 [tool.coverage.run]
-source = ["app"]
+source = ["backend.app"]
 omit = ["tests/*"]
 
 [build-system]
@@ -134,4 +134,4 @@ requires-python = ">=3.12"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*"]
+include = ["backend.app*"]

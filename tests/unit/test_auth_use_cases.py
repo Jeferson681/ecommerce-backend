@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.core.exceptions import AuthenticationError
-from app.modules.auth import use_cases
+from backend.app.core.exceptions import AuthenticationError
+from backend.app.modules.auth import use_cases
 
 
 class DummyUserRepo:

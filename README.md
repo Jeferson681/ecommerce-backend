@@ -42,7 +42,7 @@ JWT_ACCESS_TOKEN_EXPIRES_MINUTES=30
 alembic upgrade head
 
 # Start development server
-python -m uvicorn app.main:app --reload
+python -m uvicorn backend.app.main:app --reload
 ```
 
 Server available at `http://localhost:8000`
@@ -56,15 +56,15 @@ API documentation: `http://localhost:8000/docs`
 pytest
 
 # Run with coverage
-pytest --cov=app
+pytest --cov=backend.app
 ```
 
 ## Project Structure
 
-- `app/core/` - Configuration, database, security, exceptions
-- `app/modules/` - Domain modules (user, product, auth)
-- `app/api/` - HTTP routers and schemas
-- `app/application/` - Unit of Work transaction management
+- `backend/app/core/` - Configuration, database, security, exceptions
+- `backend/app/modules/` - Domain modules (user, product, auth)
+- `backend/app/api/` - HTTP routers and schemas
+- `backend/app/application/` - Unit of Work transaction management
 - `tests/` - Unit and integration tests
 
 See [docs/](./docs/) for detailed architecture documentation.
@@ -93,10 +93,10 @@ See [docs/](./docs/) for detailed architecture documentation.
 pre-commit run --all-files
 
 # Type checking
-mypy app/
+mypy backend/app/
 
 # Security scan
-bandit -r app/
+bandit -r backend/app/
 ```
 
 ## Documentation

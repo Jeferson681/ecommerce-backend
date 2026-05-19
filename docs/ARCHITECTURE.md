@@ -5,7 +5,7 @@
 Snapshot: 2026-05-15 (working tree), branch: feat/auth
 
 ```
-app/
+backend/app/
 ├── main.py
 │
 ├── api/

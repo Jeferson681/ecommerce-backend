@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from app.modules.user import use_cases
-from app.modules.user.schemas import UserCreate, UserUpdate
+from backend.app.modules.user import use_cases
+from backend.app.modules.user.schemas import UserCreate, UserUpdate
 
 
 class DummyRepo:

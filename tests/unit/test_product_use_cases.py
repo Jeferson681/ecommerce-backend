@@ -1,9 +1,9 @@
 from datetime import UTC
 from types import SimpleNamespace
 
-from app.modules.product import use_cases
-from app.modules.product.domain.models import Product
-from app.modules.product.schemas import ProductCreate, ProductUpdate
+from backend.app.modules.product import use_cases
+from backend.app.modules.product.domain.models import Product
+from backend.app.modules.product.schemas import ProductCreate, ProductUpdate
 
 
 class DummyRepo:
