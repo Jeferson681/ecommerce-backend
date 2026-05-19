@@ -6,11 +6,17 @@ A robust, modular-monolith backend for e-commerce platforms built with **FastAPI
 
 This project implements a **layered architecture** with clear separation of concerns:
 
+### Backend
+
 - **Domain Layer**: Business logic and entity models (`modules/*/domain/models.py`)
 - **Application Layer**: Use cases and transaction management (`application/uow/`)
 - **Infrastructure Layer**: Database and repository implementations (`infrastructure/`, `modules/*/repositories/`)
 - **API Layer**: HTTP endpoints and schemas (`api/routers/`, `modules/*/schemas.py`)
 - **Core Layer**: Configuration, database setup, exceptions, and security (`core/`)
+
+### Frontend
+
+A **Next.js 16 storefront** is available at `frontend/` for API integration validation and manual testing. It is intentionally backend-oriented — the main focus of the project remains the backend architecture and domain implementation. See [frontend/README.md](../frontend/README.md) for details.
 
 ## 🛠️ Tech Stack
 

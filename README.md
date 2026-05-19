@@ -65,6 +65,7 @@ pytest --cov=backend.app
 - `backend/app/modules/` - Domain modules (user, product, auth)
 - `backend/app/api/` - HTTP routers and schemas
 - `backend/app/application/` - Unit of Work transaction management
+- `frontend/` - Next.js storefront for API integration and manual testing (see [frontend/README.md](./frontend/README.md))
 - `tests/` - Unit and integration tests
 
 See [docs/](./docs/) for detailed architecture documentation.
