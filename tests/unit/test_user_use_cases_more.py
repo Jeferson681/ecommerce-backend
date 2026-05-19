@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.core.exceptions import InvalidPasswordError, NotFoundError
-from app.modules.user import use_cases
-from app.modules.user.schemas import UserUpdate
+from backend.app.core.exceptions import InvalidPasswordError, NotFoundError
+from backend.app.modules.user import use_cases
+from backend.app.modules.user.schemas import UserUpdate
 
 
 class DummyUoW:

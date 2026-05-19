@@ -2,10 +2,10 @@
 
 ## Folder structure
 
-Snapshot: 2026-05-15 (working tree), branch: feat/auth
+Snapshot: 2026-05-19
 
 ```
-app/
+backend/app/
 ├── main.py
 │
 ├── api/
@@ -82,7 +82,20 @@ app/
 │
 └── observability/
     └── request_logging.py
+
+frontend/
+├── app/              # Next.js App Router (thin route wrappers)
+├── core/             # HTTP client, config, exceptions, utils
+├── shared/           # UI primitives (Radix UI + Tailwind), layout shell
+├── modules/          # Domain modules: auth, user, product, cart, order, payment
+├── public/
+├── next.config.ts
+├── package.json
+└── ...
 ```
+
+> The frontend is a Next.js 16 storefront for API integration validation and manual testing.
+> The main focus of the project remains the backend architecture and domain implementation.
 
 ## Modules
 

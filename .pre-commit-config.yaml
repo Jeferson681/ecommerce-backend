@@ -20,7 +20,7 @@ repos:
       - id: mypy
         name: mypy (app)
 
-        files: ^app/modules/(?:[^/]+/(?:domain|repositories)/|[^/]+/use_cases\.py$)
+        files: ^backend/app/modules/(?:[^/]+/(?:domain|repositories)/|[^/]+/use_cases\.py$)
 
         args:
           - --config-file=pyproject.toml
@@ -42,7 +42,7 @@ repos:
     hooks:
       - id: bandit
 
-        files: ^app/
+        files: ^backend/app/
 
         args:
           - -q

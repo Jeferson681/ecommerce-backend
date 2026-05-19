@@ -3,9 +3,11 @@ from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.core.database import Base
-from app.modules.product.domain.models import Product
-from app.modules.product.repositories.product_repository import ProductRepository
+from backend.app.core.database import Base
+from backend.app.modules.product.domain.models import Product
+from backend.app.modules.product.repositories.product_repository import (
+    ProductRepository,
+)
 
 SessionLocal: sessionmaker[Session]
 

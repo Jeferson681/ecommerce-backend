@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.modules.user import use_cases
-from app.modules.user.schemas import UserCreate, UserUpdate
+from backend.app.modules.user import use_cases
+from backend.app.modules.user.schemas import UserCreate, UserUpdate
 
 
 class DummyUoW:

@@ -3,9 +3,9 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.core.database import Base
-from app.modules.user.domain.models import User
-from app.modules.user.repositories.user_repository import UserRepository
+from backend.app.core.database import Base
+from backend.app.modules.user.domain.models import User
+from backend.app.modules.user.repositories.user_repository import UserRepository
 
 SessionLocal: sessionmaker[Session]
 

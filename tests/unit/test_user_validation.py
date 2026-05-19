@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.modules.user.schemas import UserChangePassword, UserCreate, UserUpdate
+from backend.app.modules.user.schemas import UserChangePassword, UserCreate, UserUpdate
 
 
 @pytest.mark.parametrize(

@@ -6,11 +6,17 @@ A robust, modular-monolith backend for e-commerce platforms built with **FastAPI
 
 This project implements a **layered architecture** with clear separation of concerns:
 
+### Backend
+
 - **Domain Layer**: Business logic and entity models (`modules/*/domain/models.py`)
 - **Application Layer**: Use cases and transaction management (`application/uow/`)
 - **Infrastructure Layer**: Database and repository implementations (`infrastructure/`, `modules/*/repositories/`)
 - **API Layer**: HTTP endpoints and schemas (`api/routers/`, `modules/*/schemas.py`)
 - **Core Layer**: Configuration, database setup, exceptions, and security (`core/`)
+
+### Frontend
+
+A **Next.js 16 storefront** is available at `frontend/` for API integration validation and manual testing. It is intentionally backend-oriented — the main focus of the project remains the backend architecture and domain implementation. See [frontend/README.md](../frontend/README.md) for details.
 
 ## 🛠️ Tech Stack
 
@@ -60,7 +66,7 @@ cp .env.example .env  # Set DATABASE_URL, JWT_SECRET_KEY, etc.
 alembic upgrade head
 
 # Start server
-python -m uvicorn app.main:app --reload
+python -m uvicorn backend.app.main:app --reload
 ```
 
 ### Environment Variables
@@ -84,7 +90,7 @@ Required:
 pytest
 
 # Run with coverage
-pytest --cov=app --cov-report=html
+pytest --cov=backend.app --cov-report=html
 
 # Run specific test file
 pytest tests/unit/test_user_validation.py
@@ -92,7 +98,7 @@ pytest tests/unit/test_user_validation.py
 
 ## 🔒 Exception Handling
 
-All errors use typed exceptions from `app/core/exceptions.py`:
+All errors use typed exceptions from `backend/app/core/exceptions.py`:
 - `NotFoundError` (404) - Resource not found
 - `InvalidPasswordError` (422) - Password validation failed
 - `ValidationError` (422) - Schema validation failed

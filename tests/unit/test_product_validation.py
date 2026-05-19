@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.modules.product.schemas import ProductCreate, ProductUpdate
+from backend.app.modules.product.schemas import ProductCreate, ProductUpdate
 
 
 @pytest.mark.parametrize(

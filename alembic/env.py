@@ -6,7 +6,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from app.core.database import Base
+from backend.app.core.database import Base
 
 # this is the Alembic Config object, which provides
 # the values of the [alembic] section of the .ini
