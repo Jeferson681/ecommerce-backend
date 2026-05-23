@@ -5,7 +5,6 @@ import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
 import { useCart } from "@/modules/cart/hooks/useCart";
-import { cartStorage } from "@/modules/cart/storage/cartStorage";
 import { formatMoney } from "@/core/utils/money";
 
 import { PageHeader } from "@/shared/components/PageHeader";
@@ -23,7 +22,6 @@ export default function CheckoutPage() {
     event.preventDefault();
     setCompleted(true);
     setOrderNumber(`ORD-${Math.floor(Math.random() * 900000 + 100000)}`);
-    cartStorage.clear();
     clear();
   }
 
@@ -67,18 +65,18 @@ export default function CheckoutPage() {
               <form onSubmit={placeOrder} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Full name</label>
-                    <Input required placeholder="Your name" />
+                    <label htmlFor="checkout-full-name" className="text-sm font-medium">Full name</label>
+                    <Input id="checkout-full-name" required placeholder="Your name" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Email</label>
-                    <Input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+                    <label htmlFor="checkout-email" className="text-sm font-medium">Email</label>
+                    <Input id="checkout-email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Delivery note</label>
-                  <Input placeholder="Optional instructions for delivery" />
+                  <label htmlFor="checkout-note" className="text-sm font-medium">Delivery note</label>
+                  <Input id="checkout-note" placeholder="Optional instructions for delivery" />
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">

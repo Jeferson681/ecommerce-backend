@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
+import { cartStorage } from "@/modules/cart/storage/cartStorage";
 import { useMe } from "@/modules/account/hooks/useMe";
 
 import { PageHeader } from "@/shared/components/PageHeader";
@@ -35,6 +37,35 @@ export default function AccountPage() {
     );
   }
 
+  let content: ReactNode;
+
+  if (isLoading) {
+    content = <div className="text-sm text-zinc-600">Loading...</div>;
+  } else if (data) {
+    content = (
+      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <dt className="text-xs text-zinc-500">Name</dt>
+          <dd className="text-sm font-medium">{data.first_name} {data.last_name}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-zinc-500">Email</dt>
+          <dd className="text-sm">{data.email}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-zinc-500">Status</dt>
+          <dd className="text-sm">{data.is_active ? "Active" : "Inactive"}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-zinc-500">Created</dt>
+          <dd className="text-sm">{new Date(data.created_at).toLocaleString()}</dd>
+        </div>
+      </dl>
+    );
+  } else {
+    content = <div className="text-sm text-zinc-600">No data.</div>;
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader title="My account" description="Profile data from /users/me" />
@@ -48,36 +79,14 @@ export default function AccountPage() {
 
       <Card>
         <CardContent className="p-6">
-          {isLoading ? (
-            <div className="text-sm text-zinc-600">Loading...</div>
-          ) : data ? (
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs text-zinc-500">Name</dt>
-                <dd className="text-sm font-medium">{data.first_name} {data.last_name}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">Email</dt>
-                <dd className="text-sm">{data.email}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">Status</dt>
-                <dd className="text-sm">{data.is_active ? "Active" : "Inactive"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">Created</dt>
-                <dd className="text-sm">{new Date(data.created_at).toLocaleString()}</dd>
-              </div>
-            </dl>
-          ) : (
-            <div className="text-sm text-zinc-600">No data.</div>
-          )}
+          {content}
         </CardContent>
       </Card>
 
       <Button
         variant="outline"
         onClick={() => {
+          cartStorage.clear();
           tokenStorage.clear();
           location.href = "/";
         }}
