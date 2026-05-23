@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
+import { cartStorage } from "@/modules/cart/storage/cartStorage";
 
 import { Button } from "@/shared/components/ui/button";
 
@@ -24,6 +25,7 @@ export function AuthNav() {
           variant="outline"
           size="sm"
           onClick={() => {
+            cartStorage.clear();
             tokenStorage.clear();
             location.href = "/";
           }}
