@@ -4,9 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 
-import { Input } from "@/shared/components/ui/input";
-import { Button } from "@/shared/components/ui/button";
-
 export function SearchBar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -18,19 +15,21 @@ export function SearchBar() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
+    <form onSubmit={handleSubmit} className="flex w-full items-center">
       <div className="relative flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-        <Input
+        <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search products, brands, categories"
-          className="h-10 rounded-full border-zinc-200 pl-9"
+          placeholder="Search products..."
+          className="h-9 w-full rounded-l-md border-0 bg-white px-3 pr-9 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-[#febd69]"
         />
       </div>
-      <Button type="submit" className="h-10 rounded-full px-5">
-        Search
-      </Button>
+      <button
+        type="submit"
+        className="flex h-9 w-10 items-center justify-center rounded-r-md bg-[#febd69] text-[#131921] hover:bg-[#f3a847] transition-colors"
+      >
+        <Search className="h-4 w-4" />
+      </button>
     </form>
   );
 }

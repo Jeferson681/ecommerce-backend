@@ -1,13 +1,9 @@
 import Link from "next/link";
-import { ChevronLeft, ShieldCheck, Truck, Star } from "lucide-react";
+import { ChevronLeft, Star } from "lucide-react";
 
-import { formatMoney } from "@/core/utils/money";
 import { productService } from "@/modules/product/services/productService";
 import { AddToCartButton } from "@/modules/cart/components/AddToCartButton";
 import { ProductCard } from "@/modules/product/components/ProductCard";
-import { PageHeader } from "@/shared/components/PageHeader";
-import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent } from "@/shared/components/ui/card";
 
 type ProductPageProps = {
   productId: number;
@@ -29,84 +25,149 @@ export default async function ProductPage({ productId }: ProductPageProps) {
 
   if (!product) {
     return (
-      <div className="space-y-6">
-        <Button asChild variant="ghost" className="w-fit rounded-full px-0 text-zinc-700">
-          <Link href="/products">
-            <ChevronLeft className="h-4 w-4" /> Back to catalog
-          </Link>
-        </Button>
-
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Product backend is unavailable right now. ({loadError ?? "Unavailable"})
+      <div className="space-y-4">
+        <Link href="/products" className="inline-flex items-center gap-1 text-xs text-[#007185] hover:text-[#c7511f] hover:underline">
+          <ChevronLeft className="h-3 w-3" /> Back to results
+        </Link>
+        <div className="rounded-sm border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          Product unavailable. ({loadError ?? "Unavailable"})
         </div>
       </div>
     );
   }
-  const related = products.filter((item) => item.is_active && item.id !== product.id).slice(0, 3);
+
+  const related = products.filter((item) => item.is_active && item.id !== product.id).slice(0, 6);
+  const stars = (3.5 + ((product.id * 17) % 15) / 10).toFixed(1);
+  const reviewCount = ((product.id * 31 + 5) % 500) + 10;
 
   return (
-    <div className="space-y-8">
-      <Button asChild variant="ghost" className="w-fit rounded-full px-0 text-zinc-700">
-        <Link href="/products">
-          <ChevronLeft className="h-4 w-4" /> Back to catalog
-        </Link>
-      </Button>
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-zinc-500" aria-label="Breadcrumb">
+        <Link href="/" className="hover:text-zinc-800 transition-colors">Home</Link>
+        <span className="text-zinc-300 mx-0.5">›</span>
+        <Link href="/products" className="hover:text-zinc-800 transition-colors">All Products</Link>
+        <span className="text-zinc-300 mx-0.5">›</span>
+        <span className="text-zinc-800 font-medium truncate max-w-[200px]">{product.name}</span>
+      </nav>
 
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="overflow-hidden border-zinc-200 bg-white shadow-sm">
-          <div className="bg-gradient-to-br from-amber-100 via-orange-50 to-white p-8">
-            <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.24em] text-zinc-500">
-              <span className="rounded-full bg-white px-3 py-1 font-semibold text-zinc-700">Marketplace</span>
-              <span className="rounded-full bg-zinc-950 px-3 py-1 font-semibold text-white">{product.is_active ? "Active" : "Hidden"}</span>
+      {/* Product detail - Amazon-style two column */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+        {/* Image column */}
+        <div className="aspect-square rounded-sm border border-zinc-200 bg-white flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="mx-auto mb-3 h-24 w-24 rounded-full bg-zinc-100 flex items-center justify-center">
+              <span className="text-4xl font-bold text-zinc-300">{product.name.charAt(0)}</span>
             </div>
-            <PageHeader title={product.name} description={product.description ?? "No description."} />
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <div className="text-4xl font-black tracking-tight text-zinc-950">{formatMoney(product.price)}</div>
-              <div className="rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-600 shadow-sm ring-1 ring-zinc-200">
-                Stock {product.stock_quantity}
-              </div>
+            <span className="text-xs text-zinc-400 uppercase tracking-wider">Product Image</span>
+          </div>
+        </div>
+
+        {/* Info column */}
+        <div className="space-y-3">
+          {/* Title */}
+          <h1 className="text-xl leading-snug font-medium text-zinc-900">{product.name}</h1>
+
+          {/* Rating row */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center">
+              {Array.from({ length: 5 }).map((_, i) => {
+                const filled = i < Math.floor(Number(stars));
+                const half = !filled && i < Math.ceil(Number(stars));
+                return (
+                  <Star
+                    key={i}
+                    className={`h-3.5 w-3.5 ${
+                      filled ? "text-amber-400 fill-amber-400" : half ? "text-amber-400 fill-amber-400/50" : "text-zinc-200"
+                    }`}
+                  />
+                );
+              })}
+            </div>
+            <span className="text-xs text-[#007185] hover:text-[#c7511f] hover:underline cursor-pointer">
+              {reviewCount} ratings
+            </span>
+          </div>
+
+          <div className="border-b border-zinc-200" />
+
+          {/* Price */}
+          <div className="space-y-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs text-zinc-500">$</span>
+              <span className="text-3xl font-semibold tracking-tight text-zinc-900">
+                {Number(product.price).toFixed(2).split(".")[0]}
+              </span>
+              <span className="text-sm text-zinc-500">
+                .{Number(product.price).toFixed(2).split(".")[1]}
+              </span>
+            </div>
+            <div className="text-xs text-zinc-600">
+              <span className="font-medium text-green-700">FREE delivery</span>{" "}
+              <span className="text-zinc-500">by tomorrow</span>
             </div>
           </div>
-          <CardContent className="space-y-5 p-6">
-            <p className="text-sm leading-7 text-zinc-600">
-              A polished product page with trust badges, product info and a clear call to action. Perfect for
-              marketplace-style storefronts.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <AddToCartButton product={product} quantity={1} className="rounded-full px-6" />
-              <Button asChild variant="outline" className="rounded-full px-6">
-                <Link href="/checkout">Checkout</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-zinc-200 bg-white shadow-sm">
-          <CardContent className="space-y-4 p-6">
-            <div className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">Why customers buy</div>
-            {[
-              { icon: Truck, title: "Fast shipping", text: "Layout supports delivery and pickup messaging." },
-              { icon: ShieldCheck, title: "Secure checkout", text: "Use the frontend checkout without backend changes." },
-              { icon: Star, title: "Trusted product", text: "Clear pricing and stock information help conversion." },
-            ].map((item) => (
-              <div key={item.title} className="flex items-start gap-3 rounded-2xl border border-zinc-200 p-4">
-                <item.icon className="mt-0.5 h-5 w-5 text-zinc-950" />
-                <div>
-                  <div className="text-sm font-semibold text-zinc-950">{item.title}</div>
-                  <div className="mt-1 text-sm leading-6 text-zinc-600">{item.text}</div>
-                </div>
+          <div className="border-b border-zinc-200" />
+
+          {/* Description */}
+          <p className="text-sm leading-6 text-zinc-700">
+            {product.description ?? "No description available."}
+          </p>
+
+          {/* Stock status */}
+          <div className="text-sm">
+            {product.stock_quantity > 10 ? (
+              <span className="text-green-700 font-medium">In Stock</span>
+            ) : product.stock_quantity > 0 ? (
+              <span className="text-amber-600 font-medium">Only {product.stock_quantity} left in stock - order soon</span>
+            ) : (
+              <span className="text-red-600 font-medium">Currently unavailable</span>
+            )}
+          </div>
+
+          {/* Add to cart module */}
+          {product.stock_quantity > 0 ? (
+            <div className="rounded-sm border border-zinc-200 p-4 space-y-3">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs text-zinc-500">$</span>
+                <span className="text-2xl font-semibold tracking-tight text-zinc-900">
+                  {Number(product.price).toFixed(2).split(".")[0]}
+                </span>
+                <span className="text-xs text-zinc-500">
+                  .{Number(product.price).toFixed(2).split(".")[1]}
+                </span>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
+              <AddToCartButton
+                product={product}
+                label="Add to Cart"
+                className="w-full rounded-sm bg-[#ffd814] py-2 text-sm font-medium text-[#111] hover:bg-[#f7ca00] border-0 transition-colors"
+              />
+              <AddToCartButton
+                product={product}
+                label="Buy Now"
+                className="w-full rounded-sm bg-[#fa8900] py-2 text-sm font-medium text-white hover:bg-[#e67e00] border-0 transition-colors"
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
 
+      {/* Related products */}
       {related.length > 0 ? (
-        <section className="space-y-4">
-          <PageHeader title="Related items" description="Products customers may also like" />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-bold text-zinc-900">Related products</h2>
+            <Link
+              href="/products"
+              className="text-xs font-medium text-[#007185] hover:text-[#c7511f] hover:underline"
+            >
+              See all &rarr;
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {related.map((item) => (
-              <ProductCard key={item.id} product={item} compact />
+              <ProductCard key={item.id} product={item} />
             ))}
           </div>
         </section>

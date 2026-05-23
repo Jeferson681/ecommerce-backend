@@ -5,8 +5,6 @@ import { useState } from "react";
 import type { Product } from "@/modules/product/types/product";
 import { cartStorage } from "@/modules/cart/storage/cartStorage";
 
-import { Button } from "@/shared/components/ui/button";
-
 type AddToCartButtonProps = {
   product: Product;
   quantity?: number;
@@ -14,11 +12,11 @@ type AddToCartButtonProps = {
   label?: string;
 };
 
-export function AddToCartButton({ product, quantity = 1, className, label = "Add to cart" }: AddToCartButtonProps) {
+export function AddToCartButton({ product, quantity = 1, className, label = "Add to Cart" }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false);
 
   return (
-    <Button
+    <button
       className={className}
       onClick={() => {
         cartStorage.addItem(product, quantity);
@@ -26,7 +24,7 @@ export function AddToCartButton({ product, quantity = 1, className, label = "Add
         window.setTimeout(() => setAdded(false), 1200);
       }}
     >
-      {added ? "Added" : label}
-    </Button>
+      {added ? "✓ Added" : label}
+    </button>
   );
 }

@@ -10,17 +10,53 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-marketplace-yellow: #febd69;
+  --color-marketplace-orange: #f0c14b;
+  --color-marketplace-dark: #131921;
+  --color-marketplace-nav: #232f3e;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Marketplace-style scrollbar for product grids */
+.product-grid::-webkit-scrollbar {
+  height: 6px;
+}
+.product-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+.product-grid::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+/* Price emphasis */
+.price-large {
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.price-currency {
+  font-size: 0.75rem;
+  vertical-align: super;
+}
+
+.price-cents {
+  font-size: 0.85rem;
+  vertical-align: super;
+}
+
+/* Discount badge */
+.discount-badge {
+  background: #cc0c39;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 2px;
 }

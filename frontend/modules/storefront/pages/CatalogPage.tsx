@@ -1,5 +1,3 @@
-import { PageHeader } from "@/shared/components/PageHeader";
-import { SearchBar } from "@/shared/components/SearchBar";
 import { ProductCard } from "@/modules/product/components/ProductCard";
 import { productService } from "@/modules/product/services/productService";
 
@@ -10,8 +8,8 @@ type CatalogPageProps = {
 };
 
 export default async function CatalogPage({
-  title = "Catalog",
-  description = "Browse the full collection",
+  title = "Search Results",
+  description = "Find products by name or description",
   query,
 }: CatalogPageProps) {
   let products: Awaited<ReturnType<typeof productService.list>> = [];
@@ -31,29 +29,32 @@ export default async function CatalogPage({
   });
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm">
-        <PageHeader title={title} description={description} />
-        <SearchBar />
-      </section>
-
+    <div className="space-y-4">
       {loadError ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="rounded-sm border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
           Catalog backend is unavailable right now. ({loadError})
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-3 text-sm text-zinc-600">
-        <div>{filtered.length} products found</div>
-        {normalizedQuery ? <div>Showing results for &quot;{query}&quot;</div> : <div>All categories</div>}
+      {/* Results header */}
+      <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+        <div>
+          <h1 className="text-base font-bold text-zinc-900">{title}</h1>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+            {normalizedQuery ? <> for &ldquo;{query}&rdquo;</> : null}
+          </p>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-8 text-sm text-zinc-600">
-          No products matched your search.
+        <div className="rounded-sm border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
+          {normalizedQuery
+            ? `No products matched "${query}". Try a different search.`
+            : "No products available yet."}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {filtered.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
