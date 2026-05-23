@@ -20,6 +20,10 @@ class Messages:
 
     PRODUCT_NOT_FOUND = "Product not found."
 
+    CART_NOT_FOUND = "Cart not found."
+
+    CART_ITEM_NOT_FOUND = "Cart item not found."
+
     INVALID_CREDENTIAL_POLICY = "Credential does not meet the required policy."
 
 
