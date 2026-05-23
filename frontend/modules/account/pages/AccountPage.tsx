@@ -83,16 +83,22 @@ export default function AccountPage() {
         </CardContent>
       </Card>
 
-      <Button
-        variant="outline"
-        onClick={() => {
-          cartStorage.clear();
-          tokenStorage.clear();
-          location.href = "/";
-        }}
-      >
-        Sign out (local)
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button asChild>
+          <Link href="/account/orders">My orders</Link>
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => {
+            cartStorage.clear();
+            tokenStorage.clear();
+            location.href = "/";
+          }}
+        >
+          Sign out (local)
+        </Button>
+      </div>
     </div>
   );
 }
