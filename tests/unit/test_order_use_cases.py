@@ -67,6 +67,10 @@ class DummyProductRepoUpdated(DummyProductRepo):
     def update(self, product):
         return product
 
+    def decrement_stock_if_enough(self, product_id: int, quantity: int) -> bool:
+        # For tests, simulate successful atomic decrement when called.
+        return True
+
 
 class DummyUoW:
     def __init__(self):

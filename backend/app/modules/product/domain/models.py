@@ -11,7 +11,10 @@ from backend.app.core.database import Base
 
 class Product(Base):
     __tablename__ = "products"
-    __table_args__ = (CheckConstraint("price > 0", name="ck_product_price_positive"),)
+    __table_args__ = (
+        CheckConstraint("price > 0", name="ck_product_price_positive"),
+        CheckConstraint("stock_quantity >= 0", name="ck_product_stock_non_negative"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.core.database import Base
-from backend.app.modules.cart.domain.models import Cart
+from backend.app.modules.cart.domain.models import Cart, CartItem
 from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
     CartRepository,
@@ -54,12 +54,11 @@ def test_cart_repository_crud_flow() -> None:
     assert fetched_by_user is not None
     assert fetched_by_user.id == cart.id
 
-    existing = cart_repo.get_or_create_by_user(1)
-    assert existing.id == cart.id
-
     product = _create_product(session)
 
-    item = item_repo.add_or_increment(cart.id, product.id, quantity=2)
+    item = item_repo.create(
+        CartItem(cart_id=cart.id, product_id=product.id, quantity=2)
+    )
     session.commit()
 
     fetched_item = item_repo.get_by_id(item.id)

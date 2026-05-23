@@ -35,20 +35,6 @@ class CartRepository:
 
         return result.scalar_one_or_none()
 
-    def get_or_create_by_user(self, user_id: int) -> Cart:
-        """Return the cart associated with a user, creating a new one if it doesn't exist."""
-        cart = self.get_by_user_id(user_id)
-
-        if cart:
-            return cart
-
-        cart = Cart(user_id=user_id)
-        self.session.add(cart)
-        self.session.flush()
-        self.session.refresh(cart)
-
-        return cart
-
 
 class CartItemRepository:
     def __init__(self, session: Session):
@@ -68,8 +54,15 @@ class CartItemRepository:
 
         return list(result.scalars().all())
 
+    def create(self, item: CartItem) -> CartItem:
+        """Create a new CartItem."""
+        self.session.add(item)
+        self.session.flush()
+        self.session.refresh(item)
+
+        return item
+
     def update(self, cart_item: CartItem) -> CartItem:
-        self.session.add(cart_item)
         self.session.flush()
         self.session.refresh(cart_item)
 
@@ -88,23 +81,3 @@ class CartItemRepository:
         result = self.session.execute(statement)
 
         return result.scalar_one_or_none()
-
-    def add_or_increment(
-        self, cart_id: int, product_id: int, quantity: int = 1
-    ) -> CartItem:
-        """Add an item to the cart or increment its quantity if it already exists."""
-        cart_item = self.get_by_cart_and_product(cart_id, product_id)
-
-        if cart_item:
-            cart_item.quantity += quantity
-            self.session.add(cart_item)
-            self.session.flush()
-            self.session.refresh(cart_item)
-            return cart_item
-
-        cart_item = CartItem(cart_id=cart_id, product_id=product_id, quantity=quantity)
-        self.session.add(cart_item)
-        self.session.flush()
-        self.session.refresh(cart_item)
-
-        return cart_item
