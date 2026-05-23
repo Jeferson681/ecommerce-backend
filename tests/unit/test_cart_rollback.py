@@ -9,7 +9,7 @@ class BadItemRepo:
     def __init__(self, session=None):
         self.session = session
 
-    def add_or_increment(self, cart_id: int, product_id: int, quantity: int):
+    def get_by_cart_and_product(self, cart_id: int, product_id: int):
         raise RuntimeError("db down")
 
 
@@ -17,7 +17,7 @@ class FakeCartRepo:
     def __init__(self, session):
         self.session = session
 
-    def get_or_create_by_user(self, user_id: int):
+    def get_by_user_id(self, user_id: int):
         return SimpleNamespace(id=1, user_id=user_id)
 
 

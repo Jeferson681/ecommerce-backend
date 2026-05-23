@@ -75,9 +75,15 @@ def checkout(user_id: int, uow: UnitOfWork) -> OrderRead:
             )
             order_item_repository.create(order_item)
 
-            # Decrease stock
-            product.stock_quantity -= cart_item.quantity
-            product_repository.update(product)
+            # Decrease stock atomically via repository helper. If it fails,
+            # raise a ValidationError to abort the transaction.
+            success = product_repository.decrement_stock_if_enough(
+                product.id, cart_item.quantity
+            )
+            if not success:
+                raise ValidationError(
+                    f"{Messages.ORDER_INSUFFICIENT_STOCK} (product_id={cart_item.product_id})"
+                )
 
         # Clear the cart
         cart_repository.delete(cart)

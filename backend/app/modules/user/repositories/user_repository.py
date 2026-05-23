@@ -35,7 +35,6 @@ class UserRepository:
         return list(result.scalars().all())
 
     def update(self, user: User) -> User:
-        self.session.add(user)
         self.session.flush()
 
         return user

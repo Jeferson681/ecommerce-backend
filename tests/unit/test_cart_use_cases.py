@@ -2,7 +2,6 @@ from datetime import UTC
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 
 from backend.app.core.exceptions import NotFoundError
 from backend.app.modules.cart import use_cases
@@ -32,33 +31,30 @@ class DummyCartRepo:
         cart.items = getattr(cart, "items", [])
         return cart
 
-    def get_or_create_by_user(self, user_id: int):
-        return SimpleNamespace(id=1, user_id=user_id, items=[])
-
 
 class DummyCartItemRepo:
     def __init__(self, session=None):
         self.session = session
-        self.added = False
+        self.created = False
         self.updated = False
         self.deleted = False
 
-    def add_or_increment(self, cart_id: int, product_id: int, quantity: int):
-        self.added = True
+    def get_by_cart_and_product(self, cart_id: int, product_id: int):
+        return None
+
+    def create(self, cart_item):
+        self.created = True
         from datetime import datetime
 
         now = datetime.now(UTC)
         return SimpleNamespace(
             id=1,
-            cart_id=cart_id,
-            product_id=product_id,
-            quantity=quantity,
+            cart_id=cart_item.cart_id,
+            product_id=cart_item.product_id,
+            quantity=cart_item.quantity,
             created_at=now,
             updated_at=now,
         )
-
-    def get_by_cart_and_product(self, cart_id: int, product_id: int):
-        return None
 
     def get_by_id(self, item_id: int):
         from datetime import datetime
@@ -148,25 +144,16 @@ def test_add_item_calls_repo_and_commits(monkeypatch):
 
     item = use_cases.add_item(data, user_id=1, uow=uow)
 
-    assert created["item_repo"].added is True
+    assert created["item_repo"].created is True
     assert uow.committed is True
     assert item.product_id == 5
     assert item.quantity == 2
 
 
-def test_add_item_handles_integrity_error_and_updates_existing(monkeypatch):
-    # simulate first add raising IntegrityError, then existing item found and updated
-    class BadAddRepo(DummyCartItemRepo):
-        def __init__(self, session=None):
-            super().__init__(session)
-            self.called = 0
+def test_add_item_updates_existing(monkeypatch):
+    created = {}
 
-        def add_or_increment(self, cart_id: int, product_id: int, quantity: int):
-            self.called += 1
-            if self.called == 1:
-                raise IntegrityError("msg", params=None, orig=None)
-            return super().add_or_increment(cart_id, product_id, quantity)
-
+    class ExistingItemRepo(DummyCartItemRepo):
         def get_by_cart_and_product(self, cart_id: int, product_id: int):
             from datetime import datetime
 
@@ -184,7 +171,9 @@ def test_add_item_handles_integrity_error_and_updates_existing(monkeypatch):
         return DummyCartRepo(session)
 
     def fake_item_repo(session):
-        return BadAddRepo(session)
+        repo = ExistingItemRepo(session)
+        created["item_repo"] = repo
+        return repo
 
     monkeypatch.setattr(use_cases, "CartRepository", fake_cart_repo)
     monkeypatch.setattr(use_cases, "CartItemRepository", fake_item_repo)
@@ -202,6 +191,8 @@ def test_add_item_handles_integrity_error_and_updates_existing(monkeypatch):
 
     assert uow.committed is True
     assert item.product_id == 7
+    assert item.quantity == 4
+    assert created["item_repo"].updated is True
 
 
 def test_update_item_commits_and_updates_fields(monkeypatch):

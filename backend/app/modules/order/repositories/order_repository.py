@@ -42,7 +42,10 @@ class OrderRepository:
         return self.create(order)
 
     def update(self, order: Order) -> Order:
-        return self.create(order)
+        self.session.flush()
+        self.session.refresh(order)
+
+        return order
 
     def delete(self, order: Order) -> None:
         self.session.delete(order)
@@ -77,7 +80,6 @@ class OrderItemRepository:
         return item
 
     def update(self, item: OrderItem) -> OrderItem:
-        self.session.add(item)
         self.session.flush()
         self.session.refresh(item)
 
