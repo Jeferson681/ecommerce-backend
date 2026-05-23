@@ -1,18 +1,88 @@
-def get_by_id(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("order_repository.get_by_id is not implemented")
+"""Order repository for managing order data.
+
+Responsibility: expose persistence operations for order data access.
+"""
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from backend.app.modules.order.domain.models import Order, OrderItem
 
 
-def list(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("order_repository.list is not implemented")
+class OrderRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_by_id(self, order_id: int) -> Order | None:
+        statement = select(Order).where(Order.id == order_id)
+
+        result = self.session.execute(statement)
+        return result.scalar_one_or_none()
+
+    def get_by_user_id(self, user_id: int) -> list[Order]:
+        statement = select(Order).where(Order.user_id == user_id).order_by(Order.id)
+
+        result = self.session.execute(statement)
+        return list(result.scalars().all())
+
+    def list(self) -> list[Order]:
+        statement = select(Order).order_by(Order.id)
+
+        result = self.session.execute(statement)
+        return list(result.scalars().all())
+
+    def create(self, order: Order) -> Order:
+        self.session.add(order)
+        self.session.flush()
+        self.session.refresh(order)
+
+        return order
+
+    def add(self, order: Order) -> Order:
+        return self.create(order)
+
+    def update(self, order: Order) -> Order:
+        return self.create(order)
+
+    def delete(self, order: Order) -> None:
+        self.session.delete(order)
+        self.session.flush()
 
 
-def add(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("order_repository.add is not implemented")
+class OrderItemRepository:
+    def __init__(self, session: Session):
+        self.session = session
 
+    def get_by_id(self, item_id: int) -> OrderItem | None:
+        statement = select(OrderItem).where(OrderItem.id == item_id)
 
-def update(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("order_repository.update is not implemented")
+        result = self.session.execute(statement)
+        return result.scalar_one_or_none()
 
+    def get_by_order_id(self, order_id: int) -> list[OrderItem]:
+        statement = (
+            select(OrderItem)
+            .where(OrderItem.order_id == order_id)
+            .order_by(OrderItem.id)
+        )
 
-def delete(*args: object, **kwargs: object) -> None:
-    raise NotImplementedError("order_repository.delete is not implemented")
+        result = self.session.execute(statement)
+        return list(result.scalars().all())
+
+    def create(self, item: OrderItem) -> OrderItem:
+        self.session.add(item)
+        self.session.flush()
+        self.session.refresh(item)
+
+        return item
+
+    def update(self, item: OrderItem) -> OrderItem:
+        self.session.add(item)
+        self.session.flush()
+        self.session.refresh(item)
+
+        return item
+
+    def delete(self, item: OrderItem) -> None:
+        self.session.delete(item)
+        self.session.flush()
