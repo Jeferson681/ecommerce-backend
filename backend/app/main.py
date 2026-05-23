@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.cart import router as cart_router
+from backend.app.api.routers.order import router as order_router
 from backend.app.api.routers.product import router as product_router
 from backend.app.api.routers.user import router as user_router
 from backend.app.core.config import settings
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(cart_router)
+    app.include_router(order_router)
     app.include_router(user_router)
     app.include_router(product_router)
 
