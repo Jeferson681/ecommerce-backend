@@ -1,14 +1,69 @@
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import Any, Self
+
 from sqlalchemy.orm import Session
 
 
-class UnitOfWork:
-    """Unit of Work pattern for managing database transactions."""
+class BaseUnitOfWork(ABC):
+    def __init__(self) -> None:
+        self._session: Session | None = None
 
-    def __init__(self, session: Session) -> None:
-        self.session = session
+    def attach(self, session: Session) -> None:
+        """Attach an active SQLAlchemy Session to this UoW instance."""
+        self._session = session
+
+    @property
+    def session(self) -> Session:
+        """Return the active Session or raise if not initialized."""
+        if self._session is None:
+            raise RuntimeError("Session is not initialized.")
+
+        return self._session
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if exc_type is not None:
+            self.rollback()
+
+    @abstractmethod
+    def commit(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def rollback(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def flush(self) -> None:
+        raise NotImplementedError
+
+
+class UnitOfWork(BaseUnitOfWork):
+    def __init__(self, session_factory: Callable[[], Session]) -> None:
+        super().__init__()
+        self.session_factory = session_factory
+
+    def __enter__(self) -> Self:
+        self.attach(self.session_factory())
+        return super().__enter__()
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        try:
+            super().__exit__(exc_type, exc_val, exc_tb)
+        finally:
+            if self._session is not None:
+                self._session.close()
+                self._session = None
 
     def commit(self) -> None:
         self.session.commit()
 
     def rollback(self) -> None:
-        self.session.rollback()
+        if self._session is not None and self._session.is_active:
+            self._session.rollback()
+
+    def flush(self) -> None:
+        self.session.flush()

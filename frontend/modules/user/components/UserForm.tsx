@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 import type { User, UserCreateInput, UserUpdateInput } from "@/modules/user/types/user";
 
@@ -62,7 +63,7 @@ export function UserForm({ mode, initial, onSubmit, submitLabel }: UserFormProps
         await onSubmit(payload);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error");
+      setError(getUserErrorMessage(err));
       setIsSubmitting(false);
     }
   }

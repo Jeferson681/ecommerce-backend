@@ -1,43 +1,120 @@
 # Endpoints
 
-## user
+## User
 
-- [POST] /users → create_user
-- [GET] /users/me → get_current_user
-- [GET] /users/{user_id} → get_user
-- [GET] /users → list_users
-- [PATCH] /users/{user_id} → update_user
-- [POST] /users/{user_id}/change-password → change_password
-- [DELETE] /users/{user_id} → delete_user
+### Public
+- [POST] /users
+  Register a new user account.
 
-## auth
+### Authenticated User
+- [GET] /users/me
+  Return the currently authenticated user profile.
 
-- [POST] /auth/token → login
-- [POST] /auth/refresh → refresh_access_token
-- [POST] /auth/logout → logout
+- [GET] /users/{user_id}
+  Return a specific user profile.
+  Access: owner or admin.
 
-## product
+- [PATCH] /users/{user_id}
+  Update user profile data.
+  Access: owner or admin.
 
-- [GET] /products → list_products
-- [GET] /products/{id} → get_product
-- [POST] /products → create_product
-- [PATCH] /products/{id} → update_product
-- [DELETE] /products/{id} → delete_product
+- [POST] /users/{user_id}/change-password
+  Change account password.
+  Access: owner only.
 
-## cart
+- [DELETE] /users/{user_id}
+  Delete or deactivate a user account.
+  Access: owner or admin.
 
-- [GET] /cart → get_cart
-- [POST] /cart/items → add_item
-- [PATCH] /cart/items/{item_id} → update_item
-- [DELETE] /cart/items/{item_id} → remove_item
+### Admin
+- [GET] /users
+  List all users with pagination and filtering.
 
-## order
+---
 
-- [POST] /orders/checkout → checkout
-- [GET] /orders → list_orders
-- [GET] /orders/{id} → get_order
+## Auth
 
-## payment
+### Public
+- [POST] /auth/token
+  Authenticate user and issue access token.
 
-- [POST] /payments → process_payment
-- [GET] /payments/{id} → get_payment
+- [POST] /auth/refresh
+  Refresh access token using refresh token.
+
+### Authenticated User
+- [POST] /auth/logout
+  Invalidate current authentication session/token.
+
+---
+
+## Product
+
+### Public
+- [GET] /products
+  List available products.
+
+- [GET] /products/{id}
+  Return product details.
+
+### Admin
+- [POST] /products
+  Create a new product.
+
+- [PATCH] /products/{id}
+  Update product information or stock.
+
+- [DELETE] /products/{id}
+  Remove or deactivate a product.
+
+---
+
+## Cart
+
+### Authenticated User
+- [GET] /cart
+  Return the authenticated user's active cart.
+
+- [POST] /cart/items
+  Add a product to the cart or increment quantity.
+
+- [PATCH] /cart/items/{item_id}
+  Update cart item quantity.
+
+- [DELETE] /cart/items/{item_id}
+  Remove an item from the cart.
+
+---
+
+## Order
+
+### Authenticated User
+- [POST] /orders/checkout
+  Create an order from the current cart.
+
+- [GET] /orders
+  List orders belonging to the authenticated user.
+
+- [GET] /orders/{id}
+  Return details of a specific order.
+  Access: owner or admin.
+
+### Admin
+- [GET] /admin/orders
+  List all orders across the platform.
+
+---
+
+## Payment
+
+### Authenticated User
+- [POST] /payments
+  Process payment for an order.
+  Requires idempotency protection.
+
+- [GET] /payments/{id}
+  Return payment details.
+  Access: owner or admin.
+
+### Admin
+- [GET] /admin/payments
+  List and inspect platform payments.

@@ -3,10 +3,15 @@
 Responsibility: coordinate checkout and order retrieval workflows.
 """
 
-from sqlalchemy.exc import IntegrityError
-
 from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
+from backend.app.idempotency.helpers import (
+    persist_idempotency_response,
+    reserve_idempotency_key,
+    try_replay,
+)
+from backend.app.idempotency.repository import IdempotencyKeyRepository
+from backend.app.modules.cart.domain.models import Cart, CartItem
 from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
     CartRepository,
@@ -17,101 +22,116 @@ from backend.app.modules.order.repositories.order_repository import (
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
+from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
+from backend.app.modules.user.repositories.user_repository import UserRepository
 
 
-def checkout(user_id: int, uow: UnitOfWork) -> OrderRead:
-    """Complete a checkout for the authenticated user.
+def checkout(
+    user_id: int,
+    uow: UnitOfWork,
+    idempotency_key: str | None = None,
+    request_hash: str | None = None,
+) -> OrderRead:
+    """Complete checkout for the authenticated user."""
 
-    1. Retrieve the user's cart items.
-    2. Validate stock availability for each product.
-    3. Create an Order with OrderItems.
-    4. Decrease stock quantities.
-    5. Clear the cart.
-    """
+    _validate_idempotency_input(idempotency_key, request_hash)
+
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
     product_repository = ProductRepository(uow.session)
     order_repository = OrderRepository(uow.session)
     order_item_repository = OrderItemRepository(uow.session)
+    idempotency_repository = IdempotencyKeyRepository(uow.session)
 
-    # Validate cart exists and has items
-    cart = cart_repository.get_by_user_id(user_id)
-    if cart is None:
-        raise NotFoundError(Messages.CART_NOT_FOUND)
+    replay = _try_replay_if_possible(
+        repository=idempotency_repository,
+        idempotency_key=idempotency_key,
+    )
 
-    cart_items = cart_item_repository.get_by_cart_id(cart.id)
-    if not cart_items:
-        raise ValidationError(Messages.ORDER_CART_EMPTY)
+    if replay is not None:
+        return replay
 
-    # Validate stock and calculate total
-    product_map = {}
-    for cart_item in cart_items:
-        product = product_repository.get_by_id(cart_item.product_id)
-        if product is None:
-            raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
-        if product.stock_quantity < cart_item.quantity:
-            raise ValidationError(
-                f"{Messages.ORDER_INSUFFICIENT_STOCK} "
-                f"(product_id={cart_item.product_id})"
-            )
-        product_map[cart_item.product_id] = product
-
-    # Create the order
     try:
-        order = Order(user_id=user_id)
-        order = order_repository.create(order)
+        cart = _get_cart_or_raise(cart_repository, user_id)
 
-        # Create order items and decrement stock
-        for cart_item in cart_items:
-            product = product_map[cart_item.product_id]
-            order_item = OrderItem(
-                order_id=order.id,
-                product_id=cart_item.product_id,
-                quantity=cart_item.quantity,
-                price=product.price,
-            )
-            order_item_repository.create(order_item)
+        cart_items = _get_cart_items_or_raise(
+            cart_item_repository,
+            cart.id,
+        )
 
-            # Decrease stock atomically via repository helper. If it fails,
-            # raise a ValidationError to abort the transaction.
-            success = product_repository.decrement_stock_if_enough(
-                product.id, cart_item.quantity
-            )
-            if not success:
-                raise ValidationError(
-                    f"{Messages.ORDER_INSUFFICIENT_STOCK} (product_id={cart_item.product_id})"
-                )
+        product_map = _validate_stock_and_build_product_map(
+            cart_items,
+            product_repository,
+        )
 
-        # Clear the cart
-        cart_repository.delete(cart)
+        _reserve_idempotency_if_needed(
+            repository=idempotency_repository,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            user_id=user_id,
+        )
+
+        order = _create_order_from_cart(
+            cart_items=cart_items,
+            product_map=product_map,
+            order_repository=order_repository,
+            order_item_repository=order_item_repository,
+            product_repository=product_repository,
+            user_id=user_id,
+        )
+
+        _clear_cart(cart_repository, cart)
+
+        uow.flush()
+
+        _persist_idempotent_response_if_needed(
+            repository=idempotency_repository,
+            order_repository=order_repository,
+            order_id=order.id,
+            idempotency_key=idempotency_key,
+            user_id=user_id,
+        )
 
         uow.commit()
-
-    except IntegrityError:
-        uow.rollback()
-        raise
 
     except Exception:
         uow.rollback()
         raise
 
-    # Refresh order to load relationships
-    refreshed = order_repository.get_by_id(order.id)
-    if refreshed is None:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+    refreshed = _get_order_or_raise(order_repository, order.id)
 
     return OrderRead.model_validate(refreshed)
 
 
-def get_order(order_id: int, user_id: int, uow: UnitOfWork) -> OrderRead:
-    """Retrieve a single order by ID, scoped to the authenticated user."""
+def get_order(
+    order_id: int,
+    user_id: int,
+    uow: UnitOfWork,
+    requesting_user_id: int | None = None,
+) -> OrderRead:
+    """Retrieve a single order by ID."""
+
     repository = OrderRepository(uow.session)
+
     order = repository.get_by_id(order_id)
 
-    if order is None or order.user_id != user_id:
+    if order is None:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+
+    is_owner = order.user_id == user_id
+    is_admin = False
+
+    if not is_owner and requesting_user_id is not None:
+        user_repository = UserRepository(uow.session)
+
+        requester = user_repository.get_by_id(requesting_user_id)
+
+        is_admin = requester is not None and requester.role == "admin"
+
+    if not is_owner and not is_admin:
         raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     return OrderRead.model_validate(order)
@@ -119,7 +139,175 @@ def get_order(order_id: int, user_id: int, uow: UnitOfWork) -> OrderRead:
 
 def list_orders(user_id: int, uow: UnitOfWork) -> list[OrderRead]:
     """List all orders for the authenticated user."""
+
     repository = OrderRepository(uow.session)
+
     orders = repository.get_by_user_id(user_id)
 
     return [OrderRead.model_validate(order) for order in orders]
+
+
+def _validate_idempotency_input(
+    idempotency_key: str | None,
+    request_hash: str | None,
+) -> None:
+    if bool(idempotency_key) != bool(request_hash):
+        raise ValidationError(
+            "Both idempotency_key and request_hash must be provided together."
+        )
+
+
+def _try_replay_if_possible(
+    repository: IdempotencyKeyRepository,
+    idempotency_key: str | None,
+) -> OrderRead | None:
+    if idempotency_key is None:
+        return None
+
+    return try_replay(
+        repository=repository,
+        key=idempotency_key,
+        model_cls=OrderRead,
+    )
+
+
+def _reserve_idempotency_if_needed(
+    repository: IdempotencyKeyRepository,
+    idempotency_key: str | None,
+    request_hash: str | None,
+    user_id: int,
+) -> None:
+    if idempotency_key is None or request_hash is None:
+        return
+
+    reserve_idempotency_key(
+        repository=repository,
+        key=idempotency_key,
+        user_id=user_id,
+        request_hash=request_hash,
+    )
+
+
+def _get_cart_or_raise(
+    repository: CartRepository,
+    user_id: int,
+) -> Cart:
+    cart = repository.get_by_user_id(user_id)
+
+    if cart is None:
+        raise NotFoundError(Messages.CART_NOT_FOUND)
+
+    return cart
+
+
+def _get_cart_items_or_raise(
+    repository: CartItemRepository,
+    cart_id: int,
+) -> list[CartItem]:
+    cart_items = repository.get_by_cart_id(cart_id)
+
+    if not cart_items:
+        raise ValidationError(Messages.ORDER_CART_EMPTY)
+
+    return cart_items
+
+
+def _validate_stock_and_build_product_map(
+    cart_items: list[CartItem],
+    repository: ProductRepository,
+) -> dict[int, Product]:
+    product_map: dict[int, Product] = {}
+
+    for cart_item in cart_items:
+        product = repository.get_by_id(cart_item.product_id)
+
+        if product is None:
+            raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+
+        if product.stock_quantity < cart_item.quantity:
+            raise ValidationError(
+                f"{Messages.ORDER_INSUFFICIENT_STOCK} "
+                f"(product_id={cart_item.product_id})"
+            )
+
+        product_map[cart_item.product_id] = product
+
+    return product_map
+
+
+def _create_order_from_cart(
+    cart_items: list[CartItem],
+    product_map: dict[int, Product],
+    order_repository: OrderRepository,
+    order_item_repository: OrderItemRepository,
+    product_repository: ProductRepository,
+    user_id: int,
+) -> Order:
+    order = order_repository.create(Order(user_id=user_id))
+
+    for cart_item in cart_items:
+        product = product_map[cart_item.product_id]
+
+        order_item = OrderItem(
+            order_id=order.id,
+            product_id=cart_item.product_id,
+            quantity=cart_item.quantity,
+            price=product.price,
+        )
+
+        order_item_repository.create(order_item)
+
+        success = product_repository.decrement_stock_if_enough(
+            product.id,
+            cart_item.quantity,
+        )
+
+        if not success:
+            raise ValidationError(
+                f"{Messages.ORDER_INSUFFICIENT_STOCK} "
+                f"(product_id={cart_item.product_id})"
+            )
+
+    return order
+
+
+def _clear_cart(
+    repository: CartRepository,
+    cart: Cart,
+) -> None:
+    repository.delete(cart)
+
+
+def _persist_idempotent_response_if_needed(
+    repository: IdempotencyKeyRepository,
+    order_repository: OrderRepository,
+    order_id: int,
+    idempotency_key: str | None,
+    user_id: int,
+) -> None:
+    if idempotency_key is None:
+        return
+
+    order = _get_order_or_raise(order_repository, order_id)
+
+    response_json = OrderRead.model_validate(order).model_dump_json()
+
+    persist_idempotency_response(
+        repository=repository,
+        key=idempotency_key,
+        user_id=user_id,
+        status=201,
+        body=response_json,
+    )
+
+
+def _get_order_or_raise(
+    repository: OrderRepository,
+    order_id: int,
+) -> Order:
+    order = repository.get_by_id(order_id)
+
+    if order is None:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+
+    return order

@@ -1,5 +1,6 @@
 import { ProductCard } from "@/modules/product/components/ProductCard";
 import { productService } from "@/modules/product/services/productService";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 type CatalogPageProps = {
   title?: string;
@@ -19,7 +20,7 @@ export default async function CatalogPage({
     products = await productService.list();
   } catch (err) {
     products = [];
-    loadError = err instanceof Error ? err.message : "Failed to load products";
+    loadError = getUserErrorMessage(err);
   }
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
   const filtered = products.filter((product) => {

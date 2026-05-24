@@ -34,4 +34,11 @@ export const userService = {
       method: "DELETE",
     });
   },
+
+  changePassword(id: number, newPassword: string): Promise<User> {
+    return apiFetch<User>(`/users/${id}/change-password`, {
+      method: "PATCH",
+      body: { new_password: newPassword },
+    });
+  },
 };

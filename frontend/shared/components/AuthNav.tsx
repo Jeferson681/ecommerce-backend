@@ -43,7 +43,7 @@ export function AuthNav() {
   return (
     <div className="flex items-center">
       <Link
-        href="/login?next=/account"
+        href={`/login${typeof window !== "undefined" ? "?next=" + encodeURIComponent(window.location.pathname) : ""}`}
         className="flex flex-col px-2 py-1 text-white/90 hover:text-white transition-colors"
       >
         <span className="text-[10px] text-zinc-400 leading-none">Hello, Sign in</span>

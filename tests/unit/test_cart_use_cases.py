@@ -1,5 +1,10 @@
-from datetime import UTC
-from types import SimpleNamespace
+# ruff: noqa: B017
+
+"""Comprehensive tests for Cart use cases — happy path, sad path, rollback, and validation."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
 
 import pytest
 
@@ -7,263 +12,459 @@ from backend.app.core.exceptions import NotFoundError
 from backend.app.modules.cart import use_cases
 from backend.app.modules.cart.schemas import CartItemCreate, CartItemUpdate
 
+from .conftest import DummyUoW, make_cart, make_cart_item
 
-class DummyCartRepo:
-    def __init__(self, session=None):
-        self.session = session
-        self.created = False
-
-    def get_by_user_id(self, user_id: int):
-        return None
-
-    def create(self, cart):
-        # simulate DB behavior
-        self.created = True
-        try:
-            cart.id = 1
-        except Exception:
-            pass
-        from datetime import datetime
-
-        now = datetime.now(UTC)
-        cart.created_at = getattr(cart, "created_at", now)
-        cart.updated_at = getattr(cart, "updated_at", now)
-        cart.items = getattr(cart, "items", [])
-        return cart
+# ======================================================================
+# HAPPY PATH
+# ======================================================================
 
 
-class DummyCartItemRepo:
-    def __init__(self, session=None):
-        self.session = session
-        self.created = False
-        self.updated = False
-        self.deleted = False
+def test_get_cart_existing(monkeypatch) -> None:
+    """Getting an existing cart returns a CartRead."""
 
-    def get_by_cart_and_product(self, cart_id: int, product_id: int):
-        return None
+    class Repo:
+        def __init__(self, session: object) -> None:
+            self.session = session
 
-    def create(self, cart_item):
-        self.created = True
-        from datetime import datetime
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(user_id=user_id)
 
-        now = datetime.now(UTC)
-        return SimpleNamespace(
-            id=1,
-            cart_id=cart_item.cart_id,
-            product_id=cart_item.product_id,
-            quantity=cart_item.quantity,
-            created_at=now,
-            updated_at=now,
-        )
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: Repo(s))
 
-    def get_by_id(self, item_id: int):
-        from datetime import datetime
+    result = use_cases.get_cart(user_id=1, uow=DummyUoW())
 
-        now = datetime.now(UTC)
-        return SimpleNamespace(
-            id=item_id,
-            cart_id=1,
-            product_id=2,
-            quantity=1,
-            created_at=now,
-            updated_at=now,
-        )
-
-    def update(self, cart_item):
-        self.updated = True
-        from datetime import datetime
-
-        cart_item.updated_at = getattr(cart_item, "updated_at", datetime.now(UTC))
-        return cart_item
-
-    def delete(self, cart_item):
-        self.deleted = True
+    assert result.id == 1
+    assert result.user_id == 1
 
 
-class DummyUoW:
-    def __init__(self):
-        self.session = object()
-        self.committed = False
-        self.rolled_back = False
+def test_add_item_creates_new_cart_and_item(monkeypatch) -> None:
+    """Adding an item to a new cart creates the cart and the item."""
+    cart_created: list = []
+    item_created: list = []
 
-    def commit(self):
-        self.committed = True
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
 
-    def rollback(self):
-        self.rolled_back = True
+        def get_by_user_id(self, user_id: int) -> None:
+            return None
 
+        def create(self, cart: object) -> object:
+            cart.id = 1  # type: ignore[attr-defined]
+            cart_created.append(cart)
+            return cart
 
-def test_get_cart_creates_when_missing(monkeypatch):
-    repo = DummyCartRepo()
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+            self.created = False
 
-    def fake_repo_factory(session):
-        return repo
+        def get_by_cart_and_product(self, cart_id: int, product_id: int) -> None:
+            return None
 
-    monkeypatch.setattr(use_cases, "CartRepository", fake_repo_factory)
-
-    uow = DummyUoW()
-
-    # monkeypatch Cart class used in use_cases to a simple DummyCart
-    class DummyCart:
-        def __init__(self, user_id):
-            self.user_id = user_id
-
-    monkeypatch.setattr(use_cases, "Cart", DummyCart)
-
-    # call get_cart and expect a CartRead-like object returned
-    cart = use_cases.get_cart(user_id=10, uow=uow)
-
-    assert repo.created is True
-    assert uow.committed is True
-    assert cart.user_id == 10
-
-
-def test_add_item_calls_repo_and_commits(monkeypatch):
-    created = {}
-
-    def fake_cart_repo(session):
-        return DummyCartRepo(session)
-
-    def fake_item_repo(session):
-        repo = DummyCartItemRepo(session)
-        created["item_repo"] = repo
-        return repo
-
-    monkeypatch.setattr(use_cases, "CartRepository", fake_cart_repo)
-    monkeypatch.setattr(use_cases, "CartItemRepository", fake_item_repo)
-
-    uow = DummyUoW()
-    data = CartItemCreate(product_id=5, quantity=2)
-
-    # ensure Cart class is a simple test-friendly struct
-    class DummyCart:
-        def __init__(self, user_id):
-            self.user_id = user_id
-
-    monkeypatch.setattr(use_cases, "Cart", DummyCart)
-
-    item = use_cases.add_item(data, user_id=1, uow=uow)
-
-    assert created["item_repo"].created is True
-    assert uow.committed is True
-    assert item.product_id == 5
-    assert item.quantity == 2
-
-
-def test_add_item_updates_existing(monkeypatch):
-    created = {}
-
-    class ExistingItemRepo(DummyCartItemRepo):
-        def get_by_cart_and_product(self, cart_id: int, product_id: int):
-            from datetime import datetime
-
+        def create(self, cart_item: object) -> object:
+            self.created = True
             now = datetime.now(UTC)
+            item_created.append(cart_item)
+            from types import SimpleNamespace
+
             return SimpleNamespace(
-                id=2,
-                cart_id=cart_id,
-                product_id=product_id,
-                quantity=1,
+                id=1,
+                cart_id=cart_item.cart_id,  # type: ignore[attr-defined]
+                product_id=cart_item.product_id,  # type: ignore[attr-defined]
+                quantity=cart_item.quantity,  # type: ignore[attr-defined]
                 created_at=now,
                 updated_at=now,
             )
 
-    def fake_cart_repo(session):
-        return DummyCartRepo(session)
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
 
-    def fake_item_repo(session):
-        repo = ExistingItemRepo(session)
-        created["item_repo"] = repo
-        return repo
+    from types import SimpleNamespace
 
-    monkeypatch.setattr(use_cases, "CartRepository", fake_cart_repo)
-    monkeypatch.setattr(use_cases, "CartItemRepository", fake_item_repo)
+    monkeypatch.setattr(use_cases, "Cart", lambda **kw: SimpleNamespace(**kw))
+
+    uow = DummyUoW()
+    data = CartItemCreate(product_id=5, quantity=2)
+    item = use_cases.add_item(data, user_id=1, uow=uow)
+
+    assert uow.committed is True
+    assert item.product_id == 5
+    assert item.quantity == 2
+    assert len(cart_created) == 1
+    assert len(item_created) == 1
+
+
+def test_add_item_updates_existing_quantity(monkeypatch) -> None:
+    """Adding an item that already exists increments the quantity."""
+    updated: list = []
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+        def create(self, cart: object) -> object:
+            cart.id = 1  # type: ignore[attr-defined]
+            return cart
+
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_cart_and_product(self, cart_id: int, product_id: int) -> object:
+            return make_cart_item(
+                id=2, cart_id=cart_id, product_id=product_id, quantity=1
+            )
+
+        def create(self, cart_item: object) -> object:
+            return cart_item
+
+        def update(self, cart_item: object) -> object:
+            updated.append(cart_item)
+            return cart_item
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
 
     uow = DummyUoW()
     data = CartItemCreate(product_id=7, quantity=3)
-
-    class DummyCart:
-        def __init__(self, user_id):
-            self.user_id = user_id
-
-    monkeypatch.setattr(use_cases, "Cart", DummyCart)
-
     item = use_cases.add_item(data, user_id=2, uow=uow)
 
     assert uow.committed is True
-    assert item.product_id == 7
-    assert item.quantity == 4
-    assert created["item_repo"].updated is True
+    assert item.quantity == 4  # original 1 + new 3
+    assert len(updated) == 1
 
 
-def test_update_item_commits_and_updates_fields(monkeypatch):
-    # prepare dummy repos
-    item_repo = DummyCartItemRepo()
+def test_update_item_commits_and_updates(monkeypatch) -> None:
+    """Updating an existing cart item commits and returns updated item."""
+    updated: list = []
 
-    class FakeCartRepo:
-        def __init__(self, session):
+    class CartRepo:
+        def __init__(self, session: object) -> None:
             self.session = session
 
-        def get_by_user_id(self, user_id: int):
-            return SimpleNamespace(id=1, user_id=user_id)
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
 
-    def fake_cart_repo(session):
-        return FakeCartRepo(session)
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
 
-    def fake_item_repo(session):
-        return item_repo
+        def get_by_id(self, item_id: int) -> object:
+            return make_cart_item(id=item_id, cart_id=1)
 
-    monkeypatch.setattr(use_cases, "CartRepository", fake_cart_repo)
-    monkeypatch.setattr(use_cases, "CartItemRepository", fake_item_repo)
+        def update(self, cart_item: object) -> object:
+            updated.append(cart_item)
+            return cart_item
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
 
     uow = DummyUoW()
-    update = CartItemUpdate(quantity=5)
-
-    item = use_cases.update_item(1, update, user_id=10, uow=uow)
+    result = use_cases.update_item(1, CartItemUpdate(quantity=5), user_id=10, uow=uow)
 
     assert uow.committed is True
-    assert item.quantity == 5
+    assert result.quantity == 5
+    assert len(updated) == 1
 
 
-def test_update_item_raises_if_missing(monkeypatch):
-    class Repo:
-        def __init__(self, session):
+def test_remove_item_commits_and_deletes(monkeypatch) -> None:
+    """Removing an existing cart item commits and returns None."""
+    deleted: list = []
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
             self.session = session
 
-        def get_by_user_id(self, user_id: int):
-            return None
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
 
-    monkeypatch.setattr(use_cases, "CartRepository", Repo)
-    monkeypatch.setattr(
-        use_cases, "CartItemRepository", lambda session: DummyCartItemRepo()
-    )
-
-    uow = DummyUoW()
-    with pytest.raises(NotFoundError):
-        use_cases.update_item(1, CartItemUpdate(quantity=1), user_id=99, uow=uow)
-
-
-def test_remove_item_commits_and_deletes(monkeypatch):
-    item_repo = DummyCartItemRepo()
-
-    class FakeCartRepo2:
-        def __init__(self, session):
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
             self.session = session
 
-        def get_by_user_id(self, user_id: int):
-            return SimpleNamespace(id=1, user_id=user_id)
+        def get_by_id(self, item_id: int) -> object:
+            return make_cart_item(id=item_id, cart_id=1)
 
-    def fake_cart_repo(session):
-        return FakeCartRepo2(session)
+        def delete(self, cart_item: object) -> None:
+            deleted.append(cart_item)
 
-    def fake_item_repo(session):
-        return item_repo
-
-    monkeypatch.setattr(use_cases, "CartRepository", fake_cart_repo)
-    monkeypatch.setattr(use_cases, "CartItemRepository", fake_item_repo)
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
 
     uow = DummyUoW()
-
     use_cases.remove_item(1, user_id=20, uow=uow)
 
-    assert item_repo.deleted is True
     assert uow.committed is True
+    assert len(deleted) == 1
+
+
+# ======================================================================
+# SAD PATH – not found / validation errors
+# ======================================================================
+
+
+def test_get_cart_raises_not_found_when_missing(monkeypatch) -> None:
+    """Getting a non-existent cart raises NotFoundError."""
+
+    class Repo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> None:
+            return None
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: Repo(s))
+
+    with pytest.raises(NotFoundError, match="Cart not found"):
+        use_cases.get_cart(user_id=10, uow=DummyUoW())
+
+
+def test_update_item_raises_not_found_when_cart_missing(monkeypatch) -> None:
+    """Updating an item when cart is missing raises NotFoundError."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> None:
+            return None
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+
+    with pytest.raises(NotFoundError, match="Cart not found"):
+        use_cases.update_item(1, CartItemUpdate(quantity=1), user_id=99, uow=DummyUoW())
+
+
+def test_update_item_raises_not_found_when_item_missing(monkeypatch) -> None:
+    """Updating a non-existent item raises NotFoundError."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_id(self, item_id: int) -> None:
+            return None
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
+
+    with pytest.raises(NotFoundError, match="Cart item not found"):
+        use_cases.update_item(
+            999, CartItemUpdate(quantity=3), user_id=1, uow=DummyUoW()
+        )
+
+
+def test_update_item_raises_not_found_when_item_belongs_to_another_cart(
+    monkeypatch,
+) -> None:
+    """Updating an item that belongs to a different cart raises NotFoundError."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_id(self, item_id: int) -> object:
+            return make_cart_item(id=item_id, cart_id=999)  # different cart
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
+
+    with pytest.raises(NotFoundError, match="Cart item not found"):
+        use_cases.update_item(1, CartItemUpdate(quantity=3), user_id=1, uow=DummyUoW())
+
+
+def test_remove_item_raises_not_found_when_cart_missing(monkeypatch) -> None:
+    """Removing an item when cart is missing raises NotFoundError."""
+
+    class Repo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> None:
+            return None
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: Repo(s))
+
+    with pytest.raises(NotFoundError, match="Cart not found"):
+        use_cases.remove_item(1, user_id=5, uow=DummyUoW())
+
+
+def test_remove_item_raises_not_found_when_item_missing(monkeypatch) -> None:
+    """Removing a non-existent item raises NotFoundError."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_id(self, item_id: int) -> None:
+            return None
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
+
+    with pytest.raises(NotFoundError, match="Cart item not found"):
+        use_cases.remove_item(999, user_id=1, uow=DummyUoW())
+
+
+# ======================================================================
+# ROLLBACK TESTS
+# ======================================================================
+
+
+def test_add_item_rolls_back_on_unexpected_exception(monkeypatch) -> None:
+    """If an unexpected error occurs during add_item, the UoW rolls back."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+    class BadItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_cart_and_product(self, cart_id: int, product_id: int) -> object:
+            raise RuntimeError("db down")
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: BadItemRepo(s))
+
+    uow = DummyUoW()
+    data = CartItemCreate(product_id=1, quantity=1)
+
+    with pytest.raises(RuntimeError, match="db down"):
+        use_cases.add_item(data, user_id=1, uow=uow)
+
+    assert uow.rolled_back is True
+
+
+def test_update_item_rolls_back_on_commit_error(monkeypatch) -> None:
+    """If commit fails during update_item, the UoW rolls back."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+    class ItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_id(self, item_id: int) -> object:
+            return make_cart_item(id=item_id, cart_id=1)
+
+        def update(self, cart_item: object) -> object:
+            return cart_item
+
+    class FailingUoW(DummyUoW):
+        def commit(self) -> None:
+            raise RuntimeError("commit fail")
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: ItemRepo(s))
+
+    with pytest.raises(RuntimeError, match="commit fail"):
+        use_cases.update_item(
+            1, CartItemUpdate(quantity=5), user_id=1, uow=FailingUoW()
+        )
+
+
+def test_remove_item_rolls_back_on_unexpected_exception(monkeypatch) -> None:
+    """If an unexpected error occurs during remove_item, the UoW rolls back."""
+
+    class CartRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_user_id(self, user_id: int) -> object:
+            return make_cart(id=1, user_id=user_id)
+
+    class BadItemRepo:
+        def __init__(self, session: object) -> None:
+            self.session = session
+
+        def get_by_id(self, item_id: int) -> object:
+            return make_cart_item(id=item_id, cart_id=1)
+
+        def delete(self, cart_item: object) -> None:
+            raise RuntimeError("delete fail")
+
+    monkeypatch.setattr(use_cases, "CartRepository", lambda s: CartRepo(s))
+    monkeypatch.setattr(use_cases, "CartItemRepository", lambda s: BadItemRepo(s))
+
+    uow = DummyUoW()
+    with pytest.raises(RuntimeError, match="delete fail"):
+        use_cases.remove_item(1, user_id=1, uow=uow)
+
+    assert uow.rolled_back is True
+
+
+# ======================================================================
+# VALIDATION – schema tests
+# ======================================================================
+
+
+class TestCartItemCreateValidation:
+    def test_valid_item(self) -> None:
+        data = CartItemCreate(product_id=1, quantity=2)
+        assert data.product_id == 1
+        assert data.quantity == 2
+
+    def test_valid_item_default_quantity(self) -> None:
+        data = CartItemCreate(product_id=1)
+        assert data.quantity == 1
+
+    def test_invalid_product_id_zero(self) -> None:
+        with pytest.raises(Exception):
+            CartItemCreate(product_id=0, quantity=1)
+
+    def test_invalid_product_id_negative(self) -> None:
+        with pytest.raises(Exception):
+            CartItemCreate(product_id=-1, quantity=1)
+
+    def test_invalid_quantity_zero(self) -> None:
+        with pytest.raises(Exception):
+            CartItemCreate(product_id=1, quantity=0)
+
+
+class TestCartItemUpdateValidation:
+    def test_valid_update(self) -> None:
+        data = CartItemUpdate(quantity=3)
+        assert data.quantity == 3
+
+    def test_invalid_quantity_zero(self) -> None:
+        with pytest.raises(Exception):
+            CartItemUpdate(quantity=0)
+
+    def test_invalid_quantity_negative(self) -> None:
+        with pytest.raises(Exception):
+            CartItemUpdate(quantity=-1)

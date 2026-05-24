@@ -8,4 +8,18 @@ export const authService = {
       body: payload,
     });
   },
+
+  logout(refreshToken: string): Promise<void> {
+    return apiFetch<void>("/auth/logout", {
+      method: "POST",
+      body: { refresh_token: refreshToken },
+    });
+  },
+
+  refresh(refreshToken: string): Promise<TokenResponse> {
+    return apiFetch<TokenResponse>("/auth/refresh", {
+      method: "POST",
+      body: { refresh_token: refreshToken },
+    });
+  },
 };

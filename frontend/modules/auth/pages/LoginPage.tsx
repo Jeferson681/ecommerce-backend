@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { authService } from "@/modules/auth/services/authService";
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
@@ -33,7 +34,7 @@ export default function LoginPage() {
       tokenStorage.setAccessToken(tokens.access_token);
       router.push(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(getUserErrorMessage(err));
       setIsSubmitting(false);
     }
   }

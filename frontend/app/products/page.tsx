@@ -3,6 +3,7 @@ import Link from "next/link";
 import { productService } from "@/modules/product/services/productService";
 import { ProductCard } from "@/modules/product/components/ProductCard";
 
+
 function parsePriceRange(value: string): [number, number] | null {
   const parts = value.split("-");
   if (parts.length === 2) {
@@ -45,13 +46,13 @@ export default async function Page({
   const sortFilter = typeof params.sort === "string" ? params.sort : null;
 
   let products: Awaited<ReturnType<typeof productService.list>> = [];
-  let loadError: string | null = null;
+  let loadError = false;
 
   try {
     products = await productService.list();
-  } catch (err) {
+  } catch {
     products = [];
-    loadError = err instanceof Error ? err.message : "Failed to load products";
+    loadError = true;
   }
 
   let activeProducts = products.filter((p) => p.is_active);
@@ -100,8 +101,8 @@ export default async function Page({
       </nav>
 
       {loadError ? (
-        <div className="rounded-sm border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-          Products backend is unavailable right now. ({loadError})
+        <div className="rounded-sm border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+          Products are unavailable right now. Please try again in a few minutes.
         </div>
       ) : null}
 

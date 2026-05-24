@@ -16,6 +16,7 @@ from backend.app.modules.auth import (
     schemas as auth_schemas,
     use_cases as auth_use_cases,
 )
+from backend.app.modules.auth.deps import get_current_user_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -53,6 +54,7 @@ def token_endpoint(
 def logout_endpoint(
     refresh: auth_schemas.RefreshTokenRequest,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _user_id: Annotated[int, Depends(get_current_user_id)],
 ) -> None:
     """Revoke refresh token / logout user.
 

@@ -4,6 +4,7 @@ import { ChevronLeft, Star } from "lucide-react";
 import { productService } from "@/modules/product/services/productService";
 import { AddToCartButton } from "@/modules/cart/components/AddToCartButton";
 import { ProductCard } from "@/modules/product/components/ProductCard";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 type ProductPageProps = {
   productId: number;
@@ -20,7 +21,7 @@ export default async function ProductPage({ productId }: ProductPageProps) {
   } catch (err) {
     product = null;
     products = [];
-    loadError = err instanceof Error ? err.message : "Failed to load product";
+    loadError = getUserErrorMessage(err);
   }
 
   if (!product) {

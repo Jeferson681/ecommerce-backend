@@ -24,7 +24,13 @@ def teardown_module(module: object) -> None:
 
 def _override_auth_and_uow(user_id: int, session):
     app.dependency_overrides[get_current_user_id] = lambda: user_id
-    app.dependency_overrides[get_uow] = lambda: UnitOfWork(session)
+
+    def _uow_for(s=session):
+        u = UnitOfWork(lambda: s)
+        u.attach(s)
+        return u
+
+    app.dependency_overrides[get_uow] = lambda: _uow_for()
 
 
 def test_post_cart_items_adds_item_and_get_cart_returns_cart() -> None:

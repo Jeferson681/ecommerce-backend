@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { userService } from "@/modules/user/services/userService";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
@@ -37,7 +38,7 @@ export default function SignupPage() {
 
       router.push("/login?next=/account");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
+      setError(getUserErrorMessage(err));
       setIsSubmitting(false);
     }
   }

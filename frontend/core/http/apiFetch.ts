@@ -1,5 +1,6 @@
 import { API_URL } from "@/core/config/api";
 import { ApiError } from "@/core/exceptions/ApiError";
+import { buildFriendlyApiMessage } from "@/core/exceptions/userMessage";
 
 type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -22,10 +23,6 @@ function tryParseJson(text: string): unknown {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const url = `${API_URL}${path}`;
 
@@ -33,8 +30,8 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
   // Optional auth: if an access token exists, attach it by default.
-  if (typeof window !== "undefined" && !headers.has("Authorization")) {
-    const token = window.localStorage.getItem("access_token");
+  if (globalThis.localStorage !== undefined && !headers.has("Authorization")) {
+    const token = globalThis.localStorage.getItem("access_token");
     if (token) headers.set("Authorization", `Bearer ${token}`);
   }
 
@@ -44,12 +41,20 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    body,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      body,
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(
+      "Unable to connect to the server. Please check your connection and try again.",
+      0
+    );
+  }
 
   if (response.status === 204) {
     return undefined as T;
@@ -59,18 +64,8 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const payload = tryParseJson(text);
 
   if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-
-    if (isRecord(payload)) {
-      const payloadRecord = payload as Record<string, unknown>;
-      if ("detail" in payloadRecord) message = String(payloadRecord.detail);
-      else if ("error" in payloadRecord) {
-        const err = payloadRecord.error;
-        if (isRecord(err) && "message" in err) message = String(err.message);
-      }
-    }
-
-    throw new ApiError(message, response.status, payload);
+    const friendlyMessage = buildFriendlyApiMessage(response.status, payload);
+    throw new ApiError(friendlyMessage, response.status, payload);
   }
 
   return payload as T;

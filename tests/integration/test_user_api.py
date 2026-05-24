@@ -40,7 +40,17 @@ def test_get_user_by_id_returns_user():
     assert resp.status_code == 201
     user = resp.json()
 
-    got = client.get(f"/users/{user['id']}")
+    login = client.post(
+        "/auth/token",
+        json={"email": "jane@example.com", "password": "Another1$"},
+    )
+    assert login.status_code == 200
+    token = login.json()["access_token"]
+
+    got = client.get(
+        f"/users/{user['id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert got.status_code == 200
     body = got.json()
     assert body["email"] == "jane@example.com"

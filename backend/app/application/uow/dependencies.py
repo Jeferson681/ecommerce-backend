@@ -12,4 +12,6 @@ from backend.app.infrastructure.db.dependencies import get_db
 def get_uow(
     session: Annotated[Session, Depends(get_db)],
 ) -> UnitOfWork:
-    return UnitOfWork(session)
+    uow = UnitOfWork(lambda: session)
+    uow.attach(session)
+    return uow
