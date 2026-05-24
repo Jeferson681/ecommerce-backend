@@ -7,12 +7,20 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.core.database import SessionLocal
+from backend.app.core.database import Base, SessionLocal, engine
 from backend.app.main import create_app
 from backend.app.modules.auth.tokens import create_access_token
 from backend.app.modules.cart.domain.models import CartItem
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.user.domain.models import User
+
+
+def setup_module(module: object) -> None:
+    Base.metadata.create_all(bind=engine)
+
+
+def teardown_module(module: object) -> None:
+    Base.metadata.drop_all(bind=engine)
 
 
 def _create_user(session, email: str) -> User:
@@ -115,7 +123,13 @@ def test_transaction_rollback_on_exception(monkeypatch):
     monkeypatch.setattr(OrderItemRepository, "create", _raise_create)
 
     # Attempt checkout should fail and rollback: cart should remain and product stock unchanged
-    r2 = client.post("/orders/checkout", headers={"Authorization": f"Bearer {token}"})
+    r2 = client.post(
+        "/orders/checkout",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Idempotency-Key": "rollback-checkout",
+        },
+    )
     assert r2.status_code == 500
 
     # Verify cart still exists (GET /cart)
@@ -157,14 +171,19 @@ def test_concurrent_checkouts_no_oversell():
     )
     assert r.status_code == 201
 
-    def do_checkout(token: str) -> int:
+    def do_checkout(item: tuple[str, str]) -> int:
+        token, idem_key = item
         res = client.post(
-            "/orders/checkout", headers={"Authorization": f"Bearer {token}"}
+            "/orders/checkout",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Idempotency-Key": idem_key,
+            },
         )
         return res.status_code
 
     with ThreadPoolExecutor(max_workers=2) as ex:
-        results = list(ex.map(do_checkout, [t1, t2]))
+        results = list(ex.map(do_checkout, [(t1, "conc-user-1"), (t2, "conc-user-2")]))
 
     # Expect one success (201) and other fail (400/422/500 depending on timing)
     assert 201 in results
@@ -193,8 +212,20 @@ def test_idempotency_risk_duplicate_orders():
     assert r.status_code == 201
 
     # Call checkout twice (simulating a retry) -- current system doesn't implement idempotency
-    r1 = client.post("/orders/checkout", headers={"Authorization": f"Bearer {token}"})
-    r2 = client.post("/orders/checkout", headers={"Authorization": f"Bearer {token}"})
+    r1 = client.post(
+        "/orders/checkout",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Idempotency-Key": "retry-order-1",
+        },
+    )
+    r2 = client.post(
+        "/orders/checkout",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Idempotency-Key": "retry-order-1",
+        },
+    )
 
     # At least the first should succeed
     assert r1.status_code == 201

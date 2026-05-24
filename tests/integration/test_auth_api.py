@@ -94,9 +94,14 @@ def test_post_auth_logout_with_valid_token() -> None:
     assert login_resp.status_code == 200
 
     refresh_token = login_resp.json()["refresh_token"]
+    access_token = login_resp.json()["access_token"]
 
     logout_payload = {"refresh_token": refresh_token}
-    logout_resp = client.post("/auth/logout", json=logout_payload)
+    logout_resp = client.post(
+        "/auth/logout",
+        json=logout_payload,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
 
     assert logout_resp.status_code == 204
 

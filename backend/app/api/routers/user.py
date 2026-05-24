@@ -56,11 +56,15 @@ def create_user_endpoint(
 ) -> UserRead:
     try:
         return create_user_use_case(user_data, uow)
-
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Messages.EMAIL_ALREADY_EXISTS,
+        ) from e
+    except InvalidPasswordError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         ) from e
 
     except Exception as e:
