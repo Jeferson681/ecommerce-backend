@@ -9,4 +9,24 @@ export const productService = {
   get(id: number): Promise<Product> {
     return apiFetch<Product>(`/products/${id}`);
   },
+
+  create(data: Partial<Product>): Promise<Product> {
+    return apiFetch<Product>("/products", {
+      method: "POST",
+      body: data,
+    });
+  },
+
+  update(id: number, data: Partial<Product>): Promise<Product> {
+    return apiFetch<Product>(`/products/${id}`, {
+      method: "PATCH",
+      body: data,
+    });
+  },
+
+  delete(id: number): Promise<void> {
+    return apiFetch<void>(`/products/${id}`, {
+      method: "DELETE",
+    });
+  },
 };

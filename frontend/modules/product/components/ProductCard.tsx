@@ -33,9 +33,6 @@ export function ProductCard({ product }: ProductCardProps) {
                 {product.name.charAt(0)}
               </span>
             </div>
-            <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">
-              Product Image
-            </span>
           </div>
         </div>
 

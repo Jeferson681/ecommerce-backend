@@ -6,9 +6,9 @@ import type { ReactNode } from "react";
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
 import { cartStorage } from "@/modules/cart/storage/cartStorage";
 import { useMe } from "@/modules/account/hooks/useMe";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 import { PageHeader } from "@/shared/components/PageHeader";
-import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 
@@ -40,7 +40,13 @@ export default function AccountPage() {
   let content: ReactNode;
 
   if (isLoading) {
-    content = <div className="text-sm text-zinc-600">Loading...</div>;
+    content = (
+      <div className="space-y-4">
+        <div className="h-5 w-40 animate-pulse rounded bg-zinc-200" />
+        <div className="h-4 w-60 animate-pulse rounded bg-zinc-200" />
+        <div className="h-4 w-48 animate-pulse rounded bg-zinc-200" />
+      </div>
+    );
   } else if (data) {
     content = (
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -63,25 +69,32 @@ export default function AccountPage() {
       </dl>
     );
   } else {
-    content = <div className="text-sm text-zinc-600">No data.</div>;
+    content = null;
   }
 
   return (
     <div className="space-y-4">
-      <PageHeader title="My account" description="Profile data from /users/me" />
+      <PageHeader title="My account" />
 
       {error ? (
-        <Alert className="border-red-200">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <Card>
-        <CardContent className="p-6">
-          {content}
-        </CardContent>
-      </Card>
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4 text-sm text-amber-800">
+            {getUserErrorMessage(error)}
+          </CardContent>
+        </Card>
+      ) : !data && !isLoading ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-zinc-600">
+            Unable to load profile information.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-6">
+            {content}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex items-center gap-2">
         <Button asChild>
@@ -96,7 +109,7 @@ export default function AccountPage() {
             location.href = "/";
           }}
         >
-          Sign out (local)
+          Sign out
         </Button>
       </div>
     </div>

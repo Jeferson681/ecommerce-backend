@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { AuthNav } from "@/shared/components/AuthNav";
 import { CartButton } from "@/modules/cart/components/CartButton";
@@ -7,16 +10,18 @@ import { CategoryNav } from "@/shared/components/CategoryNav";
 
 type AppShellProps = {
   children: React.ReactNode;
-  title?: string;
 };
 
-export function AppShell({ children, title = "Mercado" }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
+  const isAdmin = pathname.startsWith("/admin");
+
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
       {/* Top announcement bar - Amazon style */}
       <div className="bg-[#131921] px-4 py-1.5 text-center text-[11px] font-medium tracking-wide text-[#febd69]">
         <span className="inline-block">
-          <span className="text-white/70">🚚 Free shipping on orders over $50.</span> Fast checkout.
+          <span className="text-white/70">Free shipping on orders over $50.</span> Fast checkout.
         </span>
       </div>
 
@@ -29,7 +34,7 @@ export function AppShell({ children, title = "Mercado" }: AppShellProps) {
             className="flex shrink-0 items-baseline gap-0 no-underline"
           >
             <span className="text-xl font-bold tracking-tight text-white">
-              {title}
+              Storefront
             </span>
             <span className="ml-1 text-[10px] font-light text-[#febd69]">
               .com
@@ -50,12 +55,7 @@ export function AppShell({ children, title = "Mercado" }: AppShellProps) {
       </header>
 
       {/* Category navigation bar - Amazon style */}
-      <CategoryNav />
-
-      {/* Breadcrumb area */}
-      <div className="mx-auto max-w-7xl px-4 pt-3">
-        <Breadcrumbs />
-      </div>
+      {!isAdmin && <CategoryNav />}
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4">
@@ -65,24 +65,9 @@ export function AppShell({ children, title = "Mercado" }: AppShellProps) {
       {/* Footer */}
       <footer className="mt-8 border-t border-zinc-300 bg-white">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 {title}. All rights reserved.</p>
-          <p className="text-zinc-400">Marketplace storefront</p>
+          <p>&copy; 2026 Storefront. All rights reserved.</p>
         </div>
       </footer>
     </div>
-  );
-}
-
-function Breadcrumbs() {
-  return (
-    <nav className="flex items-center gap-1.5 text-xs text-zinc-500" aria-label="Breadcrumb">
-      <Link href="/" className="hover:text-zinc-800 transition-colors">
-        Home
-      </Link>
-      <span className="text-zinc-300 mx-0.5">›</span>
-      <Link href="/products" className="hover:text-zinc-800 transition-colors">
-        Products
-      </Link>
-    </nav>
   );
 }

@@ -9,4 +9,15 @@ export const orderService = {
   get(id: number): Promise<Order> {
     return apiFetch<Order>(`/orders/${id}`);
   },
+
+  checkout(idempotencyKey?: string): Promise<Order> {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers["Idempotency-Key"] = idempotencyKey;
+    }
+    return apiFetch<Order>("/orders/checkout", {
+      method: "POST",
+      headers,
+    });
+  },
 };

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { orderService } from "@/modules/order/services/orderService";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 import type { Order } from "@/modules/order/types/order";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -28,7 +29,7 @@ export default function Page({ params }: { params: { id: string } }) {
         if (!cancelled) setOrder(data);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(getUserErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

@@ -1,60 +1,109 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { useCart } from "@/modules/cart/hooks/useCart";
 import { formatMoney } from "@/core/utils/money";
+import { orderService } from "@/modules/order/services/orderService";
+import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const { items, subtotal, isEmpty, clear } = useCart();
-  const [completed, setCompleted] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
+  const hasToken = useSyncExternalStore(
+    tokenStorage.subscribe,
+    () => Boolean(tokenStorage.getAccessToken()),
+    () => false
+  );
 
-  function placeOrder(event: React.FormEvent<HTMLFormElement>) {
+  const [completed, setCompleted] = useState(false);
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!hasToken) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Checkout" description="Sign in to complete your purchase" />
+        <Card>
+          <CardContent className="space-y-4 p-6">
+            <p className="text-sm text-zinc-700">Please sign in to continue with your checkout.</p>
+            <div className="flex items-center gap-2">
+              <Button asChild>
+                <Link href="/login?next=/checkout">Sign in</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/signup">Create an account</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  async function placeOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setCompleted(true);
-    setOrderNumber(`ORD-${Math.floor(Math.random() * 900000 + 100000)}`);
-    clear();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const order = await orderService.checkout();
+      setOrderId(order.id);
+      setCompleted(true);
+      clear();
+    } catch (err) {
+      setError(getUserErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (completed) {
     return (
-      <Card className="border-emerald-200 bg-emerald-50">
-        <CardContent className="space-y-4 p-6">
-          <CheckCircle2 className="h-10 w-10 text-emerald-600" />
-          <div>
-            <div className="text-lg font-semibold text-emerald-950">Order placed successfully</div>
-            <p className="mt-1 text-sm text-emerald-800">
-              This is a demo checkout flow. No backend payment was called.
-            </p>
-          </div>
-          <div className="text-sm text-emerald-900">Order number: {orderNumber}</div>
-          <Button asChild className="rounded-full">
-            <Link href="/products">Continue shopping</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <PageHeader title="Order confirmed" description="Your order has been placed" />
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="space-y-4 p-6">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+            <div>
+              <div className="text-lg font-semibold text-emerald-950">Thank you for your order</div>
+              <p className="mt-1 text-sm text-emerald-800">
+                Your order #{orderId} has been placed and is being processed.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild className="rounded-sm">
+                <Link href="/account/orders">View your orders</Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-sm">
+                <Link href="/products">Continue shopping</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Checkout" description="Demo checkout without backend payment integration" />
+    <div className="space-y-4">
+      <PageHeader title="Checkout" />
 
       {isEmpty ? (
         <Card>
           <CardContent className="space-y-4 p-6">
-            <p className="text-sm text-zinc-600">Add items to your cart before checking out.</p>
+            <p className="text-sm text-zinc-600">Your cart is empty. Add items before checking out.</p>
             <Button asChild>
-              <Link href="/products">Go to catalog</Link>
+              <Link href="/products">Browse products</Link>
             </Button>
           </CardContent>
         </Card>
@@ -63,28 +112,30 @@ export default function CheckoutPage() {
           <Card>
             <CardContent className="p-6">
               <form onSubmit={placeOrder} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="checkout-full-name" className="text-sm font-medium">Full name</label>
-                    <Input id="checkout-full-name" required placeholder="Your name" />
+                {error && (
+                  <div className="rounded-sm border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {error}
                   </div>
-                  <div className="space-y-2">
-                    <label htmlFor="checkout-email" className="text-sm font-medium">Email</label>
-                    <Input id="checkout-email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
-                  </div>
+                )}
+
+                <div className="rounded-sm border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+                  <p className="font-medium text-zinc-800 mb-1">Order summary</p>
+                  <p>You are about to place an order for {items.length} item{items.length !== 1 ? "s" : ""}.</p>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="checkout-note" className="text-sm font-medium">Delivery note</label>
-                  <Input id="checkout-note" placeholder="Optional instructions for delivery" />
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-                  Payment methods and shipping integrations are intentionally mocked in the frontend only.
-                </div>
-
-                <Button type="submit" className="rounded-full px-6">
-                  Place order
+                <Button
+                  type="submit"
+                  className="w-full rounded-sm bg-[#ffd814] text-sm font-medium text-[#111] hover:bg-[#f7ca00] border-0"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Place your order"
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -92,14 +143,18 @@ export default function CheckoutPage() {
 
           <Card className="h-fit border-zinc-200 bg-white shadow-sm">
             <CardContent className="space-y-3 p-6">
-              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">Order review</div>
+              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">Order Summary</div>
               {items.map((item) => (
                 <div key={item.product.id} className="flex items-center justify-between text-sm text-zinc-600">
-                  <span>{item.product.name} × {item.quantity}</span>
-                  <span>{formatMoney(Number(item.product.price) * item.quantity)}</span>
+                  <span className="truncate mr-2">{item.product.name} &times; {item.quantity}</span>
+                  <span className="shrink-0">{formatMoney(Number(item.product.price) * item.quantity)}</span>
                 </div>
               ))}
-              <div className="flex items-center justify-between border-t border-zinc-200 pt-4 text-base font-semibold">
+              <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-sm text-zinc-600">
+                <span>Shipping</span>
+                <span className="text-green-700 font-medium">FREE</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-base font-semibold">
                 <span>Total</span>
                 <span>{formatMoney(subtotal)}</span>
               </div>

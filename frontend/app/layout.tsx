@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ecommerce Storefront",
-  description: "Storefront MVP consuming the backend endpoints",
+  title: "Storefront.com",
+  description: "Shop the latest products with fast shipping.",
 };
 
 export default function RootLayout({
