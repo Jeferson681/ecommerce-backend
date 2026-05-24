@@ -93,29 +93,20 @@ class DummyUoW:
         self.rolled_back = True
 
 
-def test_get_cart_creates_when_missing(monkeypatch):
-    repo = DummyCartRepo()
+def test_get_cart_raises_not_found_when_missing(monkeypatch):
+    class RepoNone:
+        def __init__(self, session):
+            self.session = session
 
-    def fake_repo_factory(session):
-        return repo
+        def get_by_user_id(self, user_id: int):
+            return None
 
-    monkeypatch.setattr(use_cases, "CartRepository", fake_repo_factory)
+    monkeypatch.setattr(use_cases, "CartRepository", RepoNone)
 
     uow = DummyUoW()
 
-    # monkeypatch Cart class used in use_cases to a simple DummyCart
-    class DummyCart:
-        def __init__(self, user_id):
-            self.user_id = user_id
-
-    monkeypatch.setattr(use_cases, "Cart", DummyCart)
-
-    # call get_cart and expect a CartRead-like object returned
-    cart = use_cases.get_cart(user_id=10, uow=uow)
-
-    assert repo.created is True
-    assert uow.committed is True
-    assert cart.user_id == 10
+    with pytest.raises(NotFoundError):
+        use_cases.get_cart(user_id=10, uow=uow)
 
 
 def test_add_item_calls_repo_and_commits(monkeypatch):

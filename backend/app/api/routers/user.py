@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.app.application.uow.dependencies import get_uow
 from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
-from backend.app.modules.auth.deps import get_current_user_id
+from backend.app.modules.auth.deps import get_current_user_id, require_admin
 from backend.app.modules.user.schemas import (
     UserChangePassword,
     UserCreate,
@@ -73,10 +73,15 @@ def create_user_endpoint(
 @router.get("/{user_id}", response_model=UserRead)
 def get_user_endpoint(
     user_id: int,
+    user_id_current: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> UserRead:
+    """Return a specific user profile.
+
+    Access: owner or admin (enforced in use case).
+    """
     try:
-        return get_user_use_case(user_id, uow)
+        return get_user_use_case(user_id, uow, requesting_user_id=user_id_current)
 
     except NotFoundError as e:
         raise HTTPException(
@@ -88,7 +93,12 @@ def get_user_endpoint(
 @router.get("", response_model=list[UserRead])
 def list_users_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _admin_id: Annotated[int, Depends(require_admin)],
 ) -> list[UserRead]:
+    """List all users with pagination and filtering.
+
+    Access: admin only (enforced by require_admin dependency).
+    """
     return list_users_use_case(uow)
 
 
@@ -96,13 +106,19 @@ def list_users_endpoint(
 def update_user_endpoint(
     user_id: int,
     user_data: UserUpdate,
+    user_id_current: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> UserRead:
+    """Update user profile data.
+
+    Access: owner or admin (enforced in use case).
+    """
     try:
         return update_user_use_case(
             user_id,
             user_data,
             uow,
+            requesting_user_id=user_id_current,
         )
 
     except NotFoundError as e:
@@ -131,13 +147,19 @@ def update_user_endpoint(
 def change_password_endpoint(
     user_id: int,
     password_data: UserChangePassword,
+    user_id_current: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> UserRead:
+    """Change account password.
+
+    Access: owner only (enforced in use case).
+    """
     try:
         return change_user_password(
             user_id=user_id,
             new_password=password_data.new_password,
             uow=uow,
+            requesting_user_id=user_id_current,
         )
 
     except (NotFoundError, InvalidPasswordError) as e:
@@ -159,10 +181,15 @@ def change_password_endpoint(
 )
 def delete_user_endpoint(
     user_id: int,
+    user_id_current: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> None:
+    """Delete or deactivate a user account.
+
+    Access: owner or admin (enforced in use case).
+    """
     try:
-        delete_user_use_case(user_id, uow)
+        delete_user_use_case(user_id, uow, requesting_user_id=user_id_current)
 
     except NotFoundError as e:
         raise HTTPException(

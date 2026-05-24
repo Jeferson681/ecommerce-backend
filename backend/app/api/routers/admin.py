@@ -1,0 +1,37 @@
+"""Admin-only API router.
+
+Responsibility: expose administrative endpoints for platform-wide operations.
+"""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from backend.app.application.uow.dependencies import get_uow
+from backend.app.application.uow.unit_of_work import UnitOfWork
+from backend.app.core.exceptions import Messages
+from backend.app.modules.auth.deps import require_admin
+from backend.app.modules.order.repositories.order_repository import OrderRepository
+from backend.app.modules.order.schemas import OrderRead
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/orders", response_model=list[OrderRead])
+def list_all_orders_endpoint(
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _admin_id: Annotated[int, Depends(require_admin)],
+) -> list[OrderRead]:
+    """List all orders across the platform.
+
+    Access: admin only.
+    """
+    try:
+        repository = OrderRepository(uow.session)
+        orders = repository.list()
+        return [OrderRead.model_validate(order) for order in orders]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=Messages.INTERNAL_SERVER_ERROR,
+        ) from e

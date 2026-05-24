@@ -17,11 +17,7 @@ from backend.app.modules.cart.schemas import (
 
 def get_cart(user_id: int, uow: UnitOfWork) -> CartRead:
     repository = CartRepository(uow.session)
-    cart = repository.get_by_user_id(user_id)
-
-    if cart is None:
-        cart = repository.create(Cart(user_id=user_id))
-        uow.commit()
+    cart = _get_cart_or_raise(repository, user_id)
 
     return CartRead.model_validate(cart)
 
