@@ -59,9 +59,12 @@ def get_order_endpoint(
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> OrderRead:
-    """Retrieve a specific order by ID."""
+    """Return details of a specific order.
+
+    Access: owner or admin (enforced in use case).
+    """
     try:
-        return get_order(order_id, user_id, uow)
+        return get_order(order_id, user_id, uow, requesting_user_id=user_id)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:

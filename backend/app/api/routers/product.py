@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.app.application.uow.dependencies import get_uow
 from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError
+from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.product.schemas import (
     ProductCreate,
     ProductRead,
@@ -22,26 +23,6 @@ from backend.app.modules.product.use_cases import (
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
-
-
-@router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
-def create_product_endpoint(
-    product_data: ProductCreate, uow: Annotated[UnitOfWork, Depends(get_uow)]
-) -> ProductRead:
-    """Endpoint to create a new product."""
-    try:
-        return create_product(product_data, uow)
-
-    except IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Integrity error while creating product.",
-        ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
 
 
 @router.get("/{product_id}", response_model=ProductRead)
@@ -67,13 +48,42 @@ def list_products_endpoint(
     return list_products(uow)
 
 
+@router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
+def create_product_endpoint(
+    product_data: ProductCreate,
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _admin_id: Annotated[int, Depends(require_admin)],
+) -> ProductRead:
+    """Create a new product.
+
+    Access: admin only.
+    """
+    try:
+        return create_product(product_data, uow)
+
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Integrity error while creating product.",
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=Messages.INTERNAL_SERVER_ERROR,
+        ) from e
+
+
 @router.patch("/{product_id}", response_model=ProductRead)
 def update_product_endpoint(
     product_id: int,
     product_data: ProductUpdate,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _admin_id: Annotated[int, Depends(require_admin)],
 ) -> ProductRead:
-    """Endpoint to update an existing product."""
+    """Update an existing product.
+
+    Access: admin only.
+    """
     try:
         return update_product(product_id, product_data, uow)
     except NotFoundError as e:
@@ -92,9 +102,14 @@ def update_product_endpoint(
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product_endpoint(
-    product_id: int, uow: Annotated[UnitOfWork, Depends(get_uow)]
+    product_id: int,
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _admin_id: Annotated[int, Depends(require_admin)],
 ) -> None:
-    """Endpoint to delete a product."""
+    """Remove or deactivate a product.
+
+    Access: admin only.
+    """
     try:
         delete_product(product_id, uow)
     except NotFoundError as e:

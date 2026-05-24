@@ -20,6 +20,7 @@ from backend.app.modules.order.schemas import OrderRead
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
+from backend.app.modules.user.repositories.user_repository import UserRepository
 
 
 def checkout(user_id: int, uow: UnitOfWork) -> OrderRead:
@@ -106,12 +107,30 @@ def checkout(user_id: int, uow: UnitOfWork) -> OrderRead:
     return OrderRead.model_validate(refreshed)
 
 
-def get_order(order_id: int, user_id: int, uow: UnitOfWork) -> OrderRead:
-    """Retrieve a single order by ID, scoped to the authenticated user."""
+def get_order(
+    order_id: int, user_id: int, uow: UnitOfWork, requesting_user_id: int | None = None
+) -> OrderRead:
+    """Retrieve a single order by ID, scoped to the authenticated user.
+
+    Access: owner or admin.
+    When `requesting_user_id` is provided, determines admin status internally.
+    """
     repository = OrderRepository(uow.session)
     order = repository.get_by_id(order_id)
 
-    if order is None or order.user_id != user_id:
+    if order is None:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+
+    # Determine if requesting user is the owner or an admin
+    is_owner = order.user_id == user_id
+    is_admin = False
+
+    if not is_owner and requesting_user_id is not None:
+        user_repo = UserRepository(uow.session)
+        requester = user_repo.get_by_id(requesting_user_id)
+        is_admin = requester is not None and requester.role == "admin"
+
+    if not is_owner and not is_admin:
         raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     return OrderRead.model_validate(order)
