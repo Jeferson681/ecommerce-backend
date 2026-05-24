@@ -24,8 +24,19 @@ class ProductRepository:
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    def list(self) -> list[Product]:
+    def list(
+        self, offset: int | None = None, limit: int | None = None
+    ) -> list[Product]:
+        """Return products optionally paginated by offset/limit.
+
+        If `offset`/`limit` are None the full list is returned.
+        """
         statement = select(Product).order_by(Product.id)
+
+        if offset is not None:
+            statement = statement.offset(offset)
+        if limit is not None:
+            statement = statement.limit(limit)
 
         result = self.session.execute(statement)
         return list(result.scalars().all())
