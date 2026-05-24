@@ -27,7 +27,13 @@ def test_checkout_returns_404_when_no_cart() -> None:
     session = SessionLocal()
 
     app.dependency_overrides[get_current_user_id] = lambda: 9999
-    app.dependency_overrides[get_uow] = lambda: UnitOfWork(session)
+
+    def _uow_for(s=session):
+        u = UnitOfWork(lambda: s)
+        u.attach(s)
+        return u
+
+    app.dependency_overrides[get_uow] = lambda: _uow_for()
 
     resp = client.post("/orders/checkout")
     assert resp.status_code == 404
@@ -41,7 +47,13 @@ def test_checkout_returns_400_when_cart_empty() -> None:
     session.commit()
 
     app.dependency_overrides[get_current_user_id] = lambda: 2
-    app.dependency_overrides[get_uow] = lambda: UnitOfWork(session)
+
+    def _uow_for(s=session):
+        u = UnitOfWork(lambda: s)
+        u.attach(s)
+        return u
+
+    app.dependency_overrides[get_uow] = lambda: _uow_for()
 
     resp = client.post("/orders/checkout")
     assert resp.status_code == 400
@@ -67,7 +79,13 @@ def test_checkout_returns_400_on_insufficient_stock() -> None:
     session.commit()
 
     app.dependency_overrides[get_current_user_id] = lambda: 3
-    app.dependency_overrides[get_uow] = lambda: UnitOfWork(session)
+
+    def _uow_for(s=session):
+        u = UnitOfWork(lambda: s)
+        u.attach(s)
+        return u
+
+    app.dependency_overrides[get_uow] = lambda: _uow_for()
 
     resp = client.post("/orders/checkout")
     assert resp.status_code == 400

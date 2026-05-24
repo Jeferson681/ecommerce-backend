@@ -84,6 +84,10 @@ class DummyUoW:
     def rollback(self):
         self.rolled_back = True
 
+    def flush(self):
+        # no-op flush for compatibility with UoW implementation
+        return None
+
 
 def test_checkout_happy_path(monkeypatch):
     monkeypatch.setattr(use_cases, "CartRepository", lambda s: DummyCartRepo(s))

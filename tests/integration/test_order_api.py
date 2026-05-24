@@ -48,7 +48,13 @@ def test_checkout_endpoint_creates_order_and_clears_cart() -> None:
     session.commit()
 
     app.dependency_overrides[get_current_user_id] = lambda: 1
-    app.dependency_overrides[get_uow] = lambda: UnitOfWork(session)
+
+    def _uow_for(s=session):
+        u = UnitOfWork(lambda: s)
+        u.attach(s)
+        return u
+
+    app.dependency_overrides[get_uow] = lambda: _uow_for()
 
     resp = client.post("/orders/checkout")
     assert resp.status_code == 201

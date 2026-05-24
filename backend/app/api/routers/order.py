@@ -3,9 +3,10 @@
 Responsibility: expose HTTP endpoints for checkout and order queries.
 """
 
+import hashlib
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from backend.app.application.uow.dependencies import get_uow
 from backend.app.application.uow.unit_of_work import UnitOfWork
@@ -18,13 +19,23 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.post("/checkout", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
-def checkout_endpoint(
+async def checkout_endpoint(
+    request: Request,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> OrderRead:
     """Complete checkout: convert cart items into an order."""
     try:
-        return checkout(user_id, uow)
+        body_bytes = await request.body()
+        # compute request hash from method+path+body for determinism
+        request_hash = hashlib.sha256()
+        request_hash.update(request.method.encode())
+        request_hash.update(request.url.path.encode())
+        request_hash.update(body_bytes)
+        rh = request_hash.hexdigest()
+
+        return checkout(user_id, uow, idempotency_key=idempotency_key, request_hash=rh)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except ValidationError as e:
