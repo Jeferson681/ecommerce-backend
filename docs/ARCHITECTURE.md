@@ -2,7 +2,7 @@
 
 ## Folder structure
 
-Snapshot: 2026-05-19
+Snapshot: current repo state
 
 ```
 backend/app/
@@ -11,6 +11,7 @@ backend/app/
 ├── api/
 │   └── routers/
 │       ├── auth.py
+│       ├── admin.py
 │       ├── user.py
 │       ├── product.py
 │       ├── cart.py
@@ -19,8 +20,8 @@ backend/app/
 │
 ├── application/
 │   └── uow/
-│       ├── unit_of_work.py
-│       └── dependencies.py
+│       ├── dependencies.py
+│       └── unit_of_work.py
 │
 ├── core/
 │   ├── config.py
@@ -28,74 +29,49 @@ backend/app/
 │   ├── exceptions.py
 │   └── security.py
 │
+├── idempotency/
+│   ├── helpers.py
+│   ├── service.py
+│   └── repositories/
+│       └── idempotency_repository.py
+|   └── domain/
+│       └── models.py
+│
 ├── infrastructure/
 │   └── db/
-│       ├── session.py
-│       └── dependencies.py
-│
-├── idempotency/
-│   └── service.py
+│       ├── dependencies.py
+│       └── session.py
 │
 ├── modules/
 │   ├── auth/
-│   │   ├── schemas.py
-│   │   ├── tokens.py
-│   │   ├── use_cases.py
-│   │   ├── security.py
-│   │   ├── validators.py
-│   │   └── deps.py
-│   │
 │   ├── user/
-│   │   ├── use_cases.py
-│   │   ├── repositories/
-│   │   │   └── user_repository.py
-│   │   └── domain/
-│   │       └── models.py
-│   │
 │   ├── product/
-│   │   ├── use_cases.py
-│   │   ├── repositories/
-│   │   │   └── product_repository.py
-│   │   └── domain/
-│   │       └── models.py
-│   │
 │   ├── cart/
-│   │   ├── use_cases.py
-│   │   ├── repositories/
-│   │   │   └── cart_repository.py
-│   │   └── domain/
-│   │       └── models.py
-│   │
 │   ├── order/
-│   │   ├── use_cases.py
-│   │   ├── repositories/
-│   │   │   └── order_repository.py
-│   │   └── domain/
-│   │       └── models.py
-│   │
 │   └── payment/
-│       ├── use_cases.py
+│       ├── domain/
+│       │   └── models.py
 │       ├── repositories/
 │       │   └── payment_repository.py
-│       └── domain/
-│           └── models.py
+│       ├── schemas.py
+│       └── use_cases.py
 │
 └── observability/
     └── request_logging.py
 
 frontend/
-├── app/              # Next.js App Router (thin route wrappers)
-├── core/             # HTTP client, config, exceptions, utils
-├── shared/           # UI primitives (Radix UI + Tailwind), layout shell
-├── modules/          # Domain modules: auth, user, product, cart, order, payment
+├── app/
+├── core/
+├── shared/
+├── modules/
 ├── public/
 ├── next.config.ts
 ├── package.json
 └── ...
 ```
 
-> The frontend is a Next.js 16 storefront for API integration validation and manual testing.
-> The main focus of the project remains the backend architecture and domain implementation.
+> The frontend is a Next.js storefront used for API validation and manual testing.
+> The main focus remains the backend architecture and domain implementation.
 
 ## Modules
 
@@ -116,7 +92,7 @@ A module is a boundary around one aggregate root: domain models, repository, sch
 
 - user: user aggregate root lifecycle.
 - auth: token login/logout orchestration.
-- product: product catalog with CRUD operations (create, read, update, delete).
+- product: product catalog with CRUD operations.
 - cart: cart aggregate root and its CartItem collection.
 - order: checkout and order retrieval.
 - payment: payment processing orchestration and retrieval.
