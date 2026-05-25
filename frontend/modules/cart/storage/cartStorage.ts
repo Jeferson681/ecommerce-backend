@@ -102,6 +102,21 @@ async function resolveProductsById(productIds: number[]): Promise<Map<number, Pr
   return productMap;
 }
 
+async function pushLocalItemsToServer(): Promise<void> {
+  const localItems = readItems();
+  const anonymousItems = localItems.filter((item) => item.id === null);
+  if (anonymousItems.length === 0) return;
+
+  for (const item of anonymousItems) {
+    try {
+      await addCartItem(item.productId ?? item.product.id, item.quantity);
+    } catch {
+      // If item fails to sync, continue with others
+      continue;
+    }
+  }
+}
+
 async function refreshFromServer(): Promise<void> {
   if (globalThis.window === undefined) return;
   if (!tokenStorage.getAccessToken()) return;
@@ -109,6 +124,10 @@ async function refreshFromServer(): Promise<void> {
 
   syncInFlight = (async () => {
     try {
+      // First, push any anonymous local items to the server so they're not lost
+      await pushLocalItemsToServer();
+
+      // Then fetch the authoritative server state
       const cart = await getCart();
       const productMap = await resolveProductsById(cart.items.map((item) => item.product_id));
       const nextItems: CartItem[] = cart.items
