@@ -10,7 +10,7 @@ from backend.app.idempotency.helpers import (
     reserve_idempotency_key,
     try_replay,
 )
-from backend.app.idempotency.repository import IdempotencyKeyRepository
+from backend.app.idempotency.repositories import IdempotencyRepository
 from backend.app.modules.cart.domain.models import Cart, CartItem
 from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
@@ -44,11 +44,12 @@ def checkout(
     product_repository = ProductRepository(uow.session)
     order_repository = OrderRepository(uow.session)
     order_item_repository = OrderItemRepository(uow.session)
-    idempotency_repository = IdempotencyKeyRepository(uow.session)
+    idempotency_repository = IdempotencyRepository(uow.session)
 
     replay = _try_replay_if_possible(
         repository=idempotency_repository,
         idempotency_key=idempotency_key,
+        user_id=user_id,
     )
 
     if replay is not None:
@@ -158,8 +159,9 @@ def _validate_idempotency_input(
 
 
 def _try_replay_if_possible(
-    repository: IdempotencyKeyRepository,
+    repository: IdempotencyRepository,
     idempotency_key: str | None,
+    user_id: int,
 ) -> OrderRead | None:
     if idempotency_key is None:
         return None
@@ -168,11 +170,12 @@ def _try_replay_if_possible(
         repository=repository,
         key=idempotency_key,
         model_cls=OrderRead,
+        user_id=user_id,
     )
 
 
 def _reserve_idempotency_if_needed(
-    repository: IdempotencyKeyRepository,
+    repository: IdempotencyRepository,
     idempotency_key: str | None,
     request_hash: str | None,
     user_id: int,
@@ -279,7 +282,7 @@ def _clear_cart(
 
 
 def _persist_idempotent_response_if_needed(
-    repository: IdempotencyKeyRepository,
+    repository: IdempotencyRepository,
     order_repository: OrderRepository,
     order_id: int,
     idempotency_key: str | None,

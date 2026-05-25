@@ -43,8 +43,8 @@ def get_product_endpoint(
 @router.get("", response_model=list[ProductRead])
 def list_products_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
-    page: Annotated[int | None, Query(None, ge=1)] = None,
-    per_page: Annotated[int | None, Query(None, ge=1, le=100)] = None,
+    page: Annotated[int | None, Query(ge=1)] = None,
+    per_page: Annotated[int | None, Query(ge=1, le=100)] = None,
 ) -> list[ProductRead]:
     """Endpoint to list products. Supports optional pagination via `page` and `per_page` query params."""
     return list_products(uow, page=page, per_page=per_page)

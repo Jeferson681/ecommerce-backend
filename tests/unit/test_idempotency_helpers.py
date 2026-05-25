@@ -17,7 +17,7 @@ from backend.app.idempotency.helpers import (  # noqa: E402
     reserve_idempotency_key,
     try_replay,
 )
-from backend.app.idempotency.repository import IdempotencyKeyRepository  # noqa: E402
+from backend.app.idempotency.repositories import IdempotencyRepository  # noqa: E402
 
 
 class DummyModel(BaseModel):
@@ -37,7 +37,7 @@ def teardown_module(module: object) -> None:
 
 def test_try_replay_none_when_missing() -> None:
     session = SessionLocal()
-    repo = IdempotencyKeyRepository(session)
+    repo = IdempotencyRepository(session)
 
     assert try_replay(repo, "no-key", DummyModel) is None
     session.close()
@@ -45,7 +45,7 @@ def test_try_replay_none_when_missing() -> None:
 
 def test_reserve_and_persist_cycle() -> None:
     session = SessionLocal()
-    repo = IdempotencyKeyRepository(session)
+    repo = IdempotencyRepository(session)
 
     key = "helper-key-1"
     record, created = reserve_idempotency_key(repo, key, user_id=9, request_hash="h9")

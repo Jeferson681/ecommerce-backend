@@ -1,6 +1,10 @@
+from datetime import UTC, datetime, timedelta
+
 from backend.app.core.database import Base, SessionLocal, engine
-from backend.app.idempotency.repository import IdempotencyKeyRepository
-from backend.app.idempotency.service import create_idempotency_record
+from backend.app.idempotency.domain.models import IdempotencyKey
+from backend.app.idempotency.repositories import IdempotencyRepository
+
+DEFAULT_EXPIRATION_HOURS = 24
 
 
 def setup_module(module: object) -> None:
@@ -11,12 +15,20 @@ def teardown_module(module: object) -> None:
     Base.metadata.drop_all(bind=engine)
 
 
-def test_get_or_create_creates_new_record() -> None:
+def test_claim_creates_new_record() -> None:
     session = SessionLocal()
-    repo = IdempotencyKeyRepository(session)
+    repo = IdempotencyRepository(session)
     try:
-        record, created = repo.get_or_create(
-            create_idempotency_record("k-repo-1", user_id=1, request_hash="h1")
+        record, created = repo.claim(
+            IdempotencyKey(
+                key="k-repo-1",
+                user_id=1,
+                request_hash="h1",
+                response_status=None,
+                response_body=None,
+                expires_at=datetime.now(UTC)
+                + timedelta(hours=DEFAULT_EXPIRATION_HOURS),
+            )
         )
 
         assert created is True
@@ -25,17 +37,33 @@ def test_get_or_create_creates_new_record() -> None:
         session.close()
 
 
-def test_get_or_create_returns_existing_when_present() -> None:
+def test_claim_returns_existing_when_present() -> None:
     session = SessionLocal()
-    repo = IdempotencyKeyRepository(session)
+    repo = IdempotencyRepository(session)
     try:
         # create initial record
-        original = create_idempotency_record("k-repo-2", user_id=1, request_hash="h2")
-        repo.create(original)
-        session.commit()
+        repo.claim(
+            IdempotencyKey(
+                key="k-repo-2",
+                user_id=1,
+                request_hash="h2",
+                response_status=None,
+                response_body=None,
+                expires_at=datetime.now(UTC)
+                + timedelta(hours=DEFAULT_EXPIRATION_HOURS),
+            )
+        )
 
-        record, created = repo.get_or_create(
-            create_idempotency_record("k-repo-2", user_id=1, request_hash="h2")
+        record, created = repo.claim(
+            IdempotencyKey(
+                key="k-repo-2",
+                user_id=1,
+                request_hash="h2",
+                response_status=None,
+                response_body=None,
+                expires_at=datetime.now(UTC)
+                + timedelta(hours=DEFAULT_EXPIRATION_HOURS),
+            )
         )
 
         assert created is False

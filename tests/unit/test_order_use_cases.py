@@ -85,7 +85,7 @@ class TestCheckoutHappyPath:
             def __init__(self, session: object) -> None:
                 self.session = session
 
-            def get_by_key(self, key: str) -> None:
+            def get_by_key(self, key: str, user_id: int | None = None) -> None:
                 return None
 
             def save(self, record: object) -> None:
@@ -96,7 +96,7 @@ class TestCheckoutHappyPath:
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
         monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
         monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
-        monkeypatch.setattr(use_cases, "IdempotencyKeyRepository", IdempotencyRepo)
+        monkeypatch.setattr(use_cases, "IdempotencyRepository", IdempotencyRepo)
 
         return uow, SimpleNamespace()
 
@@ -164,10 +164,10 @@ class TestCheckoutHappyPath:
             def __init__(self, session: object) -> None:
                 self.session = session
 
-            def get_by_key(self, key: str) -> None:
+            def get_by_key(self, key: str, user_id: int | None = None) -> None:
                 return None
 
-            def get_or_create(self, record: object) -> tuple[object, bool]:
+            def claim(self, record: object) -> tuple[object, bool]:
                 return (record, True)
 
             def save_response(
@@ -180,7 +180,7 @@ class TestCheckoutHappyPath:
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
         monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
         monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
-        monkeypatch.setattr(use_cases, "IdempotencyKeyRepository", IdempotencyRepo)
+        monkeypatch.setattr(use_cases, "IdempotencyRepository", IdempotencyRepo)
 
         order = use_cases.checkout(
             user_id=1, uow=uow, idempotency_key="key-123", request_hash="hash-abc"
