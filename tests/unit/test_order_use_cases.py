@@ -19,6 +19,13 @@ from backend.app.modules.order.schemas import OrderItemRead, OrderRead
 
 from .conftest import DummyUoW, make_cart, make_cart_item, make_order, make_product
 
+
+def _stub_payment_use_case(monkeypatch) -> None:
+    monkeypatch.setattr(
+        use_cases, "process_payment_use_case", lambda *args, **kwargs: None
+    )
+
+
 # ======================================================================
 # HAPPY PATH
 # ======================================================================
@@ -97,6 +104,7 @@ class TestCheckoutHappyPath:
         monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
         monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
         monkeypatch.setattr(use_cases, "IdempotencyRepository", IdempotencyRepo)
+        _stub_payment_use_case(monkeypatch)
 
         return uow, SimpleNamespace()
 
@@ -181,6 +189,7 @@ class TestCheckoutHappyPath:
         monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
         monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
         monkeypatch.setattr(use_cases, "IdempotencyRepository", IdempotencyRepo)
+        _stub_payment_use_case(monkeypatch)
 
         order = use_cases.checkout(
             user_id=1, uow=uow, idempotency_key="key-123", request_hash="hash-abc"
@@ -304,6 +313,7 @@ class TestCheckoutSadPath:
 
         monkeypatch.setattr(use_cases, "CartRepository", CartRepo)
         monkeypatch.setattr(use_cases, "CartItemRepository", EmptyItemRepo)
+        _stub_payment_use_case(monkeypatch)
 
         with pytest.raises(CoreValidationError, match="Cart is empty"):
             use_cases.checkout(user_id=1, uow=DummyUoW())
@@ -335,6 +345,7 @@ class TestCheckoutSadPath:
         monkeypatch.setattr(use_cases, "CartRepository", CartRepo)
         monkeypatch.setattr(use_cases, "CartItemRepository", CartItemRepo)
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
+        _stub_payment_use_case(monkeypatch)
 
         with pytest.raises(CoreNotFoundError, match="Product not found"):
             use_cases.checkout(user_id=1, uow=DummyUoW())
@@ -368,6 +379,7 @@ class TestCheckoutSadPath:
         monkeypatch.setattr(use_cases, "CartRepository", CartRepo)
         monkeypatch.setattr(use_cases, "CartItemRepository", CartItemRepo)
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
+        _stub_payment_use_case(monkeypatch)
 
         with pytest.raises(CoreValidationError, match="Insufficient stock"):
             use_cases.checkout(user_id=1, uow=DummyUoW())
@@ -511,6 +523,7 @@ def test_checkout_rolls_back_on_order_item_failure(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
     monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
     monkeypatch.setattr(use_cases, "OrderItemRepository", BadOrderItemRepo)
+    _stub_payment_use_case(monkeypatch)
 
     uow = DummyUoW()
     with pytest.raises(IntegrityError):
@@ -570,6 +583,7 @@ def test_checkout_rolls_back_on_stock_decrement_failure(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
     monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
     monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
+    _stub_payment_use_case(monkeypatch)
 
     uow = DummyUoW()
     with pytest.raises(CoreValidationError, match="Insufficient stock"):

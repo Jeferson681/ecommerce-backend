@@ -17,14 +17,22 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 python -m pytest -q
 ```
 
-### Integration tests in clean local mode
+### Integration tests
+
+Run integration tests directly; the test schema is created and dropped
+automatically by the test fixtures.
+
+PowerShell:
 
 ```powershell
-$env:RUN_INTEGRATION_TESTS = 1
 python -m pytest tests\integration -q
 ```
 
-This matches the real local integration flow: the test schema is created only when `RUN_INTEGRATION_TESTS=1` is set.
+Linux / macOS:
+
+```bash
+python -m pytest tests/integration -q
+```
 
 ### Tests for a specific folder
 
