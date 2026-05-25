@@ -17,6 +17,7 @@ backend/app/
 │       ├── cart.py
 │       ├── order.py
 │       └── payment.py
+|       └── webhook.py
 │
 ├── application/
 │   └── uow/
@@ -53,11 +54,14 @@ backend/app/
 │       │   └── models.py
 │       ├── repositories/
 │       │   └── payment_repository.py
+|       ├── gateways/
+|       ├── ├── base.py
+|       ├── └── stripe_gateway.py
 │       ├── schemas.py
-│       └── use_cases.py
-│
-└── observability/
-    └── request_logging.py
+│       ├── use_cases.py
+|       ├── payment_service.py
+|
+|
 
 frontend/
 ├── app/

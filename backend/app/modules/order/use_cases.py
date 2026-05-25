@@ -3,6 +3,8 @@
 Responsibility: coordinate checkout and order retrieval workflows.
 """
 
+import hashlib
+
 from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.idempotency.helpers import (
@@ -22,6 +24,10 @@ from backend.app.modules.order.repositories.order_repository import (
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
+from backend.app.modules.payment.schemas import PaymentCreate
+from backend.app.modules.payment.use_cases import (
+    process_payment as process_payment_use_case,
+)
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
@@ -85,6 +91,22 @@ def checkout(
         )
 
         _clear_cart(cart_repository, cart)
+
+        payment_request_hash = hashlib.sha256()
+        payment_request_hash.update(f"order:{order.id}".encode())
+        payment_request_hash.update(f"user:{user_id}".encode())
+        payment_request_hash.update(
+            f"amount:{sum(product_map[item.product_id].price * item.quantity for item in cart_items)}".encode()
+        )
+
+        process_payment_use_case(
+            PaymentCreate(order_id=order.id),
+            uow,
+            requesting_user_id=user_id,
+            idempotency_key=f"{idempotency_key}:payment" if idempotency_key else None,
+            request_hash=payment_request_hash.hexdigest() if idempotency_key else None,
+            commit=False,
+        )
 
         uow.flush()
 
@@ -258,6 +280,7 @@ def _create_order_from_cart(
             price=product.price,
         )
 
+        order.items.append(order_item)
         order_item_repository.create(order_item)
 
         success = product_repository.decrement_stock_if_enough(

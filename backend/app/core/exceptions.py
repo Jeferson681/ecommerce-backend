@@ -25,6 +25,8 @@ class Messages:
     CART_ITEM_NOT_FOUND = "Cart item not found."
 
     ORDER_NOT_FOUND = "Order not found."
+    PAYMENT_NOT_FOUND = "Payment not found."
+    PAYMENT_AMOUNT_MISMATCH = "Payment amount does not match order total."
     ORDER_CART_EMPTY = "Cart is empty. Add items before checkout."
     ORDER_INSUFFICIENT_STOCK = "Insufficient stock for product."
 
