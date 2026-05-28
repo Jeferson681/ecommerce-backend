@@ -1,24 +1,38 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
 from backend.app.core.exceptions import NotFoundError, ValidationError
-from backend.app.modules.payment import payment_service as svc
+from backend.app.modules.payment import payment_service as svc, use_cases
+from backend.app.modules.payment.schemas import PaymentCreate
 
 
-def test_validate_idempotency_input_accepts_both_or_none() -> None:
-    # both None ok
-    svc.validate_idempotency_input(None, None)
+def test_process_payment_rejects_mismatched_idempotency_inputs(monkeypatch) -> None:
+    class GuardedRepo:
+        def __init__(self, session: object) -> None:
+            raise AssertionError(
+                "repositories should not be instantiated before validation"
+            )
 
-    # both present ok
-    svc.validate_idempotency_input("key", "hash")
+    monkeypatch.setattr(use_cases, "PaymentRepository", GuardedRepo)
+    monkeypatch.setattr(use_cases, "OrderRepository", GuardedRepo)
+    monkeypatch.setattr(use_cases, "IdempotencyRepository", GuardedRepo)
 
-
-def test_validate_idempotency_input_rejects_mismatch() -> None:
     with pytest.raises(ValidationError):
-        svc.validate_idempotency_input("only-key", None)
+        use_cases.process_payment(
+            PaymentCreate(order_id=1),
+            SimpleNamespace(
+                session=object(),
+                flush=lambda: None,
+                commit=lambda: None,
+                rollback=lambda: None,
+            ),
+            idempotency_key="only-key",
+            request_hash=None,
+        )
 
 
 def test_calculate_order_total_uses_order_item_prices() -> None:
@@ -28,7 +42,7 @@ def test_calculate_order_total_uses_order_item_prices() -> None:
     item.quantity = 2
     order.items = [item]
 
-    total = svc.calculate_order_total(order)
+    total = use_cases.calculate_order_total(order)
     assert total == Decimal("25.00")
 
 

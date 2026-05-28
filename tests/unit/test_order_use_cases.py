@@ -75,6 +75,11 @@ class TestCheckoutHappyPath:
 
             def create(self, order: object) -> object:
                 order.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                order.created_at = now  # type: ignore[attr-defined]
+                order.updated_at = now  # type: ignore[attr-defined]
                 return order
 
             def get_by_id(self, order_id: int) -> SimpleNamespace:
@@ -86,6 +91,11 @@ class TestCheckoutHappyPath:
 
             def create(self, item: object) -> object:
                 item.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                item.created_at = now  # type: ignore[attr-defined]
+                item.updated_at = now  # type: ignore[attr-defined]
                 return item
 
         class IdempotencyRepo:
@@ -155,6 +165,11 @@ class TestCheckoutHappyPath:
 
             def create(self, order: object) -> object:
                 order.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                order.created_at = now  # type: ignore[attr-defined]
+                order.updated_at = now  # type: ignore[attr-defined]
                 return order
 
             def get_by_id(self, order_id: int) -> SimpleNamespace:
@@ -166,6 +181,11 @@ class TestCheckoutHappyPath:
 
             def create(self, item: object) -> object:
                 item.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                item.created_at = now  # type: ignore[attr-defined]
+                item.updated_at = now  # type: ignore[attr-defined]
                 return item
 
         class IdempotencyRepo:

@@ -4,10 +4,14 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.core.exceptions import NotFoundError
 from backend.app.modules.payment import use_cases
-from backend.app.modules.payment.schemas import PaymentCreate
+from backend.app.modules.payment.schemas import (
+    PaymentCreate,
+    PaymentWebhookPayload,
+)
 
 
 class DummyUoW:
@@ -27,8 +31,15 @@ class DummyUoW:
 
 
 def _make_order() -> SimpleNamespace:
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC)
     return SimpleNamespace(
-        id=1, user_id=1, items=[SimpleNamespace(price=Decimal("10.00"), quantity=1)]
+        id=1,
+        user_id=1,
+        items=[SimpleNamespace(price=Decimal("10.00"), quantity=1)],
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -48,6 +59,11 @@ def test_process_payment_happy_path(monkeypatch) -> None:
 
         def create(self, payment: object):
             payment.id = 1
+            from datetime import UTC, datetime
+
+            now = datetime.now(UTC)
+            payment.created_at = now
+            payment.updated_at = now
             return payment
 
         def update(self, payment: object):
@@ -123,6 +139,10 @@ def test_process_provider_webhook_happy_and_errors(monkeypatch) -> None:
             self.session = session
 
         def get_by_provider_payment_id(self, provider_payment_id: str):
+            from datetime import UTC, datetime
+
+            now = datetime.now(UTC)
+
             if provider_payment_id == "exists":
                 return SimpleNamespace(
                     id=1,
@@ -133,6 +153,8 @@ def test_process_provider_webhook_happy_and_errors(monkeypatch) -> None:
                     provider="stripe",
                     provider_payment_id=provider_payment_id,
                     failure_reason=None,
+                    created_at=now,
+                    updated_at=now,
                 )
             return None
 
@@ -160,16 +182,24 @@ def test_process_provider_webhook_happy_and_errors(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
 
     # happy path
-    payload = {"provider_payment_id": "exists", "status": "approved"}
+    payload = PaymentWebhookPayload(
+        provider_payment_id="exists",
+        status="approved",
+    )
     result = use_cases.process_provider_webhook("stripe", payload, uow)
     assert result.status == "approved"
 
-    # invalid payload
-    with pytest.raises(ValueError):
-        use_cases.process_provider_webhook("stripe", {"status": "approved"}, uow)
+    # invalid payload is rejected by the schema at the boundary
+    with pytest.raises(PydanticValidationError):
+        PaymentWebhookPayload(status="approved")
 
     # missing payment
     with pytest.raises(NotFoundError):
         use_cases.process_provider_webhook(
-            "stripe", {"provider_payment_id": "nope", "status": "approved"}, uow
+            "stripe",
+            PaymentWebhookPayload(
+                provider_payment_id="nope",
+                status="approved",
+            ),
+            uow,
         )

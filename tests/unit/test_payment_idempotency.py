@@ -1,40 +1,54 @@
 from __future__ import annotations
 
-from backend.app.modules.payment import payment_service as svc
+from datetime import datetime
+from decimal import Decimal
+from types import SimpleNamespace
+
+from backend.app.modules.payment import use_cases
+from backend.app.modules.payment.schemas import PaymentCreate, PaymentRead
 
 
-def test_try_replay_payment_returns_none_when_no_key():
-    assert (
-        svc.try_replay_payment(
-            repository=type("R", (), {})(), idempotency_key=None, user_id=None
-        )
-        is None
-    )
-
-
-def test_reserve_payment_idempotency_noops_when_missing_params():
-    # should not raise when idempotency not provided
-    svc.reserve_payment_idempotency(
-        repository=type("R", (), {})(),
-        idempotency_key=None,
-        request_hash=None,
-        user_id=None,
-    )
-
-
-def test_persist_payment_idempotent_response_noops_when_missing():
-    # provide a payment repo that returns None for get_by_id
-    class FakePaymentRepo:
+def test_process_payment_replays_raw_payload_once(monkeypatch):
+    class DummyRepo:
         def __init__(self, session: object) -> None:
             self.session = session
 
-        def get_by_id(self, payment_id: int):
-            return None
+    raw = {
+        "id": 10,
+        "order_id": 20,
+        "user_id": 30,
+        "amount": Decimal("19.90"),
+        "status": "approved",
+        "provider": "stripe",
+        "provider_payment_id": "pi_123",
+        "failure_reason": None,
+        "created_at": datetime(2024, 1, 1, 12, 0, 0),
+        "updated_at": datetime(2024, 1, 1, 12, 0, 0),
+    }
+    calls = {"try_replay": 0}
 
-    svc.persist_payment_idempotent_response(
-        repository=type("R", (), {})(),
-        payment_repository=FakePaymentRepo(None),
-        payment_id=1,
-        idempotency_key=None,
-        user_id=None,
+    monkeypatch.setattr(use_cases, "PaymentRepository", DummyRepo)
+    monkeypatch.setattr(use_cases, "OrderRepository", DummyRepo)
+    monkeypatch.setattr(use_cases, "IdempotencyRepository", DummyRepo)
+
+    def fake_try_replay(*, repository, key, user_id):
+        calls["try_replay"] += 1
+        return raw
+
+    monkeypatch.setattr(use_cases, "try_replay", fake_try_replay)
+
+    result = use_cases.process_payment(
+        PaymentCreate(order_id=20),
+        SimpleNamespace(
+            session=object(),
+            flush=lambda: None,
+            commit=lambda: None,
+            rollback=lambda: None,
+        ),
+        requesting_user_id=30,
+        idempotency_key="pay-1",
+        request_hash="hash-1",
     )
+
+    assert calls["try_replay"] == 1
+    assert result == PaymentRead.model_validate(raw)

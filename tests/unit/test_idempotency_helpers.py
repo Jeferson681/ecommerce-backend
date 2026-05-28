@@ -38,8 +38,7 @@ def teardown_module(module: object) -> None:
 def test_try_replay_none_when_missing() -> None:
     session = SessionLocal()
     repo = IdempotencyRepository(session)
-
-    assert try_replay(repo, "no-key", DummyModel) is None
+    assert try_replay(repo, "no-key") is None
     session.close()
 
 
@@ -58,7 +57,9 @@ def test_reserve_and_persist_cycle() -> None:
     # persist response and then replay should return model
     persist_idempotency_response(repo, key, user_id=9, status=201, body='{"x": 5}')
 
-    replay = try_replay(repo, key, DummyModel)
-    assert replay is not None
+    raw = try_replay(repo, key)
+    assert raw is not None
+    # validate once using the schema
+    replay = DummyModel.model_validate(raw)
     assert replay.x == 5
     session.close()

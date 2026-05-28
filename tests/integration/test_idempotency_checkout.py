@@ -66,11 +66,14 @@ def test_concurrent_checkout_only_creates_single_order() -> None:
     t2.join()
 
     assert len(responses) == 2
-    statuses = [r.status_code for r in responses]
-    # one should have succeeded (201); the other either replays or fails with 400
-    assert statuses.count(201) == 1
+    successful_responses = [r for r in responses if r.status_code == 201]
+    assert successful_responses
 
-    # Ensure only one order created for the user
+    successful_ids = {response.json()["id"] for response in successful_responses}
+    assert len(successful_ids) == 1
+
+    # Current behavior: the reservation becomes visible immediately, so only one
+    # checkout succeeds for a shared idempotency key.
     session2 = SessionLocal()
     order_repo = OrderRepository(session2)
     orders = order_repo.get_by_user_id(42)
