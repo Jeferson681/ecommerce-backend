@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from backend.app.core.exceptions import ValidationError
@@ -14,10 +15,14 @@ NO_STORED_RESPONSE_ERROR = "Idempotency record has no stored response."
 def try_replay(
     repository: IdempotencyRepository,
     key: str,
-    model_cls: type[Any],
     user_id: int | None = None,
 ) -> Any | None:
-    """Return deserialized model if an idempotent response exists, else None."""
+    """Return deserialized payload (mapping) if an idempotent response exists, else None.
+
+    Note: This function deliberately returns raw Python structures (dict/list)
+    and does NOT perform Pydantic model validation to avoid double-validation.
+    Callers should validate using the appropriate schema once.
+    """
     record = repository.get_by_key(key, user_id)
     if record is None:
         return None
@@ -25,7 +30,16 @@ def try_replay(
         return None
     if record.response_body is None:
         raise ValidationError(NO_STORED_RESPONSE_ERROR)
-    return model_cls.model_validate_json(record.response_body)
+
+    body = record.response_body
+
+    if isinstance(body, str):
+        try:
+            return json.loads(body)
+        except Exception:
+            return body
+
+    return body
 
 
 def reserve_idempotency_key(

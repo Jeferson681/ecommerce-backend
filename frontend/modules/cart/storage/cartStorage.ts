@@ -102,21 +102,6 @@ async function resolveProductsById(productIds: number[]): Promise<Map<number, Pr
   return productMap;
 }
 
-async function pushLocalItemsToServer(): Promise<void> {
-  const localItems = readItems();
-  const anonymousItems = localItems.filter((item) => item.id === null);
-  if (anonymousItems.length === 0) return;
-
-  for (const item of anonymousItems) {
-    try {
-      await addCartItem(item.productId ?? item.product.id, item.quantity);
-    } catch {
-      // If item fails to sync, continue with others
-      continue;
-    }
-  }
-}
-
 async function refreshFromServer(): Promise<void> {
   if (globalThis.window === undefined) return;
   if (!tokenStorage.getAccessToken()) return;
@@ -124,10 +109,6 @@ async function refreshFromServer(): Promise<void> {
 
   syncInFlight = (async () => {
     try {
-      // First, push any anonymous local items to the server so they're not lost
-      await pushLocalItemsToServer();
-
-      // Then fetch the authoritative server state
       const cart = await getCart();
       const productMap = await resolveProductsById(cart.items.map((item) => item.product_id));
       const nextItems: CartItem[] = cart.items
@@ -219,6 +200,8 @@ export const cartStorage = {
   },
 
   updateQuantity(productId: number, quantity: number): void {
+    const cachedItem = findCachedItemByProductId(productId);
+
     const nextItems = readItems()
       .map((item) =>
         getStoredProductId(item) === productId ? { ...normalizeItem(item), quantity } : item
@@ -228,7 +211,6 @@ export const cartStorage = {
     writeItems(nextItems);
 
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
-      const cachedItem = findCachedItemByProductId(productId);
       if (cachedItem?.id) {
         if (quantity > 0) {
           void updateCartItem(cachedItem.id, quantity)
@@ -246,11 +228,12 @@ export const cartStorage = {
   },
 
   removeItem(productId: number): void {
+    const cachedItem = findCachedItemByProductId(productId);
+
     const nextItems = readItems().filter((item) => getStoredProductId(item) !== productId);
     writeItems(nextItems);
 
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
-      const cachedItem = findCachedItemByProductId(productId);
       if (cachedItem?.id) {
         void removeCartItem(cachedItem.id)
           .then(() => refreshFromServer())
@@ -263,19 +246,6 @@ export const cartStorage = {
 
   clear(): void {
     writeItems([]);
-
-    if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
-      void (async () => {
-        try {
-          const cart = await getCart();
-          await Promise.all(cart.items.map((item) => removeCartItem(item.id)));
-        } catch {
-          return;
-        } finally {
-          await refreshFromServer();
-        }
-      })();
-    }
   },
 
   refresh(): void {

@@ -89,6 +89,21 @@ class IdempotencyRepository:
 
         return int(getattr(result, "rowcount", 0) or 0) > 0
 
+    def delete_by_key(
+        self,
+        key: str,
+        user_id: int,
+    ) -> bool:
+        statement = delete(IdempotencyKey).where(
+            IdempotencyKey.key == key,
+            IdempotencyKey.user_id == user_id,
+        )
+
+        result = self.session.execute(statement)
+        self.session.flush()
+
+        return int(getattr(result, "rowcount", 0) or 0) > 0
+
     def delete_expired(self, before: datetime) -> int:
         """Delete idempotency records with `expires_at` earlier than `before`.
 

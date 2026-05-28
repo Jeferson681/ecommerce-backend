@@ -81,6 +81,17 @@ def checkout(
             user_id=user_id,
         )
 
+        if idempotency_key is not None:
+            uow.commit()
+
+            replay_after_reserve = _try_replay_if_possible(
+                repository=idempotency_repository,
+                idempotency_key=idempotency_key,
+                user_id=user_id,
+            )
+            if replay_after_reserve is not None:
+                return replay_after_reserve
+
         order = _create_order_from_cart(
             cart_items=cart_items,
             product_map=product_map,
@@ -92,19 +103,28 @@ def checkout(
 
         _clear_cart(cart_repository, cart)
 
+        total_amount = sum(
+            product_map[item.product_id].price * item.quantity for item in cart_items
+        )
+
         payment_request_hash = hashlib.sha256()
+
         payment_request_hash.update(f"order:{order.id}".encode())
         payment_request_hash.update(f"user:{user_id}".encode())
-        payment_request_hash.update(
-            f"amount:{sum(product_map[item.product_id].price * item.quantity for item in cart_items)}".encode()
-        )
+        payment_request_hash.update(f"amount:{total_amount}".encode())
 
         process_payment_use_case(
             PaymentCreate(order_id=order.id),
             uow,
             requesting_user_id=user_id,
-            idempotency_key=f"{idempotency_key}:payment" if idempotency_key else None,
-            request_hash=payment_request_hash.hexdigest() if idempotency_key else None,
+            idempotency_key=(
+                f"{idempotency_key}:payment" if idempotency_key is not None else None
+            ),
+            request_hash=(
+                payment_request_hash.hexdigest()
+                if idempotency_key is not None
+                else None
+            ),
             commit=False,
         )
 
@@ -122,11 +142,12 @@ def checkout(
 
     except Exception:
         uow.rollback()
+        if idempotency_key is not None:
+            idempotency_repository.delete_by_key(idempotency_key, user_id)
+            uow.commit()
         raise
 
-    refreshed = _get_order_or_raise(order_repository, order.id)
-
-    return OrderRead.model_validate(refreshed)
+    return OrderRead.model_validate(order)
 
 
 def get_order(
@@ -188,12 +209,16 @@ def _try_replay_if_possible(
     if idempotency_key is None:
         return None
 
-    return try_replay(
+    raw = try_replay(
         repository=repository,
         key=idempotency_key,
-        model_cls=OrderRead,
         user_id=user_id,
     )
+
+    if raw is None:
+        return None
+
+    return OrderRead.model_validate(raw)
 
 
 def _reserve_idempotency_if_needed(
@@ -281,6 +306,7 @@ def _create_order_from_cart(
         )
 
         order.items.append(order_item)
+
         order_item_repository.create(order_item)
 
         success = product_repository.decrement_stock_if_enough(
@@ -314,7 +340,7 @@ def _persist_idempotent_response_if_needed(
     if idempotency_key is None:
         return
 
-    order = _get_order_or_raise(order_repository, order_id)
+    order = get_order_or_raise(order_repository, order_id)
 
     response_json = OrderRead.model_validate(order).model_dump_json()
 
@@ -327,7 +353,7 @@ def _persist_idempotent_response_if_needed(
     )
 
 
-def _get_order_or_raise(
+def get_order_or_raise(
     repository: OrderRepository,
     order_id: int,
 ) -> Order:

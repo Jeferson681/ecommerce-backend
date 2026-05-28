@@ -3,7 +3,6 @@
 import { useState, useSyncExternalStore, useRef } from "react";
 import {
   CheckCircle2,
-  Clock,
   Loader2,
   AlertCircle,
   XCircle,
@@ -13,23 +12,19 @@ import Link from "next/link";
 import { useCart } from "@/modules/cart/hooks/useCart";
 import { formatMoney } from "@/core/utils/money";
 import { orderService } from "@/modules/order/services/orderService";
-import { paymentService } from "@/modules/payment/services/paymentService";
 import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 import { createIdempotencyKey } from "@/core/utils/idempotency";
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
-import type { Payment } from "@/modules/payment/types/payment";
 
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 
-type PaymentState =
+type CheckoutState =
   | { phase: "idle" }
   | { phase: "ordering" }
-  | { phase: "paying"; orderId: number; idempotencyKey: string }
   | { phase: "success" }
-  | { phase: "pending"; payment: Payment }
-  | { phase: "failed"; reason: string; canRetry: boolean; orderId?: number; idempotencyKey?: string };
+  | { phase: "failed"; reason: string; canRetry: boolean };
 
 export default function CheckoutPage() {
   const { items, subtotal, isEmpty, clear } = useCart();
@@ -39,10 +34,9 @@ export default function CheckoutPage() {
     () => false
   );
 
-  const [paymentState, setPaymentState] = useState<PaymentState>({
+  const [checkoutState, setCheckoutState] = useState<CheckoutState>({
     phase: "idle",
   });
-  const [error, setError] = useState<string | null>(null);
 
   // Idempotency key is generated once per logical attempt and reused on retry.
   const idempotencyKeyRef = useRef<string | null>(null);
@@ -92,148 +86,82 @@ export default function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
-    setError(null);
-
     // Generate idempotency key once per logical attempt.
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current = createIdempotencyKey();
     }
     const idempotencyKey = idempotencyKeyRef.current;
 
-    setPaymentState({ phase: "ordering" });
-
-    let orderId: number;
+    setCheckoutState({ phase: "ordering" });
 
     try {
-      const order = await orderService.checkout(idempotencyKey);
-      orderId = order.id;
-    } catch (err) {
-      idempotencyKeyRef.current = null;
-      setPaymentState({ phase: "idle" });
-      setError(getUserErrorMessage(err));
-      return;
-    }
-
-    // Order created — now process payment.
-    setPaymentState({ phase: "paying", orderId, idempotencyKey });
-
-    try {
-      const payment = await paymentService.processPayment(
-        { order_id: orderId },
-        idempotencyKey
-      );
-
-      // Map backend payment status to UX state.
-      if (payment.status === "approved") {
-        clear();
-        setPaymentState({ phase: "success" });
-      } else if (payment.status === "pending") {
-        clear();
-        setPaymentState({ phase: "pending", payment });
-      } else {
-        // failed, cancelled, refunded — show as failure.
-        idempotencyKeyRef.current = null;
-        const failureReason = mapPaymentFailure(payment);
-        setPaymentState({
-          phase: "failed",
-          reason: failureReason,
-          canRetry: false,
-          orderId,
-        });
-      }
+      await orderService.checkout(idempotencyKey);
+      clear();
+      setCheckoutState({ phase: "success" });
     } catch (err) {
       const message = getUserErrorMessage(err);
       const isTransient = isTransientError(err);
 
       if (isTransient) {
-        // Transient error — can retry with same idempotency key.
-        setPaymentState({
+        setCheckoutState({
           phase: "failed",
           reason: "Connection issue. Please try again.",
           canRetry: true,
-          orderId,
-          idempotencyKey,
         });
       } else {
-        // Non-transient — clear key, show final error.
         idempotencyKeyRef.current = null;
-        setPaymentState({
+        setCheckoutState({
           phase: "failed",
           reason: message,
           canRetry: false,
-          orderId,
         });
       }
     }
   }
 
   async function handleRetry() {
-    if (paymentState.phase !== "failed" || !paymentState.canRetry) return;
+    if (checkoutState.phase !== "failed" || !checkoutState.canRetry) return;
 
-    const { orderId, idempotencyKey } = paymentState;
+    const idempotencyKey = idempotencyKeyRef.current;
+    if (!idempotencyKey) return;
 
-    // Keep same idempotency key for retry.
-    setPaymentState({ phase: "paying", orderId: orderId!, idempotencyKey: idempotencyKey! });
+    setCheckoutState({ phase: "ordering" });
 
     try {
-      const payment = await paymentService.processPayment(
-        { order_id: orderId! },
-        idempotencyKey!
-      );
-
-      if (payment.status === "approved") {
-        clear();
-        setPaymentState({ phase: "success" });
-      } else if (payment.status === "pending") {
-        clear();
-        setPaymentState({ phase: "pending", payment });
-      } else {
-        idempotencyKeyRef.current = null;
-        setPaymentState({
-          phase: "failed",
-          reason: mapPaymentFailure(payment),
-          canRetry: false,
-          orderId,
-        });
-      }
+      await orderService.checkout(idempotencyKey);
+      clear();
+      setCheckoutState({ phase: "success" });
     } catch (err) {
       const isTransient = isTransientError(err);
       if (isTransient) {
-        setPaymentState({
+        setCheckoutState({
           phase: "failed",
           reason: "Connection issue. Please try again.",
           canRetry: true,
-          orderId,
-          idempotencyKey,
         });
       } else {
         idempotencyKeyRef.current = null;
-        setPaymentState({
+        setCheckoutState({
           phase: "failed",
           reason: getUserErrorMessage(err),
           canRetry: false,
-          orderId,
         });
       }
     }
   }
 
   const isProcessing =
-    paymentState.phase === "ordering" || paymentState.phase === "paying";
+    checkoutState.phase === "ordering";
 
-  if (paymentState.phase === "success") {
+  if (checkoutState.phase === "success") {
     return <SuccessConfirmation />;
   }
 
-  if (paymentState.phase === "pending") {
-    return <PendingConfirmation payment={paymentState.payment} />;
-  }
-
-  if (paymentState.phase === "failed") {
+  if (checkoutState.phase === "failed") {
     return (
       <FailureConfirmation
-        reason={paymentState.reason}
-        canRetry={paymentState.canRetry}
+        reason={checkoutState.reason}
+        canRetry={checkoutState.canRetry}
         onRetry={handleRetry}
         isProcessing={isProcessing}
       />
@@ -266,12 +194,6 @@ export default function CheckoutPage() {
                 }}
                 className="space-y-4"
               >
-                {error && (
-                  <div className="rounded-sm border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
-
                 <div className="rounded-sm border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
                   <p className="mb-1 font-medium text-zinc-800">
                     Order summary
@@ -336,12 +258,12 @@ export default function CheckoutPage() {
   );
 }
 
-// --- Sub-components for payment states ---
+// --- Sub-components for checkout states ---
 
 function SuccessConfirmation() {
   return (
     <div className="space-y-4">
-      <PageHeader title="Order confirmed" description="Payment successful" />
+      <PageHeader title="Order confirmed" description="Checkout successful" />
       <Card className="border-emerald-200 bg-emerald-50">
         <CardContent className="space-y-4 p-6">
           <CheckCircle2 className="h-10 w-10 text-emerald-600" />
@@ -350,49 +272,12 @@ function SuccessConfirmation() {
               Thank you for your order
             </div>
             <p className="mt-1 text-sm text-emerald-800">
-              Your payment has been approved and your order is being processed.
+              Your order has been placed and is being processed.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Button asChild className="rounded-sm">
               <Link href="/account/orders">View your orders</Link>
-            </Button>
-            <Button asChild variant="outline" className="rounded-sm">
-              <Link href="/products">Continue shopping</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function PendingConfirmation({ payment }: { payment: Payment }) {
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Payment pending"
-        description="Awaiting confirmation"
-      />
-      <Card className="border-amber-200 bg-amber-50">
-        <CardContent className="space-y-4 p-6">
-          <Clock className="h-10 w-10 text-amber-600" />
-          <div>
-            <div className="text-lg font-semibold text-amber-950">
-              Your payment is pending confirmation
-            </div>
-            <p className="mt-1 text-sm text-amber-800">
-              We received your order but the payment is still being confirmed.
-              This usually takes a few moments.
-            </p>
-            <p className="mt-2 text-sm text-amber-700">
-              Order #{payment.order_id} &middot;{" "}
-              {formatMoney(Number(payment.amount))}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button asChild className="rounded-sm">
-              <Link href="/account/orders">View order status</Link>
             </Button>
             <Button asChild variant="outline" className="rounded-sm">
               <Link href="/products">Continue shopping</Link>
@@ -417,7 +302,7 @@ function FailureConfirmation({
 }) {
   return (
     <div className="space-y-4">
-      <PageHeader title="Payment failed" description="Unable to process payment" />
+      <PageHeader title="Checkout failed" description="Unable to complete checkout" />
       <Card className="border-red-200 bg-red-50">
         <CardContent className="space-y-4 p-6">
           {canRetry ? (
@@ -427,7 +312,7 @@ function FailureConfirmation({
           )}
           <div>
             <div className="text-lg font-semibold text-red-950">
-              Payment could not be processed
+              Checkout could not be completed
             </div>
             <p className="mt-1 text-sm text-red-800">{reason}</p>
           </div>
@@ -456,15 +341,6 @@ function FailureConfirmation({
       </Card>
     </div>
   );
-}
-
-// --- Helpers ---
-
-function mapPaymentFailure(payment: Payment): string {
-  if (payment.failure_reason) {
-    return "Payment could not be processed.";
-  }
-  return "Payment could not be processed.";
 }
 
 function isTransientError(err: unknown): boolean {

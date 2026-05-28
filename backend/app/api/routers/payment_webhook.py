@@ -7,12 +7,14 @@ endpoints (security and routing concerns differ).
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.application.uow.dependencies import get_uow
 from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.config import settings
 from backend.app.core.exceptions import NotFoundError
 from backend.app.modules.payment.gateway.stripe_gateway import verify_stripe_signature
+from backend.app.modules.payment.schemas import PaymentWebhookPayload
 from backend.app.modules.payment.use_cases import process_provider_webhook
 
 router = APIRouter(prefix="/payments/webhook", tags=["webhooks", "payments"])
@@ -43,12 +45,17 @@ async def payment_webhook_endpoint(
         ) from e
 
     # parse json after signature validated
-    body = await request.json()
+    try:
+        payload = PaymentWebhookPayload.model_validate_json(body_bytes)
+    except PydanticValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
 
     prov = provider or "stripe"
 
     try:
-        payment = process_provider_webhook(prov, body, uow)
+        payment = process_provider_webhook(prov, payload, uow)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except ValueError as e:
