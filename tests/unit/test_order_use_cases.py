@@ -19,6 +19,13 @@ from backend.app.modules.order.schemas import OrderItemRead, OrderRead
 
 from .conftest import DummyUoW, make_cart, make_cart_item, make_order, make_product
 
+
+def _stub_payment_use_case(monkeypatch) -> None:
+    monkeypatch.setattr(
+        use_cases, "process_payment_use_case", lambda *args, **kwargs: None
+    )
+
+
 # ======================================================================
 # HAPPY PATH
 # ======================================================================
@@ -68,6 +75,11 @@ class TestCheckoutHappyPath:
 
             def create(self, order: object) -> object:
                 order.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                order.created_at = now  # type: ignore[attr-defined]
+                order.updated_at = now  # type: ignore[attr-defined]
                 return order
 
             def get_by_id(self, order_id: int) -> SimpleNamespace:
@@ -79,13 +91,18 @@ class TestCheckoutHappyPath:
 
             def create(self, item: object) -> object:
                 item.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                item.created_at = now  # type: ignore[attr-defined]
+                item.updated_at = now  # type: ignore[attr-defined]
                 return item
 
         class IdempotencyRepo:
             def __init__(self, session: object) -> None:
                 self.session = session
 
-            def get_by_key(self, key: str) -> None:
+            def get_by_key(self, key: str, user_id: int | None = None) -> None:
                 return None
 
             def save(self, record: object) -> None:
@@ -96,7 +113,8 @@ class TestCheckoutHappyPath:
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
         monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
         monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
-        monkeypatch.setattr(use_cases, "IdempotencyKeyRepository", IdempotencyRepo)
+        monkeypatch.setattr(use_cases, "IdempotencyRepository", IdempotencyRepo)
+        _stub_payment_use_case(monkeypatch)
 
         return uow, SimpleNamespace()
 
@@ -147,6 +165,11 @@ class TestCheckoutHappyPath:
 
             def create(self, order: object) -> object:
                 order.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                order.created_at = now  # type: ignore[attr-defined]
+                order.updated_at = now  # type: ignore[attr-defined]
                 return order
 
             def get_by_id(self, order_id: int) -> SimpleNamespace:
@@ -158,16 +181,21 @@ class TestCheckoutHappyPath:
 
             def create(self, item: object) -> object:
                 item.id = 1  # type: ignore[attr-defined]
+                from datetime import UTC, datetime
+
+                now = datetime.now(UTC)
+                item.created_at = now  # type: ignore[attr-defined]
+                item.updated_at = now  # type: ignore[attr-defined]
                 return item
 
         class IdempotencyRepo:
             def __init__(self, session: object) -> None:
                 self.session = session
 
-            def get_by_key(self, key: str) -> None:
+            def get_by_key(self, key: str, user_id: int | None = None) -> None:
                 return None
 
-            def get_or_create(self, record: object) -> tuple[object, bool]:
+            def claim(self, record: object) -> tuple[object, bool]:
                 return (record, True)
 
             def save_response(
@@ -180,7 +208,8 @@ class TestCheckoutHappyPath:
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
         monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
         monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
-        monkeypatch.setattr(use_cases, "IdempotencyKeyRepository", IdempotencyRepo)
+        monkeypatch.setattr(use_cases, "IdempotencyRepository", IdempotencyRepo)
+        _stub_payment_use_case(monkeypatch)
 
         order = use_cases.checkout(
             user_id=1, uow=uow, idempotency_key="key-123", request_hash="hash-abc"
@@ -304,6 +333,7 @@ class TestCheckoutSadPath:
 
         monkeypatch.setattr(use_cases, "CartRepository", CartRepo)
         monkeypatch.setattr(use_cases, "CartItemRepository", EmptyItemRepo)
+        _stub_payment_use_case(monkeypatch)
 
         with pytest.raises(CoreValidationError, match="Cart is empty"):
             use_cases.checkout(user_id=1, uow=DummyUoW())
@@ -335,6 +365,7 @@ class TestCheckoutSadPath:
         monkeypatch.setattr(use_cases, "CartRepository", CartRepo)
         monkeypatch.setattr(use_cases, "CartItemRepository", CartItemRepo)
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
+        _stub_payment_use_case(monkeypatch)
 
         with pytest.raises(CoreNotFoundError, match="Product not found"):
             use_cases.checkout(user_id=1, uow=DummyUoW())
@@ -368,6 +399,7 @@ class TestCheckoutSadPath:
         monkeypatch.setattr(use_cases, "CartRepository", CartRepo)
         monkeypatch.setattr(use_cases, "CartItemRepository", CartItemRepo)
         monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
+        _stub_payment_use_case(monkeypatch)
 
         with pytest.raises(CoreValidationError, match="Insufficient stock"):
             use_cases.checkout(user_id=1, uow=DummyUoW())
@@ -511,6 +543,7 @@ def test_checkout_rolls_back_on_order_item_failure(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
     monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
     monkeypatch.setattr(use_cases, "OrderItemRepository", BadOrderItemRepo)
+    _stub_payment_use_case(monkeypatch)
 
     uow = DummyUoW()
     with pytest.raises(IntegrityError):
@@ -570,6 +603,7 @@ def test_checkout_rolls_back_on_stock_decrement_failure(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "ProductRepository", ProductRepo)
     monkeypatch.setattr(use_cases, "OrderRepository", OrderRepo)
     monkeypatch.setattr(use_cases, "OrderItemRepository", OrderItemRepo)
+    _stub_payment_use_case(monkeypatch)
 
     uow = DummyUoW()
     with pytest.raises(CoreValidationError, match="Insufficient stock"):

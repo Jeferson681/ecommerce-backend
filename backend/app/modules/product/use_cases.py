@@ -40,10 +40,22 @@ def get_product(product_id: int, uow: UnitOfWork) -> ProductRead | None:
     return ProductRead.model_validate(product) if product else None
 
 
-def list_products(uow: UnitOfWork) -> list[ProductRead]:
-    """List all products."""
+def list_products(
+    uow: UnitOfWork, page: int | None = None, per_page: int | None = None
+) -> list[ProductRead]:
+    """List products optionally paginated.
+
+    If `page` and `per_page` are provided pagination is applied.
+    """
     repository = ProductRepository(uow.session)
-    products = repository.list()
+
+    if page is not None and per_page is not None:
+        # convert to zero-based offset
+        offset = (page - 1) * per_page
+        products = repository.list(offset=offset, limit=per_page)
+    else:
+        products = repository.list()
+
     return [ProductRead.model_validate(product) for product in products]
 
 

@@ -6,9 +6,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from backend.app.api.routers.admin import router as admin_router
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.cart import router as cart_router
 from backend.app.api.routers.order import router as order_router
+from backend.app.api.routers.payment import router as payment_router
+from backend.app.api.routers.payment_webhook import router as payment_webhook_router
 from backend.app.api.routers.product import router as product_router
 from backend.app.api.routers.user import router as user_router
 from backend.app.core.config import settings
@@ -35,15 +38,22 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://0.0.0.0:3000",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
     app.include_router(auth_router)
+    app.include_router(admin_router)
     app.include_router(cart_router)
     app.include_router(order_router)
+    app.include_router(payment_router)
+    app.include_router(payment_webhook_router)
     app.include_router(user_router)
     app.include_router(product_router)
 

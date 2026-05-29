@@ -13,6 +13,10 @@ from backend.app.core.exceptions import Messages
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.order.repositories.order_repository import OrderRepository
 from backend.app.modules.order.schemas import OrderRead
+from backend.app.modules.payment.repositories.payment_repository import (
+    PaymentRepository,
+)
+from backend.app.modules.payment.schemas import PaymentRead
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -30,6 +34,26 @@ def list_all_orders_endpoint(
         repository = OrderRepository(uow.session)
         orders = repository.list()
         return [OrderRead.model_validate(order) for order in orders]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=Messages.INTERNAL_SERVER_ERROR,
+        ) from e
+
+
+@router.get("/payments", response_model=list[PaymentRead])
+def list_all_payments_endpoint(
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    _admin_id: Annotated[int, Depends(require_admin)],
+) -> list[PaymentRead]:
+    """List all payments across the platform.
+
+    Access: admin only.
+    """
+    try:
+        repository = PaymentRepository(uow.session)
+        payments = repository.list()
+        return [PaymentRead.model_validate(payment) for payment in payments]
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

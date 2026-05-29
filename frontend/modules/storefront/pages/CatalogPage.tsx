@@ -10,7 +10,6 @@ type CatalogPageProps = {
 
 export default async function CatalogPage({
   title = "Search Results",
-  description = "Find products by name or description",
   query,
 }: CatalogPageProps) {
   let products: Awaited<ReturnType<typeof productService.list>> = [];

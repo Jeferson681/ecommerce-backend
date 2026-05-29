@@ -4,7 +4,7 @@ Responsibility: expose persistence operations for order data access.
 """
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from backend.app.modules.order.domain.models import Order, OrderItem
 
@@ -14,19 +14,32 @@ class OrderRepository:
         self.session = session
 
     def get_by_id(self, order_id: int) -> Order | None:
-        statement = select(Order).where(Order.id == order_id)
+        statement = (
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items), selectinload(Order.payments))
+        )
 
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
     def get_by_user_id(self, user_id: int) -> list[Order]:
-        statement = select(Order).where(Order.user_id == user_id).order_by(Order.id)
+        statement = (
+            select(Order)
+            .where(Order.user_id == user_id)
+            .order_by(Order.id)
+            .options(selectinload(Order.items), selectinload(Order.payments))
+        )
 
         result = self.session.execute(statement)
         return list(result.scalars().all())
 
     def list(self) -> list[Order]:
-        statement = select(Order).order_by(Order.id)
+        statement = (
+            select(Order)
+            .order_by(Order.id)
+            .options(selectinload(Order.items), selectinload(Order.payments))
+        )
 
         result = self.session.execute(statement)
         return list(result.scalars().all())

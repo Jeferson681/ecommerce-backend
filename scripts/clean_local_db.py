@@ -5,6 +5,12 @@ Safety: this script will refuse to run if the configured DATABASE_URL is not a l
 It deletes users matching common test patterns and seeded products.
 """
 
+import os
+import sys
+
+# Adiciona a raiz do projeto ao sys.path ANTES dos imports do backend
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from sqlalchemy import or_
 
 from backend.app.core.config import settings
@@ -43,7 +49,42 @@ def main() -> None:
             session.delete(u)
 
         # Products seeded earlier
-        seed_names = ["Basic Tee", "Coffee Mug", "Sticker Pack"]
+        seed_names = [
+            "Wireless Mouse",
+            "Mechanical Keyboard",
+            "USB-C Charger",
+            "Bluetooth Speaker",
+            "Webcam Full HD",
+            "Laptop Stand",
+            "Gaming Headset",
+            "Portable SSD 1TB",
+            "Ceramic Coffee Mug",
+            "Electric Kettle",
+            "Desk Lamp",
+            "Memory Foam Pillow",
+            "Air Fryer",
+            "Water Bottle",
+            "Storage Basket Set",
+            "Basic Cotton T-Shirt",
+            "Running Shoes",
+            "Classic Hoodie",
+            "Leather Wallet",
+            "Baseball Cap",
+            "Notebook Set",
+            "Gel Pen Pack",
+            "Monitor Arm",
+            "Office Chair",
+            "Yoga Mat",
+            "Resistance Bands",
+            "Protein Shaker Bottle",
+            "Gaming Mouse Pad",
+            "Controller Charging Dock",
+            "Scented Candle",
+            "Pet Feeding Bowl",
+            "Basic Tee",
+            "Coffee Mug",
+            "Sticker Pack",
+        ]
         pq = session.query(Product).filter(Product.name.in_(seed_names))
         products_to_delete = pq.all()
         print(f"Found {len(products_to_delete)} seed product(s).")

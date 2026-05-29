@@ -49,6 +49,11 @@ function mapBackendMessage(message?: string): string | null {
 
   const normalized = message.trim().toLowerCase();
 
+  // Check for prefix matches (messages that may have suffixed details like "(product_id=5)")
+  if (normalized.startsWith("insufficient stock for product")) {
+    return "One or more items are out of stock. Update your cart and try again.";
+  }
+
   const knownMessages: Record<string, string> = {
     "email already exists.": "This email is already in use. Try signing in or use another email.",
     "invalid email or password.": "Invalid email or password.",
@@ -58,7 +63,6 @@ function mapBackendMessage(message?: string): string | null {
     "cart item not found.": "We couldn't find that cart item.",
     "order not found.": "We couldn't find that order.",
     "cart is empty. add items before checkout.": "Your cart is empty. Add items before checkout.",
-    "insufficient stock for product.": "One or more items are out of stock. Update your cart and try again.",
     "credential does not meet the required policy.":
       "Your password doesn't meet security requirements. Use at least 8 characters with uppercase, lowercase, number, and symbol.",
     "an internal server error occurred.": "Something went wrong on our side. Please try again in a few minutes.",
