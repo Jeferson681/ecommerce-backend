@@ -51,7 +51,7 @@ def test_list_products_returns_empty(monkeypatch):
         def __init__(self, session):
             pass
 
-        def list(self):
+        def list(self, *args, **kwargs):
             return []
 
     monkeypatch.setattr(use_cases, "ProductRepository", Repo)

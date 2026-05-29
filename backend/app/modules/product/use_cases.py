@@ -17,6 +17,7 @@ def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
     product = Product(
         name=product_data.name,
         description=product_data.description,
+        category=product_data.category,
         price=product_data.price,
         stock_quantity=product_data.stock_quantity,
     )
@@ -41,7 +42,12 @@ def get_product(product_id: int, uow: UnitOfWork) -> ProductRead | None:
 
 
 def list_products(
-    uow: UnitOfWork, page: int | None = None, per_page: int | None = None
+    uow: UnitOfWork,
+    page: int | None = None,
+    per_page: int | None = None,
+    query: str | None = None,
+    category: str | None = None,
+    sort: str | None = None,
 ) -> list[ProductRead]:
     """List products optionally paginated.
 
@@ -52,11 +58,47 @@ def list_products(
     if page is not None and per_page is not None:
         # convert to zero-based offset
         offset = (page - 1) * per_page
-        products = repository.list(offset=offset, limit=per_page)
+        products = repository.list(
+            offset=offset,
+            limit=per_page,
+            query=query,
+            category=category,
+            sort=sort,
+        )
     else:
-        products = repository.list()
+        products = repository.list(query=query, category=category, sort=sort)
 
     return [ProductRead.model_validate(product) for product in products]
+
+
+def search_products(
+    uow: UnitOfWork,
+    query: str,
+    page: int | None = None,
+    per_page: int | None = None,
+) -> list[ProductRead]:
+    """Search products by query across product fields."""
+    return list_products(uow, page=page, per_page=per_page, query=query)
+
+
+def filter_products(
+    uow: UnitOfWork,
+    category: str,
+    page: int | None = None,
+    per_page: int | None = None,
+) -> list[ProductRead]:
+    """Filter products by category."""
+    return list_products(uow, page=page, per_page=per_page, category=category)
+
+
+def sort_products(
+    uow: UnitOfWork,
+    sort: str,
+    page: int | None = None,
+    per_page: int | None = None,
+) -> list[ProductRead]:
+    """Sort products by a supported ordering key."""
+    return list_products(uow, page=page, per_page=per_page, sort=sort)
 
 
 def update_product(

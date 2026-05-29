@@ -17,6 +17,10 @@ from backend.app.modules.auth import (
     use_cases as auth_use_cases,
 )
 from backend.app.modules.auth.deps import get_current_user_id
+from backend.app.modules.user import (
+    schemas as user_schemas,
+    use_cases as user_use_cases,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -104,3 +108,16 @@ def refresh_endpoint(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
         ) from e
+
+
+@router.get("/session", response_model=user_schemas.UserRead)
+def session_endpoint(
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    user_id: Annotated[int, Depends(get_current_user_id)],
+) -> user_schemas.UserRead:
+    """Return the current authenticated user's session/profile.
+
+    Uses the same access rules as `get_user` (owner or admin). Returns
+    the `UserRead` schema for the authenticated user.
+    """
+    return user_use_cases.get_user(user_id=user_id, uow=uow, requesting_user_id=user_id)

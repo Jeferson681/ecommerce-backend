@@ -1,6 +1,6 @@
 """Product repository for managing product data."""
 
-from sqlalchemy import select, update as sa_update
+from sqlalchemy import desc, or_, select, update as sa_update
 from sqlalchemy.orm import Session
 
 from backend.app.modules.product.domain.models import Product
@@ -25,13 +25,39 @@ class ProductRepository:
         return result.scalar_one_or_none()
 
     def list(
-        self, offset: int | None = None, limit: int | None = None
+        self,
+        offset: int | None = None,
+        limit: int | None = None,
+        query: str | None = None,
+        category: str | None = None,
+        sort: str | None = None,
     ) -> list[Product]:
-        """Return products optionally paginated by offset/limit.
+        """Return products optionally filtered, sorted and paginated.
 
         If `offset`/`limit` are None the full list is returned.
         """
-        statement = select(Product).order_by(Product.id)
+        statement = select(Product)
+
+        if query:
+            query_value = f"%{query.strip()}%"
+            statement = statement.where(
+                or_(
+                    Product.name.ilike(query_value),
+                    Product.description.ilike(query_value),
+                )
+            )
+
+        if category:
+            statement = statement.where(Product.category == category.strip())
+
+        if sort == "price_asc":
+            statement = statement.order_by(Product.price.asc(), Product.id.asc())
+        elif sort == "price_desc":
+            statement = statement.order_by(desc(Product.price), Product.id.asc())
+        elif sort == "newest":
+            statement = statement.order_by(desc(Product.created_at), desc(Product.id))
+        else:
+            statement = statement.order_by(Product.id)
 
         if offset is not None:
             statement = statement.offset(offset)

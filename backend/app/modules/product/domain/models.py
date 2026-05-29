@@ -19,6 +19,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     stock_quantity: Mapped[int] = mapped_column(nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)

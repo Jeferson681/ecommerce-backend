@@ -1,6 +1,6 @@
 """Product router."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
@@ -43,11 +43,24 @@ def get_product_endpoint(
 @router.get("", response_model=list[ProductRead])
 def list_products_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    q: Annotated[str | None, Query(min_length=1)] = None,
+    category: Annotated[str | None, Query(min_length=1)] = None,
+    sort: Annotated[
+        Literal["price_asc", "price_desc", "newest"] | None,
+        Query(),
+    ] = None,
     page: Annotated[int | None, Query(ge=1)] = None,
     per_page: Annotated[int | None, Query(ge=1, le=100)] = None,
 ) -> list[ProductRead]:
     """Endpoint to list products. Supports optional pagination via `page` and `per_page` query params."""
-    return list_products(uow, page=page, per_page=per_page)
+    return list_products(
+        uow,
+        page=page,
+        per_page=per_page,
+        query=q,
+        category=category,
+        sort=sort,
+    )
 
 
 @router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)

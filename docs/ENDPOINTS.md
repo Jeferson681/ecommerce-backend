@@ -29,6 +29,9 @@ Snapshot: current implemented API
 Query params supported today:
 - `page`
 - `per_page`
+- `q`
+- `category`
+- `sort`
 
 ## Cart
 

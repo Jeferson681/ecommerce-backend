@@ -203,3 +203,38 @@ def test_get_users_me_with_invalid_token() -> None:
     resp = client.get("/users/me", headers=headers)
 
     assert resp.status_code == 401
+
+
+def test_get_auth_session_with_valid_token() -> None:
+    """Test GET /auth/session returns current user with valid token."""
+    test_password = "Password123!"
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Rui",
+            "last_name": "Alves",
+            "email": "rui@mail.com",
+            "password": test_password,
+        },
+    )
+    assert create_resp.status_code == 201
+
+    login_payload = {"email": "rui@mail.com", "password": test_password}
+    login_resp = client.post("/auth/token", json=login_payload)
+    assert login_resp.status_code == 200
+
+    access_token = login_resp.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    session_resp = client.get("/auth/session", headers=headers)
+
+    assert session_resp.status_code == 200
+    body = session_resp.json()
+    assert body["email"] == "rui@mail.com"
+
+
+def test_get_auth_session_without_token() -> None:
+    """Test GET /auth/session without token returns 401."""
+    resp = client.get("/auth/session")
+
+    assert resp.status_code == 401
