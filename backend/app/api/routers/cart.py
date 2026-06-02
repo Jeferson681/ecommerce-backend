@@ -17,6 +17,7 @@ from backend.app.modules.cart.schemas import (
 from backend.app.modules.cart.use_cases import (
     add_item,
     get_cart,
+    merge_cart_items,
     remove_item,
     update_item,
 )
@@ -83,6 +84,23 @@ def remove_item_endpoint(
 ) -> None:
     try:
         remove_item(item_id, user_id, uow)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=Messages.INTERNAL_SERVER_ERROR,
+        ) from e
+
+
+@router.post("/merge", response_model=CartRead)
+def merge_cart_endpoint(
+    items: list[CartItemCreate],
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> CartRead:
+    try:
+        return merge_cart_items(items, user_id, uow)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:

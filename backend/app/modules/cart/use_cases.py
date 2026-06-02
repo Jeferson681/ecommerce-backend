@@ -116,3 +116,54 @@ def _get_cart_item_or_raise(
         raise NotFoundError(Messages.CART_ITEM_NOT_FOUND)
 
     return cart_item
+
+
+def merge_cart_items(
+    items: list[CartItemCreate], user_id: int, uow: UnitOfWork
+) -> CartRead:
+    """Merge anonymous cart items into the authenticated user's cart.
+
+    This is the standard merge flow used after login: the client sends the
+    anonymous/local cart items and they are merged into the server-side cart.
+    Merge strategy: sum quantities for matching `product_id`.
+    """
+    cart_repository = CartRepository(uow.session)
+    cart_item_repository = CartItemRepository(uow.session)
+
+    try:
+        cart = _get_or_create_cart(cart_repository, user_id)
+
+        for item in items:
+            existing = cart_item_repository.get_by_cart_and_product(
+                cart.id, item.product_id
+            )
+
+            if existing is None:
+                cart_item_repository.create(
+                    CartItem(
+                        cart_id=cart.id,
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                    )
+                )
+            else:
+                existing.quantity += item.quantity
+                cart_item_repository.update(existing)
+
+        uow.commit()
+
+    except Exception:
+        uow.rollback()
+        raise
+
+    refreshed = cart_repository.get_by_id(cart.id)
+    return CartRead.model_validate(refreshed)
+
+
+def validate_cart_integrity(cart: Cart) -> bool:
+    """Lightweight placeholder for cart integrity checks.
+
+    Real checks may validate product existence, availability and stock
+    consistency. Keep as a small helper to be expanded when needed.
+    """
+    return True
