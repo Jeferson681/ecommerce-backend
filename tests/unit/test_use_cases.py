@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -18,7 +18,7 @@ class FakePayment:
         self.failure_reason = None
         self.provider = "stripe"
         self.amount = Decimal("1.00")
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -76,4 +76,7 @@ def test_process_provider_webhook_success(monkeypatch):
 
 def test_process_provider_webhook_missing_provider_id_raises():
     with pytest.raises(PydanticValidationError):
-        PaymentWebhookPayload(status="approved")
+        PaymentWebhookPayload(
+            provider_payment_id="",
+            status="approved",
+        )

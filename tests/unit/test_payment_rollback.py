@@ -12,7 +12,7 @@ from backend.app.modules.payment.schemas import PaymentCreate
 class BadGateway:
     name = "bad"
 
-    def process_payment(self, *, order_id, user_id, amount, idempotency_key=None):
+    def process_payment(self, *, request, idempotency_key=None):
         raise RuntimeError("gateway down")
 
 

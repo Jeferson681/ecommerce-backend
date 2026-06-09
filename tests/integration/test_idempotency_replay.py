@@ -45,11 +45,19 @@ def test_checkout_then_replay_returns_same() -> None:
 
     key = "replay-key-1"
 
-    resp1 = client.post("/orders/checkout", headers={"Idempotency-Key": key})
+    resp1 = client.post(
+        "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
+        headers={"Idempotency-Key": key},
+    )
     assert resp1.status_code == 201
     body1 = resp1.json()
 
-    resp2 = client.post("/orders/checkout", headers={"Idempotency-Key": key})
+    resp2 = client.post(
+        "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
+        headers={"Idempotency-Key": key},
+    )
     assert resp2.status_code == 201
     body2 = resp2.json()
 

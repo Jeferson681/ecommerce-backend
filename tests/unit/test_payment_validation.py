@@ -7,6 +7,7 @@ import pytest
 
 from backend.app.core.exceptions import NotFoundError, ValidationError
 from backend.app.modules.payment import payment_service as svc, use_cases
+from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
 from backend.app.modules.payment.schemas import PaymentCreate
 
 
@@ -30,6 +31,7 @@ def test_process_payment_rejects_mismatched_idempotency_inputs(monkeypatch) -> N
                 commit=lambda: None,
                 rollback=lambda: None,
             ),
+            gateway=StripeGateway(),
             idempotency_key="only-key",
             request_hash=None,
         )

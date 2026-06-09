@@ -125,6 +125,7 @@ def test_transaction_rollback_on_exception(monkeypatch):
     # Attempt checkout should fail and rollback: cart should remain and product stock unchanged
     r2 = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "rollback-checkout",
@@ -175,6 +176,7 @@ def test_concurrent_checkouts_no_oversell():
         token, idem_key = item
         res = client.post(
             "/orders/checkout",
+            json={"payment_method_id": "pm_card_visa"},
             headers={
                 "Authorization": f"Bearer {token}",
                 "Idempotency-Key": idem_key,
@@ -214,6 +216,7 @@ def test_idempotency_risk_duplicate_orders():
     # Call checkout twice (simulating a retry) -- current system doesn't implement idempotency
     r1 = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "retry-order-1",
@@ -221,6 +224,7 @@ def test_idempotency_risk_duplicate_orders():
     )
     r2 = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "retry-order-1",

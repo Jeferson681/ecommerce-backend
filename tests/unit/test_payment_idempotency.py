@@ -5,6 +5,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from backend.app.modules.payment import use_cases
+from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
 from backend.app.modules.payment.schemas import PaymentCreate, PaymentRead
 
 
@@ -45,6 +46,7 @@ def test_process_payment_replays_raw_payload_once(monkeypatch):
             commit=lambda: None,
             rollback=lambda: None,
         ),
+        gateway=StripeGateway(),
         requesting_user_id=30,
         idempotency_key="pay-1",
         request_hash="hash-1",

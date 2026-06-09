@@ -65,6 +65,7 @@ def test_checkout_endpoint_creates_order_and_clears_cart() -> None:
 
     resp = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "order-checkout-1",

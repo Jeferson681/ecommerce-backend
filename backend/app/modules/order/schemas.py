@@ -26,6 +26,17 @@ class OrderRead(BaseModel):
 
     id: int
     user_id: int
+    status: str
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRead] = Field(default_factory=list)
+
+
+class CheckoutRequest(BaseModel):
+    """Checkout request body.
+
+    Frontend sends payment_method_id obtained from Stripe Elements.
+    The backend never receives raw card data.
+    """
+
+    payment_method_id: str | None = Field(None, min_length=1)

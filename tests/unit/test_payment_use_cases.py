@@ -100,10 +100,18 @@ def test_process_payment_happy_path(monkeypatch) -> None:
         def save_response(self, key: str, user_id: int, status: int, body: str):
             pass
 
+        def delete_by_key(self, key: str, user_id: int) -> None:
+            pass
+
     class Gateway:
         name = "stripe"
 
-        def process_payment(self, *, order_id, user_id, amount, idempotency_key=None):
+        def process_payment(
+            self,
+            *,
+            request,
+            idempotency_key=None,
+        ):
             from backend.app.modules.payment.gateway.base import PaymentGatewayResult
 
             return PaymentGatewayResult(
