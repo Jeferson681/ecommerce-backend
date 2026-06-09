@@ -1,6 +1,5 @@
 """Use cases for product management."""
 
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
@@ -11,6 +10,7 @@ from backend.app.modules.product.schemas import (
     ProductRead,
     ProductUpdate,
 )
+from backend.app.uow.unit_of_work import UnitOfWork
 
 
 def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:

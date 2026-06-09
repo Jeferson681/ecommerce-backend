@@ -5,8 +5,6 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.product.schemas import (
@@ -21,6 +19,8 @@ from backend.app.modules.product.use_cases import (
     list_products,
     update_product,
 )
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/products", tags=["products"])
 

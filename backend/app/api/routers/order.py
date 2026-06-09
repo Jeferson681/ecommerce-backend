@@ -8,12 +8,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
+from backend.app.application.use_cases.checkout.checkout import checkout
 from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.modules.auth.deps import get_current_user_id
-from backend.app.modules.order.schemas import OrderRead
-from backend.app.modules.order.use_cases import checkout, get_order, list_orders
+from backend.app.modules.order.schemas import CheckoutRequest, OrderRead
+from backend.app.modules.order.use_cases import get_order, list_orders
+from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -23,6 +25,7 @@ async def checkout_endpoint(
     request: Request,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    body: CheckoutRequest,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> OrderRead:
     """Complete checkout: convert cart items into an order."""
@@ -35,7 +38,22 @@ async def checkout_endpoint(
         request_hash.update(body_bytes)
         rh = request_hash.hexdigest()
 
-        return checkout(user_id, uow, idempotency_key=idempotency_key, request_hash=rh)
+        if body.payment_method_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="payment_method_id is required",
+            )
+
+        gateway = StripeGateway()
+
+        return checkout(
+            user_id,
+            body.payment_method_id,
+            uow,
+            gateway=gateway,
+            idempotency_key=idempotency_key,
+            request_hash=rh,
+        )
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except ValidationError as e:

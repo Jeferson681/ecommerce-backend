@@ -5,11 +5,11 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.modules.auth.tokens import decode_access_token
 from backend.app.modules.user.domain.models import UserRole
 from backend.app.modules.user.repositories.user_repository import UserRepository
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 
 def get_current_user_id(authorization: Annotated[str | None, Header()] = None) -> int:

@@ -7,8 +7,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.order.repositories.order_repository import OrderRepository
@@ -17,6 +15,8 @@ from backend.app.modules.payment.repositories.payment_repository import (
     PaymentRepository,
 )
 from backend.app.modules.payment.schemas import PaymentRead
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

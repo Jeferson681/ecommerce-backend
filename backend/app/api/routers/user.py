@@ -5,8 +5,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
 from backend.app.modules.auth.deps import get_current_user_id, require_admin
 from backend.app.modules.user.schemas import (
@@ -23,6 +21,8 @@ from backend.app.modules.user.use_cases import (
     list_users as list_users_use_case,
     update_user as update_user_use_case,
 )
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/users", tags=["users"])
 

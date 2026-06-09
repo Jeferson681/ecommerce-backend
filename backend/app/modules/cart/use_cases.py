@@ -1,6 +1,5 @@
 """Cart use cases."""
 
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.cart.domain.models import Cart, CartItem
 from backend.app.modules.cart.repositories.cart_repository import (
@@ -13,6 +12,7 @@ from backend.app.modules.cart.schemas import (
     CartItemUpdate,
     CartRead,
 )
+from backend.app.uow.unit_of_work import UnitOfWork
 
 
 def get_cart(user_id: int, uow: UnitOfWork) -> CartRead:

@@ -1,6 +1,5 @@
 """Use cases for authentication."""
 
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import AuthenticationError, Messages
 from backend.app.modules.auth.schemas import TokenResponse
 from backend.app.modules.auth.security import verify_password
@@ -11,6 +10,7 @@ from backend.app.modules.auth.tokens import (
     decode_refresh_token,
 )
 from backend.app.modules.user.repositories.user_repository import UserRepository
+from backend.app.uow.unit_of_work import UnitOfWork
 
 
 def login(email: str, password: str, uow: UnitOfWork) -> TokenResponse:

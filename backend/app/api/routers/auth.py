@@ -9,8 +9,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import AuthenticationError
 from backend.app.modules.auth import (
     schemas as auth_schemas,
@@ -21,6 +19,8 @@ from backend.app.modules.user import (
     schemas as user_schemas,
     use_cases as user_use_cases,
 )
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

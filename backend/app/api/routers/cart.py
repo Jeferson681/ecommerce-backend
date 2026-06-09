@@ -4,8 +4,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.auth.deps import get_current_user_id
 from backend.app.modules.cart.schemas import (
@@ -21,6 +19,8 @@ from backend.app.modules.cart.use_cases import (
     remove_item,
     update_item,
 )
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/cart", tags=["cart"])
 
