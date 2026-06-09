@@ -1,20 +1,50 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import { useUser } from "@/modules/user/hooks/useUser";
+import { userService } from "@/modules/user/services/userService";
+import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
 
 type UserDetailPageProps = {
   userId: number;
 };
 
 export default function UserDetailPage({ userId }: UserDetailPageProps) {
-  const { data, isLoading, error } = useUser(userId);
+  const { data, isLoading, error, refetch } = useUser(userId);
+  const [toggleOpen, setToggleOpen] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+
+  async function handleToggleActive() {
+    if (!data) return;
+    setIsToggling(true);
+    setToggleError(null);
+    try {
+      await userService.update(userId, { is_active: !data.is_active });
+      setToggleOpen(false);
+      await refetch();
+    } catch (err) {
+      setToggleError(getUserErrorMessage(err));
+    } finally {
+      setIsToggling(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -22,11 +52,32 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
         title={isLoading ? "User" : data ? `User #${data.id}` : "User"}
         description="View user details"
         action={
-          <Button asChild variant="secondary">
-            <Link href={`/users/${userId}/edit`}>Edit</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {data ? (
+              <Button
+                variant={data.is_active ? "destructive" : "default"}
+                size="sm"
+                onClick={() => {
+                  setToggleError(null);
+                  setToggleOpen(true);
+                }}
+              >
+                {data.is_active ? "Deactivate" : "Activate"}
+              </Button>
+            ) : null}
+            <Button asChild variant="secondary" size="sm">
+              <Link href={`/users/${userId}/edit`}>Edit</Link>
+            </Button>
+          </div>
         }
       />
+
+      {toggleError ? (
+        <Alert className="border-red-200">
+          <AlertTitle>Action failed</AlertTitle>
+          <AlertDescription>{toggleError}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {error ? (
         <Alert className="border-red-200">
@@ -72,9 +123,39 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
         </CardContent>
       </Card>
 
-      <Button asChild variant="outline">
-        <Link href="/users">Back</Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button asChild variant="outline">
+          <Link href="/users">Back</Link>
+        </Button>
+      </div>
+
+      {/* Confirmation dialog for activating/deactivating user */}
+      <Dialog open={toggleOpen} onOpenChange={setToggleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{data?.is_active ? "Deactivate user" : "Activate user"}</DialogTitle>
+            <DialogDescription>
+              {data?.is_active
+                ? `This will deactivate ${data?.first_name ?? ""} ${data?.last_name ?? ""}. The user will lose access to their account.`
+                : `This will activate ${data?.first_name ?? ""} ${data?.last_name ?? ""}. The user will regain access to their account.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isToggling}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              variant={data?.is_active ? "destructive" : "default"}
+              onClick={handleToggleActive}
+              disabled={isToggling}
+            >
+              {isToggling ? "Saving..." : data?.is_active ? "Deactivate" : "Activate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -28,7 +28,6 @@ export function UserForm({ mode, initial, onSubmit, submitLabel }: UserFormProps
   const [lastName, setLastName] = useState(initial?.last_name ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
   const [password, setPassword] = useState("");
-  const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +57,6 @@ export function UserForm({ mode, initial, onSubmit, submitLabel }: UserFormProps
       } else {
         const payload: UserUpdateInput = {
           ...common,
-          is_active: isActive,
         };
         await onSubmit(payload);
       }
@@ -102,21 +100,6 @@ export function UserForm({ mode, initial, onSubmit, submitLabel }: UserFormProps
             placeholder="min 8 characters"
             type="password"
           />
-        </div>
-      ) : null}
-
-      {mode === "edit" ? (
-        <div className="flex items-center gap-2">
-          <input
-            id="is_active"
-            type="checkbox"
-            className="h-4 w-4"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <label htmlFor="is_active" className="text-sm">
-            Active
-          </label>
         </div>
       ) : null}
 

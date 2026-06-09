@@ -173,8 +173,8 @@ export const cartStorage = {
   },
 
   addItem(product: Product, quantity = 1): void {
-    const items = readItems();
-    const nextItems = items.map((item) =>
+    const previousItems = readItems();
+    const nextItems = previousItems.map((item) =>
       getStoredProductId(item) === product.id
         ? { ...normalizeItem(item), product, productId: product.id, quantity: item.quantity + quantity }
         : item
@@ -195,14 +195,18 @@ export const cartStorage = {
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
       void addCartItem(product.id, quantity)
         .then(() => refreshFromServer())
-        .catch(() => undefined);
+        .catch((err) => {
+          console.error("cartStorage: failed to sync addItem to server", err);
+          writeItems(previousItems);
+        });
     }
   },
 
   updateQuantity(productId: number, quantity: number): void {
     const cachedItem = findCachedItemByProductId(productId);
+    const previousItems = readItems();
 
-    const nextItems = readItems()
+    const nextItems = previousItems
       .map((item) =>
         getStoredProductId(item) === productId ? { ...normalizeItem(item), quantity } : item
       )
@@ -215,11 +219,17 @@ export const cartStorage = {
         if (quantity > 0) {
           void updateCartItem(cachedItem.id, quantity)
             .then(() => refreshFromServer())
-            .catch(() => undefined);
+            .catch((err) => {
+              console.error("cartStorage: failed to sync updateQuantity to server", err);
+              writeItems(previousItems);
+            });
         } else {
           void removeCartItem(cachedItem.id)
             .then(() => refreshFromServer())
-            .catch(() => undefined);
+            .catch((err) => {
+              console.error("cartStorage: failed to sync removeItem to server", err);
+              writeItems(previousItems);
+            });
         }
       } else {
         void refreshFromServer();
@@ -229,15 +239,19 @@ export const cartStorage = {
 
   removeItem(productId: number): void {
     const cachedItem = findCachedItemByProductId(productId);
+    const previousItems = readItems();
 
-    const nextItems = readItems().filter((item) => getStoredProductId(item) !== productId);
+    const nextItems = previousItems.filter((item) => getStoredProductId(item) !== productId);
     writeItems(nextItems);
 
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
       if (cachedItem?.id) {
         void removeCartItem(cachedItem.id)
           .then(() => refreshFromServer())
-          .catch(() => undefined);
+          .catch((err) => {
+            console.error("cartStorage: failed to sync removeItem to server", err);
+            writeItems(previousItems);
+          });
       } else {
         void refreshFromServer();
       }

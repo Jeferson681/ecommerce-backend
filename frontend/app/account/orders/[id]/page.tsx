@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, use, useState } from "react";
 
 import { orderService } from "@/modules/order/services/orderService";
 import { getUserErrorMessage } from "@/core/exceptions/userMessage";
@@ -18,7 +18,8 @@ function formatPrice(value: string) {
   return value;
 }
 
-export default function Page({ params }: { params: { id: string } }) {
+export default function Page({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const [order, setOrder] = useState<Order | null>(null);
   const [productMap, setProductMap] = useState<Map<number, Product>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,7 @@ export default function Page({ params }: { params: { id: string } }) {
 
     async function load() {
       try {
-        const orderData = await orderService.get(Number(params.id));
+        const orderData = await orderService.get(Number(resolvedParams.id));
         if (cancelled) return;
 
         // Resolve product names for order items
@@ -63,7 +64,7 @@ export default function Page({ params }: { params: { id: string } }) {
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   if (loading) return <div className="text-sm text-zinc-600">Loading...</div>;
   if (error) return <div className="rounded-sm border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{error}</div>;

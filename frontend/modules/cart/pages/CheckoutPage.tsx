@@ -15,6 +15,8 @@ import { orderService } from "@/modules/order/services/orderService";
 import { getUserErrorMessage } from "@/core/exceptions/userMessage";
 import { createIdempotencyKey } from "@/core/utils/idempotency";
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
+import { StripeProvider } from "@/modules/payment/components/StripeProvider";
+import { PaymentForm } from "@/modules/payment/components/PaymentForm";
 
 import { PageHeader } from "@/shared/components/PageHeader";
 import { Button } from "@/shared/components/ui/button";
@@ -22,6 +24,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 
 type CheckoutState =
   | { phase: "idle" }
+  | { phase: "collecting_payment" }
   | { phase: "ordering" }
   | { phase: "success" }
   | { phase: "failed"; reason: string; canRetry: boolean };
@@ -37,6 +40,9 @@ export default function CheckoutPage() {
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({
     phase: "idle",
   });
+
+  /** payment_method_id received from Stripe Elements, kept for retries. */
+  const paymentMethodIdRef = useRef<string | null>(null);
 
   // Idempotency key is generated once per logical attempt and reused on retry.
   const idempotencyKeyRef = useRef<string | null>(null);
@@ -85,17 +91,24 @@ export default function CheckoutPage() {
     );
   }
 
-  async function handlePlaceOrder() {
+  /** Called by PaymentForm once Stripe generates the payment_method_id. */
+  function handlePaymentMethodReady(paymentMethodId: string) {
+    paymentMethodIdRef.current = paymentMethodId;
     // Generate idempotency key once per logical attempt.
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current = createIdempotencyKey();
     }
+    placeOrder();
+  }
+
+  async function placeOrder() {
     const idempotencyKey = idempotencyKeyRef.current;
+    const paymentMethodId = paymentMethodIdRef.current;
 
     setCheckoutState({ phase: "ordering" });
 
     try {
-      await orderService.checkout(idempotencyKey);
+      await orderService.checkout(idempotencyKey ?? undefined, paymentMethodId ?? undefined);
       clear();
       setCheckoutState({ phase: "success" });
     } catch (err) {
@@ -110,6 +123,7 @@ export default function CheckoutPage() {
         });
       } else {
         idempotencyKeyRef.current = null;
+        paymentMethodIdRef.current = null;
         setCheckoutState({
           phase: "failed",
           reason: message,
@@ -123,12 +137,13 @@ export default function CheckoutPage() {
     if (checkoutState.phase !== "failed" || !checkoutState.canRetry) return;
 
     const idempotencyKey = idempotencyKeyRef.current;
+    const paymentMethodId = paymentMethodIdRef.current;
     if (!idempotencyKey) return;
 
     setCheckoutState({ phase: "ordering" });
 
     try {
-      await orderService.checkout(idempotencyKey);
+      await orderService.checkout(idempotencyKey, paymentMethodId ?? undefined);
       clear();
       setCheckoutState({ phase: "success" });
     } catch (err) {
@@ -141,6 +156,7 @@ export default function CheckoutPage() {
         });
       } else {
         idempotencyKeyRef.current = null;
+        paymentMethodIdRef.current = null;
         setCheckoutState({
           phase: "failed",
           reason: getUserErrorMessage(err),
@@ -150,8 +166,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const isProcessing =
-    checkoutState.phase === "ordering";
+  const isProcessing = checkoutState.phase === "ordering";
 
   if (checkoutState.phase === "success") {
     return <SuccessConfirmation />;
@@ -172,88 +187,61 @@ export default function CheckoutPage() {
     <div className="space-y-4">
       <PageHeader title="Checkout" />
 
-      {isEmpty ? (
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        {/* Payment section */}
         <Card>
-          <CardContent className="space-y-4 p-6">
-            <p className="text-sm text-zinc-600">
-              Your cart is empty. Add items before checking out.
-            </p>
-            <Button asChild>
-              <Link href="/products">Browse products</Link>
-            </Button>
+          <CardContent className="p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              Payment method
+            </h2>
+
+            {checkoutState.phase === "idle" ? (
+              <StripeProvider>
+                <PaymentForm
+                  onPaymentMethodReady={handlePaymentMethodReady}
+                  disabled={isProcessing}
+                />
+              </StripeProvider>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card>
-            <CardContent className="p-6">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handlePlaceOrder();
-                }}
-                className="space-y-4"
+
+        {/* Order summary */}
+        <Card className="h-fit border-zinc-200 bg-white shadow-sm">
+          <CardContent className="space-y-3 p-6">
+            <div className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              Order Summary
+            </div>
+            {items.map((item) => (
+              <div
+                key={item.product.id}
+                className="flex items-center justify-between text-sm text-zinc-600"
               >
-                <div className="rounded-sm border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-                  <p className="mb-1 font-medium text-zinc-800">
-                    Order summary
-                  </p>
-                  <p>
-                    You are about to place an order for {items.length} item
-                    {items.length !== 1 ? "s" : ""}.
-                  </p>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full rounded-sm bg-[#ffd814] text-sm font-medium text-[#111] hover:bg-[#f7ca00] border-0"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Place your order"
+                <span className="mr-2 truncate">
+                  {item.product.name} &times; {item.quantity}
+                </span>
+                <span className="shrink-0">
+                  {formatMoney(
+                    Number(item.product.price) * item.quantity
                   )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="h-fit border-zinc-200 bg-white shadow-sm">
-            <CardContent className="space-y-3 p-6">
-              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                Order Summary
+                </span>
               </div>
-              {items.map((item) => (
-                <div
-                  key={item.product.id}
-                  className="flex items-center justify-between text-sm text-zinc-600"
-                >
-                  <span className="mr-2 truncate">
-                    {item.product.name} &times; {item.quantity}
-                  </span>
-                  <span className="shrink-0">
-                    {formatMoney(
-                      Number(item.product.price) * item.quantity
-                    )}
-                  </span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-sm text-zinc-600">
-                <span>Shipping</span>
-                <span className="font-medium text-green-700">FREE</span>
-              </div>
-              <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-base font-semibold">
-                <span>Total</span>
-                <span>{formatMoney(subtotal)}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            ))}
+            <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-sm text-zinc-600">
+              <span>Shipping</span>
+              <span className="font-medium text-green-700">FREE</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-base font-semibold">
+              <span>Total</span>
+              <span>{formatMoney(subtotal)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
