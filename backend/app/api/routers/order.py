@@ -9,9 +9,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from backend.app.application.use_cases.checkout.checkout import checkout
+from backend.app.application.use_cases.retry_payment.retry_payment import retry_payment
 from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.modules.auth.deps import get_current_user_id
-from backend.app.modules.order.schemas import CheckoutRequest, OrderRead
+from backend.app.modules.order.schemas import OrderRead, PaymentMethodRequest
 from backend.app.modules.order.use_cases import get_order, list_orders
 from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
 from backend.app.uow.dependencies import get_uow
@@ -25,7 +26,7 @@ async def checkout_endpoint(
     request: Request,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
-    body: CheckoutRequest,
+    body: PaymentMethodRequest,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> OrderRead:
     """Complete checkout: convert cart items into an order."""
@@ -65,6 +66,27 @@ async def checkout_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e
+
+
+@router.post(
+    "/orders/{order_id}/retry-payment",
+    response_model=OrderRead,
+)
+def retry_payment_endpoint(
+    order_id: int,
+    payload: PaymentMethodRequest,
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+):
+    gateway = StripeGateway()
+
+    return retry_payment(
+        user_id=user_id,
+        order_id=order_id,
+        payment_method_id=payload.payment_method_id,
+        gateway=gateway,
+        uow=uow,
+    )
 
 
 @router.get("", response_model=list[OrderRead])

@@ -31,6 +31,7 @@ from backend.app.uow.unit_of_work import UnitOfWork
 
 def retry_payment(
     user_id: int,
+    order_id: int,
     uow: UnitOfWork,
     *,
     payment_method_id: str,
@@ -68,6 +69,7 @@ def retry_payment(
     order, payment = get_pending_order_and_failed_payment(
         order_repository=order_repository,
         payment_repository=payment_repository,
+        order_id=order_id,
         user_id=user_id,
     )
 
@@ -93,4 +95,5 @@ def retry_payment(
     )
 
     uow.commit()
+
     return OrderRead.model_validate(order)

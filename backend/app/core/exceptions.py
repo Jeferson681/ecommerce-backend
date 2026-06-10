@@ -36,6 +36,8 @@ class Messages:
 
     NO_FAILED_PAYMENT_FOUND = "No failed payment found for the order."
 
+    ORDER_IS_NOT_PENDING = "Order is not in the pending status."
+
 
 class NotFoundError(AppError):
     """Raised when a resource is not found."""
