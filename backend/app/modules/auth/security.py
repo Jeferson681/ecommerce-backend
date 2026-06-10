@@ -1,21 +1,9 @@
-"""Security utilities for authentication and authorization for Users."""
+"""Security utilities for authentication and authorization for Users.
 
-import bcrypt
+Re-exports from core.security to maintain backward compatibility.
+New code should import directly from backend.app.core.security.
+"""
 
+from backend.app.core.security import hash_password, verify_password  # noqa: F401
 
-def hash_password(password: str) -> str:
-    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-    return hashed.decode("utf-8")
-
-
-def verify_password(
-    plain_password: str,
-    hashed_password: str,
-) -> bool:
-    try:
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"),
-            hashed_password.encode("utf-8"),
-        )
-    except ValueError:
-        return False
+__all__ = ["hash_password", "verify_password"]

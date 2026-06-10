@@ -6,6 +6,13 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _normalize_text(value: str | None) -> str | None:
+    """Strip whitespace from a string (or pass None through)."""
+    if value is None:
+        return None
+    return value.strip()
+
+
 class ProductCreate(BaseModel):
     name: str = Field(..., min_length=1)
     description: str | None = Field(None, min_length=1, max_length=1000)
@@ -16,9 +23,7 @@ class ProductCreate(BaseModel):
     @field_validator("name", "description", "category", mode="before")
     @classmethod
     def normalize_strings(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return value.strip()
+        return _normalize_text(value)
 
 
 class ProductUpdate(BaseModel):
@@ -32,9 +37,7 @@ class ProductUpdate(BaseModel):
     @field_validator("name", "description", "category", mode="before")
     @classmethod
     def normalize_strings(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return value.strip()
+        return _normalize_text(value)
 
 
 class ProductRead(BaseModel):

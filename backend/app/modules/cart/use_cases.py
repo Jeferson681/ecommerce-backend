@@ -17,33 +17,28 @@ from backend.app.uow.unit_of_work import UnitOfWork
 
 def get_cart(user_id: int, uow: UnitOfWork) -> CartRead:
     repository = CartRepository(uow.session)
-    cart = _get_cart_or_raise(repository, user_id)
+    cart = get_cart_or_raise(repository, user_id)
 
     return CartRead.model_validate(cart)
 
 
-def add_item(item_data: CartItemCreate, user_id: int, uow: UnitOfWork) -> CartItemRead:
+def add_item(
+    item_data: CartItemCreate,
+    user_id: int,
+    uow: UnitOfWork,
+) -> CartItemRead:
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
 
     try:
-        cart = _get_or_create_cart(cart_repository, user_id)
+        cart = get_or_create_cart(cart_repository, user_id)
 
-        cart_item = cart_item_repository.get_by_cart_and_product(
-            cart.id, item_data.product_id
+        cart_item = _upsert_cart_item(
+            cart_item_repository=cart_item_repository,
+            cart_id=cart.id,
+            product_id=item_data.product_id,
+            quantity=item_data.quantity,
         )
-
-        if cart_item is None:
-            cart_item = cart_item_repository.create(
-                CartItem(
-                    cart_id=cart.id,
-                    product_id=item_data.product_id,
-                    quantity=item_data.quantity,
-                )
-            )
-        else:
-            cart_item.quantity += item_data.quantity
-            cart_item = cart_item_repository.update(cart_item)
 
         uow.commit()
 
@@ -59,8 +54,8 @@ def update_item(
 ) -> CartItemRead:
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
-    cart = _get_cart_or_raise(cart_repository, user_id)
-    cart_item = _get_cart_item_or_raise(cart_item_repository, cart.id, item_id)
+    cart = get_cart_or_raise(cart_repository, user_id)
+    cart_item = get_cart_item_or_raise(cart_item_repository, cart.id, item_id)
 
     try:
         cart_item.quantity = item_data.quantity
@@ -77,8 +72,8 @@ def update_item(
 def remove_item(item_id: int, user_id: int, uow: UnitOfWork) -> None:
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
-    cart = _get_cart_or_raise(cart_repository, user_id)
-    cart_item = _get_cart_item_or_raise(cart_item_repository, cart.id, item_id)
+    cart = get_cart_or_raise(cart_repository, user_id)
+    cart_item = get_cart_item_or_raise(cart_item_repository, cart.id, item_id)
 
     try:
         cart_item_repository.delete(cart_item)
@@ -89,7 +84,7 @@ def remove_item(item_id: int, user_id: int, uow: UnitOfWork) -> None:
         raise
 
 
-def _get_or_create_cart(repository: CartRepository, user_id: int) -> Cart:
+def get_or_create_cart(repository: CartRepository, user_id: int) -> Cart:
     cart = repository.get_by_user_id(user_id)
 
     if cart is None:
@@ -98,7 +93,7 @@ def _get_or_create_cart(repository: CartRepository, user_id: int) -> Cart:
     return cart
 
 
-def _get_cart_or_raise(repository: CartRepository, user_id: int) -> Cart:
+def get_cart_or_raise(repository: CartRepository, user_id: int) -> Cart:
     cart = repository.get_by_user_id(user_id)
 
     if cart is None:
@@ -107,7 +102,7 @@ def _get_cart_or_raise(repository: CartRepository, user_id: int) -> Cart:
     return cart
 
 
-def _get_cart_item_or_raise(
+def get_cart_item_or_raise(
     repository: CartItemRepository, cart_id: int, item_id: int
 ) -> CartItem:
     cart_item = repository.get_by_id(item_id)
@@ -119,36 +114,23 @@ def _get_cart_item_or_raise(
 
 
 def merge_cart_items(
-    items: list[CartItemCreate], user_id: int, uow: UnitOfWork
+    items: list[CartItemCreate],
+    user_id: int,
+    uow: UnitOfWork,
 ) -> CartRead:
-    """Merge anonymous cart items into the authenticated user's cart.
-
-    This is the standard merge flow used after login: the client sends the
-    anonymous/local cart items and they are merged into the server-side cart.
-    Merge strategy: sum quantities for matching `product_id`.
-    """
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
 
     try:
-        cart = _get_or_create_cart(cart_repository, user_id)
+        cart = get_or_create_cart(cart_repository, user_id)
 
         for item in items:
-            existing = cart_item_repository.get_by_cart_and_product(
-                cart.id, item.product_id
+            _upsert_cart_item(
+                cart_item_repository=cart_item_repository,
+                cart_id=cart.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
             )
-
-            if existing is None:
-                cart_item_repository.create(
-                    CartItem(
-                        cart_id=cart.id,
-                        product_id=item.product_id,
-                        quantity=item.quantity,
-                    )
-                )
-            else:
-                existing.quantity += item.quantity
-                cart_item_repository.update(existing)
 
         uow.commit()
 
@@ -157,13 +139,30 @@ def merge_cart_items(
         raise
 
     refreshed = cart_repository.get_by_id(cart.id)
+
     return CartRead.model_validate(refreshed)
 
 
-def validate_cart_integrity(cart: Cart) -> bool:
-    """Lightweight placeholder for cart integrity checks.
+def _upsert_cart_item(
+    cart_item_repository: CartItemRepository,
+    cart_id: int,
+    product_id: int,
+    quantity: int,
+) -> CartItem:
+    cart_item = cart_item_repository.get_by_cart_and_product(
+        cart_id,
+        product_id,
+    )
 
-    Real checks may validate product existence, availability and stock
-    consistency. Keep as a small helper to be expanded when needed.
-    """
-    return True
+    if cart_item is None:
+        return cart_item_repository.create(
+            CartItem(
+                cart_id=cart_id,
+                product_id=product_id,
+                quantity=quantity,
+            )
+        )
+
+    cart_item.quantity += quantity
+
+    return cart_item_repository.update(cart_item)

@@ -30,14 +30,10 @@ def get_product_endpoint(
     product_id: int, uow: Annotated[UnitOfWork, Depends(get_uow)]
 ) -> ProductRead:
     """Endpoint to retrieve a product by its ID."""
-    product = get_product(product_id, uow)
-
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.PRODUCT_NOT_FOUND
-        )
-
-    return product
+    try:
+        return get_product(product_id, uow)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.get("", response_model=list[ProductRead])

@@ -34,11 +34,15 @@ def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
     return ProductRead.model_validate(product)
 
 
-def get_product(product_id: int, uow: UnitOfWork) -> ProductRead | None:
+def get_product(product_id: int, uow: UnitOfWork) -> ProductRead:
     """Retrieve a product by its ID."""
     repository = ProductRepository(uow.session)
     product = repository.get_by_id(product_id)
-    return ProductRead.model_validate(product) if product else None
+
+    if not product:
+        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+
+    return ProductRead.model_validate(product)
 
 
 def list_products(
@@ -69,36 +73,6 @@ def list_products(
         products = repository.list(query=query, category=category, sort=sort)
 
     return [ProductRead.model_validate(product) for product in products]
-
-
-def search_products(
-    uow: UnitOfWork,
-    query: str,
-    page: int | None = None,
-    per_page: int | None = None,
-) -> list[ProductRead]:
-    """Search products by query across product fields."""
-    return list_products(uow, page=page, per_page=per_page, query=query)
-
-
-def filter_products(
-    uow: UnitOfWork,
-    category: str,
-    page: int | None = None,
-    per_page: int | None = None,
-) -> list[ProductRead]:
-    """Filter products by category."""
-    return list_products(uow, page=page, per_page=per_page, category=category)
-
-
-def sort_products(
-    uow: UnitOfWork,
-    sort: str,
-    page: int | None = None,
-    per_page: int | None = None,
-) -> list[ProductRead]:
-    """Sort products by a supported ordering key."""
-    return list_products(uow, page=page, per_page=per_page, sort=sort)
 
 
 def update_product(

@@ -14,6 +14,7 @@ from backend.app.modules.order.repositories.order_repository import (
 )
 from backend.app.modules.order.schemas import OrderRead
 from backend.app.modules.user.repositories.user_repository import UserRepository
+from backend.app.modules.user.use_cases import is_admin
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
@@ -33,17 +34,13 @@ def get_order(
         raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     is_owner = order.user_id == user_id
-    is_admin = False
 
-    if not is_owner and requesting_user_id is not None:
+    if not is_owner:
+        if requesting_user_id is None:
+            raise NotFoundError(Messages.ORDER_NOT_FOUND)
         user_repository = UserRepository(uow.session)
-
-        requester = user_repository.get_by_id(requesting_user_id)
-
-        is_admin = requester is not None and requester.role == "admin"
-
-    if not is_owner and not is_admin:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+        if not is_admin(user_repository, requesting_user_id):
+            raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     return OrderRead.model_validate(order)
 

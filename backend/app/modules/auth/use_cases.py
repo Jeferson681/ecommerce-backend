@@ -1,8 +1,8 @@
 """Use cases for authentication."""
 
 from backend.app.core.exceptions import AuthenticationError, Messages
+from backend.app.core.security import verify_password
 from backend.app.modules.auth.schemas import TokenResponse
-from backend.app.modules.auth.security import verify_password
 from backend.app.modules.auth.tokens import (
     JWT_ACCESS_TOKEN_EXPIRES_MINUTES,
     create_access_token,

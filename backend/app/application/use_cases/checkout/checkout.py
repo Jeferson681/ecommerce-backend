@@ -9,7 +9,6 @@ from backend.app.application.use_cases.checkout.services import (
     clear_cart,
     create_order_from_cart,
     get_cart_items_or_raise,
-    get_cart_or_raise,
     validate_stock_and_build_product_map,
 )
 from backend.app.idempotency.helpers import (
@@ -21,6 +20,7 @@ from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
     CartRepository,
 )
+from backend.app.modules.cart.use_cases import get_cart_or_raise
 from backend.app.modules.order.domain.models import OrderStatus
 from backend.app.modules.order.repositories.order_repository import (
     OrderItemRepository,

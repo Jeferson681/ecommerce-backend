@@ -5,6 +5,20 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
+def _normalize_text(value: str | None) -> str | None:
+    """Strip whitespace from a string (or pass None through)."""
+    if value is None:
+        return None
+    return value.strip()
+
+
+def _normalize_email(value: str | None) -> str | None:
+    """Lowercase and strip an email address (or pass None through)."""
+    if value is None:
+        return None
+    return value.lower().strip()
+
+
 class UserCreate(BaseModel):
     first_name: str = Field(..., min_length=2, max_length=50)
     last_name: str = Field(..., min_length=2, max_length=50)
@@ -14,12 +28,12 @@ class UserCreate(BaseModel):
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
     def normalize_strings(cls, value: str) -> str:
-        return value.strip()
+        return _normalize_text(value)  # type: ignore[return-value]
 
     @field_validator("email", mode="before")
     @classmethod
     def normalize_email(cls, value: str) -> str:
-        return value.lower().strip()
+        return _normalize_email(value)  # type: ignore[return-value]
 
 
 class UserUpdate(BaseModel):
@@ -31,16 +45,12 @@ class UserUpdate(BaseModel):
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
     def normalize_strings(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return value.strip()
+        return _normalize_text(value)
 
     @field_validator("email", mode="before")
     @classmethod
     def normalize_email(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return value.lower().strip()
+        return _normalize_email(value)
 
 
 class UserRead(BaseModel):

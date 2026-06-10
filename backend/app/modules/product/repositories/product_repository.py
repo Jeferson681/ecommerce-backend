@@ -67,11 +67,6 @@ class ProductRepository:
         result = self.session.execute(statement)
         return list(result.scalars().all())
 
-    def update(self, product: Product) -> Product:
-        self.session.flush()
-
-        return product
-
     def delete(self, product: Product) -> None:
         self.session.delete(product)
         self.session.flush()

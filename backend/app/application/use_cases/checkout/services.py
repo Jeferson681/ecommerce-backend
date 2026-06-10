@@ -20,18 +20,6 @@ from backend.app.modules.product.repositories.product_repository import (
 )
 
 
-def get_cart_or_raise(
-    repository: CartRepository,
-    user_id: int,
-) -> Cart:
-    cart = repository.get_by_user_id(user_id)
-
-    if cart is None:
-        raise NotFoundError(Messages.CART_NOT_FOUND)
-
-    return cart
-
-
 def get_cart_items_or_raise(
     repository: CartItemRepository,
     cart_id: int,
