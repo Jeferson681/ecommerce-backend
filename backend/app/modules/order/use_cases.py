@@ -4,6 +4,10 @@ Responsibility: coordinate checkout and order retrieval workflows.
 """
 
 from backend.app.core.exceptions import Messages, NotFoundError
+from backend.app.idempotency.helpers import persist_idempotency_response, try_replay
+from backend.app.idempotency.repositories.idempotency_repository import (
+    IdempotencyRepository,
+)
 from backend.app.modules.order.domain.models import Order
 from backend.app.modules.order.repositories.order_repository import (
     OrderRepository,
@@ -64,3 +68,46 @@ def get_order_or_raise(
         raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     return order
+
+
+def persist_idempotent_response_if_needed(
+    repository: IdempotencyRepository,
+    order_repository: OrderRepository,
+    order_id: int,
+    idempotency_key: str | None,
+    user_id: int,
+) -> None:
+    if idempotency_key is None:
+        return
+
+    order = get_order_or_raise(order_repository, order_id)
+
+    response_json = OrderRead.model_validate(order).model_dump_json()
+
+    persist_idempotency_response(
+        repository=repository,
+        idempotency_key=idempotency_key,
+        user_id=user_id,
+        status=201,
+        body=response_json,
+    )
+
+
+def try_order_response_replay(
+    repository: IdempotencyRepository,
+    idempotency_key: str | None,
+    user_id: int,
+) -> OrderRead | None:
+    if idempotency_key is None:
+        return None
+
+    raw = try_replay(
+        repository=repository,
+        idempotency_key=idempotency_key,
+        user_id=user_id,
+    )
+
+    if raw is None:
+        return None
+
+    return OrderRead.model_validate(raw)

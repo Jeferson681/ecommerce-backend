@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal, Protocol
 
-PaymentStatus = Literal[
+GatewayPaymentStatus = Literal[
     "pending",
     "approved",
     "failed",
@@ -39,7 +39,7 @@ class PaymentRequest:
 @dataclass(slots=True)
 class PaymentGatewayResult:
     provider_payment_id: str | None
-    status: PaymentStatus
+    status: GatewayPaymentStatus
     failure_reason: str | None = None
     provider_status: str | None = None
     provider_reference: str | None = None
@@ -48,7 +48,7 @@ class PaymentGatewayResult:
 @dataclass(slots=True)
 class PaymentWebhookPayload:
     provider_payment_id: str | None
-    status: PaymentStatus
+    status: GatewayPaymentStatus
     failure_reason: str | None = None
     provider_status: str | None = None
 

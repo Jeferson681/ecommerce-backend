@@ -27,18 +27,6 @@ class IdempotencyRepository:
 
         return result.scalar_one_or_none()
 
-    def get_by_request_hash(
-        self,
-        request_hash: str,
-    ) -> IdempotencyKey | None:
-        statement = select(IdempotencyKey).where(
-            IdempotencyKey.request_hash == request_hash
-        )
-
-        result = self.session.execute(statement)
-
-        return result.scalar_one_or_none()
-
     def claim(
         self,
         idempotency_key: IdempotencyKey,

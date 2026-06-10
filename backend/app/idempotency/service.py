@@ -1,9 +1,6 @@
 """Idempotency service: pure business helpers (no DB/session ops)."""
 
-import hashlib
-import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from backend.app.core.exceptions import ValidationError
 from backend.app.idempotency.domain.models import IdempotencyKey
@@ -51,21 +48,3 @@ def create_idempotency_record(
         response_body=None,
         expires_at=datetime.now(UTC) + timedelta(hours=DEFAULT_EXPIRATION_HOURS),
     )
-
-
-def generate_request_hash(payload: Any) -> str:
-    """Deterministically generate a request hash for the given payload.
-
-    Uses JSON canonicalization (sorted keys) and SHA256. Keep this stable
-    across processes to allow consistent lookup by `request_hash`.
-    """
-    # Convert non-bytes payloads to JSON with stable ordering
-    try:
-        data = json.dumps(
-            payload, separators=(",", ":"), sort_keys=True, ensure_ascii=False
-        )
-    except TypeError:
-        # Fallback: coerce to string
-        data = str(payload)
-
-    return hashlib.sha256(data.encode("utf-8")).hexdigest()

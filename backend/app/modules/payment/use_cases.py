@@ -2,8 +2,8 @@
 
 from decimal import Decimal
 
-from backend.app.core.exceptions import Messages, NotFoundError
-from backend.app.modules.payment.domain.models import Payment
+from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
+from backend.app.modules.payment.domain.models import Payment, PaymentStatus
 from backend.app.modules.payment.gateway.base import (
     PaymentGateway,
 )
@@ -39,7 +39,7 @@ def create_payment(
         order_id=order_id,
         user_id=user_id,
         amount=amount,
-        status="pending",
+        status=PaymentStatus.PENDING,
         provider=provider,
     )
 
@@ -59,7 +59,7 @@ def process_payment(
     idempotency_key: str | None = None,
 ) -> Payment:
     """
-    Process an existing pending payment but don't commit to the database.
+    Process an existing pending or failed payment but don't commit to the database.
     """
 
     payment_repository = PaymentRepository(uow.session)
@@ -69,8 +69,8 @@ def process_payment(
     if payment is None:
         raise NotFoundError(Messages.PAYMENT_NOT_FOUND)
 
-    if payment.status != "pending":
-        raise ValueError("Only pending payments can be processed")
+    if payment.status not in (PaymentStatus.PENDING, PaymentStatus.FAILED):
+        raise ValidationError(Messages.INVALID_PAYMENT_STATUS)
 
     request = build_payment_request(
         amount=payment.amount,

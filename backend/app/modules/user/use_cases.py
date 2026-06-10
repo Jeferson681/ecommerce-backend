@@ -185,4 +185,4 @@ def restore_user(
     *args: object,
     **kwargs: object,
 ) -> None:
-    raise NotImplementedError("user.use_cases.restore_user " "is not implemented")
+    raise NotImplementedError("user.use_cases.restore_user is not implemented")

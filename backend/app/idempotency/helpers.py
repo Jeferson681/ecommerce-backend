@@ -34,12 +34,14 @@ def try_replay(
 
     body = record.response_body
 
-    try:
-        return json.loads(body)
-    except json.JSONDecodeError:
+    payload = json.loads(body)
+
+    if not isinstance(payload, dict | list):
         raise ValidationError(
-            "Stored idempotent response body is not valid JSON."
-        ) from None
+            "Stored idempotency response is not a JSON object or array."
+        )
+
+    return payload
 
 
 def reserve_idempotency_key(

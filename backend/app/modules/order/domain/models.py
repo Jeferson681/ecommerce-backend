@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, Numeric, String, func
@@ -16,6 +17,13 @@ from backend.app.core.database import Base
 
 if TYPE_CHECKING:
     from backend.app.modules.payment.domain.models import Payment
+
+
+class OrderStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
 
 
 class Order(Base):
@@ -32,7 +40,7 @@ class Order(Base):
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
-        default="pending",
+        default=OrderStatus.PENDING,
     )
 
     created_at: Mapped[datetime] = mapped_column(

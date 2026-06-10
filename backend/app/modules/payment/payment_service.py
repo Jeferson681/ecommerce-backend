@@ -8,14 +8,6 @@ from backend.app.modules.payment.gateway.base import (
     PaymentWebhookPayload,
 )
 
-PAYMENT_STATUS_PENDING = "pending"
-PAYMENT_STATUS_APPROVED = "approved"
-PAYMENT_STATUS_FAILED = "failed"
-
-ORDER_STATUS_PENDING = "pending"
-ORDER_STATUS_PAID = "paid"
-ORDER_STATUS_CANCELLED = "cancelled"
-
 
 def build_payment_request(
     amount: Decimal,

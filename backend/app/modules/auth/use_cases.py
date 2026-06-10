@@ -47,26 +47,23 @@ def login(email: str, password: str, uow: UnitOfWork) -> TokenResponse:
     )
 
 
-def logout(refresh_token: str, uow: UnitOfWork) -> None:
+def logout(refresh_token: str) -> None:
     """Revoke or validate a refresh token during logout.
 
     Parameters:
         refresh_token: Refresh token to revoke.
-        uow: UnitOfWork instance reserved for future persistence/blacklist support.
 
     Returns:
         None
     """
-    del uow
     decode_refresh_token(refresh_token)
 
 
-def refresh_access_token(refresh_token: str, uow: UnitOfWork) -> TokenResponse:
+def refresh_access_token(refresh_token: str) -> TokenResponse:
     """Exchange a valid refresh token for a new access token.
 
     Parameters:
         refresh_token: Refresh token to validate and exchange.
-        uow: UnitOfWork instance for repository access.
 
     Returns:
         TokenResponse with new access_token and same refresh_token.
@@ -74,7 +71,6 @@ def refresh_access_token(refresh_token: str, uow: UnitOfWork) -> TokenResponse:
     Raises:
         AuthenticationError: Invalid or expired refresh token.
     """
-    del uow  # Reserved for future blacklist/revocation support
 
     try:
         payload = decode_refresh_token(refresh_token)

@@ -1,21 +1,22 @@
 repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.5
+    rev: v0.15.16
     hooks:
       - id: ruff
-        args: ["--fix"]
+        args:
+          - --fix
+          - --unsafe-fixes
 
       - id: ruff-format
 
   - repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: 26.5.1
     hooks:
       - id: black
 
-
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+    rev: v2.1.0
     hooks:
       - id: mypy
         name: mypy (app)
@@ -36,9 +37,8 @@ repos:
           - types-python-jose
           - types-passlib
 
-
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.8
+    rev: 1.9.4
     hooks:
       - id: bandit
 
@@ -50,9 +50,8 @@ repos:
 
         exclude: ^tests/
 
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: end-of-file-fixer
 
