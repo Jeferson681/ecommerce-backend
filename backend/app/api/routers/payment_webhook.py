@@ -11,7 +11,6 @@ from pydantic import ValidationError as PydanticValidationError
 from backend.app.application.use_cases.webhook.payment_webhook import (
     process_provider_webhook,
 )
-from backend.app.core.exceptions import NotFoundError
 from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
 from backend.app.uow.dependencies import get_uow
 from backend.app.uow.unit_of_work import UnitOfWork
@@ -40,12 +39,6 @@ async def stripe_webhook_endpoint(
             stripe_signature=stripe_sig,
             uow=uow,
         )
-
-    except NotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
 
     except (ValueError, PydanticValidationError) as e:
         raise HTTPException(

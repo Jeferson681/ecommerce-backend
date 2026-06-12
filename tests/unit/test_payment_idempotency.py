@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from backend.app.modules.payment import use_cases
 from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
-from backend.app.modules.payment.schemas import PaymentCreate, PaymentRead
+from backend.app.modules.payment.schemas import PaymentRead
 
 
 def test_process_payment_replays_raw_payload_once(monkeypatch):
@@ -39,7 +39,6 @@ def test_process_payment_replays_raw_payload_once(monkeypatch):
     monkeypatch.setattr(use_cases, "try_replay", fake_try_replay)
 
     result = use_cases.process_payment(
-        PaymentCreate(order_id=20),
         SimpleNamespace(
             session=object(),
             flush=lambda: None,

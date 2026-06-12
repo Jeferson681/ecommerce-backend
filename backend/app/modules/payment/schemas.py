@@ -3,15 +3,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from backend.app.modules.payment.gateway.base import PaymentMethod
-
-
-class PaymentCreate(BaseModel):
-    order_id: int = Field(..., gt=0)
-    method: PaymentMethod = "card"
-    payment_method_id: str | None = Field(None, min_length=1)
+from pydantic import BaseModel, ConfigDict
 
 
 class PaymentRead(BaseModel):

@@ -21,8 +21,16 @@ class Product(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    stock_quantity: Mapped[int] = mapped_column(nullable=False, default=0)
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    stock_quantity: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=True,
+        server_default="true",
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

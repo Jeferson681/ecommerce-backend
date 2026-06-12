@@ -36,13 +36,7 @@ def get_current_user_endpoint(
 
     Requires Bearer token in Authorization header.
     """
-    try:
-        return get_user_use_case(user_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
+    return get_user_use_case(user_id, uow)
 
 
 @router.post(
@@ -61,17 +55,6 @@ def create_user_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Messages.EMAIL_ALREADY_EXISTS,
         ) from e
-    except InvalidPasswordError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
 
 
 @router.get("/{user_id}", response_model=UserRead)
@@ -84,14 +67,7 @@ def get_user_endpoint(
 
     Access: owner or admin (enforced in use case).
     """
-    try:
-        return get_user_use_case(user_id, uow, requesting_user_id=user_id_current)
-
-    except NotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
+    return get_user_use_case(user_id, uow, requesting_user_id=user_id_current)
 
 
 @router.get("", response_model=list[UserRead])
@@ -125,22 +101,10 @@ def update_user_endpoint(
             requesting_user_id=user_id_current,
         )
 
-    except NotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
-
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Messages.EMAIL_ALREADY_EXISTS,
-        ) from e
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e
 
 
@@ -172,12 +136,6 @@ def change_password_endpoint(
             detail=str(e),
         ) from e
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
-
 
 @router.delete(
     "/{user_id}",
@@ -192,17 +150,4 @@ def delete_user_endpoint(
 
     Access: owner or admin (enforced in use case).
     """
-    try:
-        delete_user_use_case(user_id, uow, requesting_user_id=user_id_current)
-
-    except NotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    delete_user_use_case(user_id, uow, requesting_user_id=user_id_current)

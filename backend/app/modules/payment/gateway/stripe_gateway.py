@@ -11,10 +11,10 @@ from decimal import Decimal
 import stripe
 
 from backend.app.core.config import settings
+from backend.app.modules.payment.domain.models import PaymentStatus
 from backend.app.modules.payment.gateway.base import (
     PaymentGatewayResult,
     PaymentRequest,
-    PaymentStatus,
     PaymentWebhookPayload,
 )
 
@@ -55,7 +55,7 @@ class StripeGateway:
         if not payment_method_id:
             return PaymentGatewayResult(
                 provider_payment_id=None,
-                status="failed",
+                status=PaymentStatus.FAILED,
                 failure_reason="payment_method_id is required",
             )
 
@@ -70,7 +70,6 @@ class StripeGateway:
         *,
         payload_bytes: bytes,
         signature: str | None = None,
-        idempotency_key: str | None = None,
     ) -> PaymentWebhookPayload:
         """Process a Stripe webhook.
 
@@ -130,7 +129,7 @@ class StripeGateway:
         except stripe.CardError as err:
             return PaymentGatewayResult(
                 provider_payment_id=None,
-                status="failed",
+                status=PaymentStatus.FAILED,
                 failure_reason=err.user_message,
                 provider_status=None,
                 provider_reference=None,
@@ -139,24 +138,30 @@ class StripeGateway:
         except stripe.StripeError as err:
             return PaymentGatewayResult(
                 provider_payment_id=None,
-                status="failed",
+                status=PaymentStatus.FAILED,
                 failure_reason=str(err),
                 provider_status=None,
                 provider_reference=None,
             )
 
-    def _map_status(self, stripe_status: str) -> PaymentStatus:
+    def _map_status(
+        self,
+        stripe_status: str,
+    ) -> PaymentStatus:
         mapping: dict[str, PaymentStatus] = {
-            "succeeded": "approved",
-            "processing": "pending",
-            "requires_action": "pending",
-            "requires_capture": "pending",
-            "requires_confirmation": "pending",
-            "requires_payment_method": "failed",
-            "canceled": "cancelled",
+            "succeeded": PaymentStatus.APPROVED,
+            "processing": PaymentStatus.PENDING,
+            "requires_action": PaymentStatus.PENDING,
+            "requires_capture": PaymentStatus.PENDING,
+            "requires_confirmation": PaymentStatus.PENDING,
+            "requires_payment_method": PaymentStatus.FAILED,
+            "canceled": PaymentStatus.CANCELLED,
         }
 
-        return mapping.get(stripe_status, "failed")
+        return mapping.get(
+            stripe_status,
+            PaymentStatus.FAILED,
+        )
 
     @staticmethod
     def _extract_failure_reason(intent: stripe.PaymentIntent) -> str | None:

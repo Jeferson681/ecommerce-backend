@@ -37,12 +37,10 @@ def process_gateway_webhook(
     gateway: PaymentGateway,
     payload_bytes: bytes,
     signature: str | None = None,
-    idempotency_key: str | None = None,
 ) -> PaymentWebhookPayload:
     return gateway.process_webhook(
         payload_bytes=payload_bytes,
         signature=signature,
-        idempotency_key=idempotency_key,
     )
 
 

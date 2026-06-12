@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.modules.payment import use_cases
-from backend.app.modules.payment.schemas import PaymentCreate
 
 
 class BadGateway:

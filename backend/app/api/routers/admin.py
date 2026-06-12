@@ -5,9 +5,8 @@ Responsibility: expose administrative endpoints for platform-wide operations.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
-from backend.app.core.exceptions import Messages
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.order.repositories.order_repository import OrderRepository
 from backend.app.modules.order.schemas import OrderRead
@@ -30,15 +29,9 @@ def list_all_orders_endpoint(
 
     Access: admin only.
     """
-    try:
-        repository = OrderRepository(uow.session)
-        orders = repository.list()
-        return [OrderRead.model_validate(order) for order in orders]
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    repository = OrderRepository(uow.session)
+    orders = repository.list()
+    return [OrderRead.model_validate(order) for order in orders]
 
 
 @router.get("/payments", response_model=list[PaymentRead])
@@ -50,12 +43,6 @@ def list_all_payments_endpoint(
 
     Access: admin only.
     """
-    try:
-        repository = PaymentRepository(uow.session)
-        payments = repository.list()
-        return [PaymentRead.model_validate(payment) for payment in payments]
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    repository = PaymentRepository(uow.session)
+    payments = repository.list()
+    return [PaymentRead.model_validate(payment) for payment in payments]

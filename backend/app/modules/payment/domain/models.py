@@ -7,7 +7,15 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, Numeric, String, func
+from sqlalchemy import (
+    TIMESTAMP,
+    CheckConstraint,
+    Enum,
+    ForeignKey,
+    Numeric,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.database import Base
@@ -33,8 +41,8 @@ class Payment(Base):
             name="ck_payment_amount_positive",
         ),
         CheckConstraint(
-            "status in (PENDING, APPROVED, FAILED, CANCELLED, REFUNDED)",
-            name="ck_payment_status_valid",
+            "amount > 0",
+            name="ck_payment_amount_positive",
         ),
     )
 
@@ -60,16 +68,22 @@ class Payment(Base):
         nullable=False,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(20),
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(
+            PaymentStatus,
+            native_enum=False,
+            validate_strings=True,
+        ),
         nullable=False,
         default=PaymentStatus.PENDING,
+        server_default=PaymentStatus.PENDING.value,
     )
 
     provider: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
         default="stripe",
+        server_default="stripe",
     )
 
     provider_payment_id: Mapped[str | None] = mapped_column(

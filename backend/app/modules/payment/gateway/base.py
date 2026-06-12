@@ -6,14 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal, Protocol
 
-GatewayPaymentStatus = Literal[
-    "pending",
-    "approved",
-    "failed",
-    "cancelled",
-    "refunded",
-]
-
+from backend.app.modules.payment.domain.models import PaymentStatus
 
 PaymentMethod = Literal[
     "card",
@@ -39,7 +32,7 @@ class PaymentRequest:
 @dataclass(slots=True)
 class PaymentGatewayResult:
     provider_payment_id: str | None
-    status: GatewayPaymentStatus
+    status: PaymentStatus
     failure_reason: str | None = None
     provider_status: str | None = None
     provider_reference: str | None = None
@@ -48,7 +41,7 @@ class PaymentGatewayResult:
 @dataclass(slots=True)
 class PaymentWebhookPayload:
     provider_payment_id: str | None
-    status: GatewayPaymentStatus
+    status: PaymentStatus
     failure_reason: str | None = None
     provider_status: str | None = None
 
@@ -72,7 +65,6 @@ class PaymentGateway(Protocol):
         *,
         payload_bytes: bytes,
         signature: str | None = None,
-        idempotency_key: str | None = None,
     ) -> PaymentWebhookPayload:
         """Process a webhook callback from the provider."""
         ...

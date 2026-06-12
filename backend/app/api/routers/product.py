@@ -5,7 +5,6 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.product.schemas import (
     ProductCreate,
@@ -30,10 +29,7 @@ def get_product_endpoint(
     product_id: int, uow: Annotated[UnitOfWork, Depends(get_uow)]
 ) -> ProductRead:
     """Endpoint to retrieve a product by its ID."""
-    try:
-        return get_product(product_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    return get_product(product_id, uow)
 
 
 @router.get("", response_model=list[ProductRead])
@@ -77,11 +73,6 @@ def create_product_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Integrity error while creating product.",
         ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
@@ -97,17 +88,10 @@ def update_product_endpoint(
     """
     try:
         return update_product(product_id, product_data, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Integrity error while updating product.",
-        ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e
 
 
@@ -123,15 +107,8 @@ def delete_product_endpoint(
     """
     try:
         delete_product(product_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Integrity error while deleting product.",
-        ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
         ) from e

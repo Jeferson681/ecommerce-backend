@@ -8,6 +8,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.app.modules.order.domain.models import OrderStatus
+
 
 class OrderItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -26,7 +28,7 @@ class OrderRead(BaseModel):
 
     id: int
     user_id: int
-    status: str
+    status: OrderStatus
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRead] = Field(default_factory=list)

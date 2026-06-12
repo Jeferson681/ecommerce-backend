@@ -28,9 +28,12 @@ class OrderStatus(StrEnum):
 
 class Order(Base):
     __tablename__ = "orders"
-    __table_args__ = CheckConstraint(
-        "status in ('pending', 'paid', 'cancelled', 'refunded')",
-        name="ck_order_status_valid",
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('pending', 'paid', 'cancelled', 'refunded')",
+            name="ck_order_status_valid",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -41,6 +44,7 @@ class Order(Base):
         String(20),
         nullable=False,
         default=OrderStatus.PENDING,
+        server_default=OrderStatus.PENDING.value,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -80,7 +84,11 @@ class OrderItem(Base):
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
+    quantity: Mapped[int] = mapped_column(
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

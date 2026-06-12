@@ -2,9 +2,8 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
-from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.auth.deps import get_current_user_id
 from backend.app.modules.cart.schemas import (
     CartItemCreate,
@@ -30,32 +29,20 @@ def get_cart_endpoint(
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> CartRead:
-    try:
-        return get_cart(user_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    return get_cart(user_id, uow)
 
 
-@router.post("/items", response_model=CartItemRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/items",
+    response_model=CartItemRead,
+    status_code=status.HTTP_201_CREATED,
+)
 def add_item_endpoint(
     item_data: CartItemCreate,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> CartItemRead:
-    try:
-        return add_item(item_data, user_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    return add_item(item_data, user_id, uow)
 
 
 @router.patch("/items/{item_id}", response_model=CartItemRead)
@@ -65,32 +52,16 @@ def update_item_endpoint(
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> CartItemRead:
-    try:
-        return update_item(item_id, item_data, user_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    return update_item(item_id, item_data, user_id, uow)
 
 
-@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/items/{item_id}", status_code=204)
 def remove_item_endpoint(
     item_id: int,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> None:
-    try:
-        remove_item(item_id, user_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    remove_item(item_id, user_id, uow)
 
 
 @router.post("/merge", response_model=CartRead)
@@ -99,12 +70,4 @@ def merge_cart_endpoint(
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> CartRead:
-    try:
-        return merge_cart_items(items, user_id, uow)
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=Messages.INTERNAL_SERVER_ERROR,
-        ) from e
+    return merge_cart_items(items, user_id, uow)

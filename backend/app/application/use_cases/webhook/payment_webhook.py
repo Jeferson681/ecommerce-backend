@@ -21,7 +21,6 @@ def process_provider_webhook(
     uow: UnitOfWork,
     *,
     gateway: PaymentGateway,
-    idempotency_key: str | None = None,
 ) -> None:
     """
     Synchronize payment state from Stripe webhook.
@@ -31,7 +30,6 @@ def process_provider_webhook(
         gateway=gateway,
         payload_bytes=payload_bytes,
         signature=stripe_signature,
-        idempotency_key=idempotency_key,
     )
 
     if payload.provider_payment_id is None:

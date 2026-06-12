@@ -9,16 +9,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
 
-from backend.app.core.exceptions import AuthenticationError
 from backend.app.modules.auth import (
     schemas as auth_schemas,
     use_cases as auth_use_cases,
 )
 from backend.app.modules.auth.deps import get_current_user_id
-from backend.app.modules.user import (
-    schemas as user_schemas,
-    use_cases as user_use_cases,
-)
 from backend.app.uow.dependencies import get_uow
 from backend.app.uow.unit_of_work import UnitOfWork
 
@@ -41,17 +36,11 @@ def token_endpoint(
     Raises:
     - AuthenticationError: Invalid credentials
     """
-    try:
-        return auth_use_cases.login(
-            email=payload.email,
-            password=payload.password,
-            uow=uow,
-        )
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-        ) from e
+    return auth_use_cases.login(
+        email=payload.email,
+        password=payload.password,
+        uow=uow,
+    )
 
 
 @router.post("/logout", status_code=204)
@@ -93,25 +82,6 @@ def refresh_endpoint(
     Raises:
         AuthenticationError: Invalid or expired refresh token
     """
-    try:
-        return auth_use_cases.refresh_access_token(
-            refresh_token=refresh.refresh_token,
-        )
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-        ) from e
-
-
-@router.get("/session", response_model=user_schemas.UserRead)
-def session_endpoint(
-    uow: Annotated[UnitOfWork, Depends(get_uow)],
-    user_id: Annotated[int, Depends(get_current_user_id)],
-) -> user_schemas.UserRead:
-    """Return the current authenticated user's session/profile.
-
-    Uses the same access rules as `get_user` (owner or admin). Returns
-    the `UserRead` schema for the authenticated user.
-    """
-    return user_use_cases.get_user(user_id=user_id, uow=uow, requesting_user_id=user_id)
+    return auth_use_cases.refresh_access_token(
+        refresh_token=refresh.refresh_token,
+    )
