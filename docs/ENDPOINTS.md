@@ -107,25 +107,16 @@ Current implemented API surface.
 ### User
 - `GET /users/me/addresses`
 
-### Product
-- Featured products
-- New arrivals
-- Recommended products
-
-### Cart
-- `POST /cart/items/{item_id}/increment`
-- `POST /cart/items/{item_id}/decrement`
 
 ### Order
 - `POST /orders/{order_id}/cancel`
 
 ### Payment
 - Payment methods management
-- Payment history
-- Status refinements
+-
 
 ### Admin Analytics
 - `GET /admin/dashboard`
 - `GET /admin/stats/orders`
 - `GET /admin/stats/payments`
-- `GET /admin/stats/products`
+-

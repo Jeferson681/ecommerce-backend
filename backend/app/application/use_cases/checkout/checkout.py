@@ -3,6 +3,7 @@
 Responsibility: orchestrate checkout workflows.
 """
 
+import logging
 from decimal import Decimal
 
 from backend.app.application.use_cases.checkout.services import (
@@ -41,6 +42,8 @@ from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
 from backend.app.uow.unit_of_work import UnitOfWork
+
+logger = logging.getLogger(__name__)
 
 
 def checkout(
@@ -102,50 +105,71 @@ def checkout(
         if replay_after_reserve is not None:
             return replay_after_reserve
 
-    order = create_order_from_cart(
-        cart_items=cart_items,
-        product_map=product_map,
-        order_repository=order_repository,
-        order_item_repository=order_item_repository,
-        product_repository=product_repository,
-        user_id=user_id,
-    )
+    try:
+        order = create_order_from_cart(
+            cart_items=cart_items,
+            product_map=product_map,
+            order_repository=order_repository,
+            order_item_repository=order_item_repository,
+            product_repository=product_repository,
+            user_id=user_id,
+        )
 
-    total_amount = sum(
-        product_map[item.product_id].price * item.quantity for item in cart_items
-    )
+        total_amount = sum(
+            product_map[item.product_id].price * item.quantity for item in cart_items
+        )
 
-    payment = create_payment(
-        order_id=order.id,
-        user_id=user_id,
-        amount=Decimal(str(total_amount)),
-        uow=uow,
-    )
+        payment = create_payment(
+            order_id=order.id,
+            user_id=user_id,
+            amount=Decimal(str(total_amount)),
+            uow=uow,
+        )
 
-    payment = process_payment(
-        payment_id=payment.id,
-        payment_method_id=payment_method_id,
-        uow=uow,
-        gateway=gateway,
-    )
+        payment = process_payment(
+            payment_id=payment.id,
+            payment_method_id=payment_method_id,
+            uow=uow,
+            gateway=gateway,
+        )
 
-    if payment.status == PaymentStatus.APPROVED:
-        order.status = OrderStatus.PAID
+        if payment.status == PaymentStatus.APPROVED:
+            order.status = OrderStatus.PAID
 
-    clear_cart(
-        cart_repository,
-        cart,
-    )
+        clear_cart(
+            cart_repository,
+            cart,
+        )
 
-    uow.flush()
+        uow.flush()
 
-    persist_idempotent_response_if_needed(
-        repository=idempotency_repository,
-        order_repository=order_repository,
-        order_id=order.id,
-        idempotency_key=idempotency_key,
-        user_id=user_id,
-    )
+        persist_idempotent_response_if_needed(
+            repository=idempotency_repository,
+            order_repository=order_repository,
+            order_id=order.id,
+            idempotency_key=idempotency_key,
+            user_id=user_id,
+        )
 
-    uow.commit()
-    return OrderRead.model_validate(order)
+        uow.commit()
+        return OrderRead.model_validate(order)
+
+    except Exception:
+        # If an exception occurs after the idempotency key was claimed
+        # and committed, the session is in an invalid state.
+        # First rollback the session, then delete the stuck key.
+        if idempotency_key is not None:
+            try:
+                uow.rollback()
+                idempotency_repository.delete_by_key(
+                    idempotency_key,
+                    user_id,
+                )
+                uow.commit()
+            except Exception as cleanup_err:
+                logger.exception(
+                    "Failed to release idempotency key %s: %s",
+                    idempotency_key,
+                    cleanup_err,
+                )
+        raise

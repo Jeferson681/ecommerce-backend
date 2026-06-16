@@ -173,9 +173,14 @@ class StripeGateway:
         return getattr(error, "message", None)
 
     @staticmethod
-    def _extract_webhook_failure_reason(intent: stripe.PaymentIntent) -> str | None:
-        if intent.status != "succeeded":
-            return f"PaymentIntent status is {intent.status}"
+    def _extract_webhook_failure_reason(payment_intent: dict) -> str | None:
+        """Extract failure reason from a Stripe webhook payload (parsed JSON dict).
+
+        The webhook flow uses a dict (from json.loads), not a stripe.PaymentIntent
+        object, so all accesses use dict key syntax.
+        """
+        if payment_intent.get("status") != "succeeded":
+            return f"PaymentIntent status is {payment_intent.get('status')}"
 
         return None
 

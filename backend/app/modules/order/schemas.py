@@ -9,6 +9,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.modules.order.domain.models import OrderStatus
+from backend.app.modules.payment.schemas import PaymentRead
 
 
 class OrderItemRead(BaseModel):
@@ -32,6 +33,7 @@ class OrderRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRead] = Field(default_factory=list)
+    payments: list[PaymentRead] = Field(default_factory=list)
 
 
 class PaymentMethodRequest(BaseModel):
