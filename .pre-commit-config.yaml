@@ -10,11 +10,9 @@ repos:
 
       - id: ruff-format
 
-  - repo: https://github.com/psf/black
-    rev: 26.5.1
-    hooks:
-      - id: black
-
+  # REMOVIDO: Black é redundante com ruff-format.
+  # ruff-format é Black-compatible e executa antes.
+  # Manter ambos causa loop de formatação.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.1.0
     hooks:

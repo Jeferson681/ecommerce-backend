@@ -151,9 +151,9 @@ class TestCartMerge:
         cart = cart_resp.json()
         item_map = {item["product_id"]: item["quantity"] for item in cart["items"]}
         # Should be 3 (from add) + 2 (from merge) = 5
-        assert (
-            item_map[product.id] == 5
-        ), f"Expected quantity 5 (3+2), got {item_map[product.id]}"
+        assert item_map[product.id] == 5, (
+            f"Expected quantity 5 (3+2), got {item_map[product.id]}"
+        )
 
         session.close()
 

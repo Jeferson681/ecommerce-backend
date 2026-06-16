@@ -99,8 +99,8 @@ class TestIdempotencyReleaseOnFailure:
 
         # The key was released after the first failure, so the second attempt
         # must NOT return "Idempotent request already in progress"
-        assert (
-            r2.status_code != 400
-        ), f"Idempotency key should have been released. Got {r2.status_code}: {r2.text[:200]}"
+        assert r2.status_code != 400, (
+            f"Idempotency key should have been released. Got {r2.status_code}: {r2.text[:200]}"
+        )
 
         session.close()
