@@ -6,33 +6,38 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _normalize_text(value: str | None) -> str | None:
+    """Strip whitespace from a string (or pass None through)."""
+    if value is None:
+        return None
+    return value.strip()
+
+
 class ProductCreate(BaseModel):
     name: str = Field(..., min_length=1)
     description: str | None = Field(None, min_length=1, max_length=1000)
+    category: str | None = Field(None, min_length=1, max_length=100)
     price: Decimal = Field(..., gt=0)
     stock_quantity: int = Field(..., ge=0)
 
-    @field_validator("name", "description", mode="before")
+    @field_validator("name", "description", "category", mode="before")
     @classmethod
     def normalize_strings(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return value.strip()
+        return _normalize_text(value)
 
 
 class ProductUpdate(BaseModel):
     name: str | None = Field(None, min_length=1)
     description: str | None = Field(None, min_length=1, max_length=1000)
+    category: str | None = Field(None, min_length=1, max_length=100)
     price: Decimal | None = Field(None, gt=0)
     stock_quantity: int | None = Field(None, ge=0)
     is_active: bool | None = None
 
-    @field_validator("name", "description", mode="before")
+    @field_validator("name", "description", "category", mode="before")
     @classmethod
     def normalize_strings(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return value.strip()
+        return _normalize_text(value)
 
 
 class ProductRead(BaseModel):
@@ -41,6 +46,7 @@ class ProductRead(BaseModel):
     id: int
     name: str
     description: str | None
+    category: str | None
     price: Decimal
     stock_quantity: int
     is_active: bool

@@ -10,14 +10,36 @@ export const orderService = {
     return apiFetch<Order>(`/orders/${id}`);
   },
 
-  checkout(idempotencyKey?: string): Promise<Order> {
+  checkout(
+    paymentMethodId: string,
+    idempotencyKey?: string
+  ): Promise<Order> {
     const headers: Record<string, string> = {};
     if (idempotencyKey) {
       headers["Idempotency-Key"] = idempotencyKey;
     }
+
     return apiFetch<Order>("/orders/checkout", {
       method: "POST",
       headers,
+      body: { payment_method_id: paymentMethodId },
+    });
+  },
+
+  retryPayment(
+    orderId: number,
+    paymentMethodId: string,
+    idempotencyKey?: string
+  ): Promise<Order> {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers["Idempotency-Key"] = idempotencyKey;
+    }
+
+    return apiFetch<Order>(`/orders/${orderId}/retry-payment`, {
+      method: "POST",
+      headers,
+      body: { payment_method_id: paymentMethodId },
     });
   },
 };

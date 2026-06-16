@@ -1,84 +1,122 @@
-# Endpoints
+# API Endpoints
 
-Snapshot: current implemented API
+Current implemented API surface.
+
+---
+
+## Infrastructure
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/healthz` | Health check |
+
+---
 
 ## User
 
-- [POST] /users
-- [GET] /users/me
-- [GET] /users/{user_id}
-- [PATCH] /users/{user_id}
-- [POST] /users/{user_id}/change-password
-- [DELETE] /users/{user_id}
-- [GET] /users
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/users` | — | Create a new user account |
+| `GET` | `/users/me` | Bearer | Get current authenticated user |
+| `GET` | `/users/{user_id}` | Bearer | Get user by ID (owner or admin) |
+| `PATCH` | `/users/{user_id}` | Bearer | Update user profile (owner or admin) |
+| `POST` | `/users/{user_id}/change-password` | Bearer | Change account password (owner only) |
+| `DELETE` | `/users/{user_id}` | Bearer | Delete user account (owner or admin) |
+| `GET` | `/users` | Bearer + Admin | List all users (admin only) |
+
+---
 
 ## Auth
 
-- [POST] /auth/token
-- [POST] /auth/refresh
-- [POST] /auth/logout
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/auth/token` | — | Authenticate and receive access + refresh tokens |
+| `POST` | `/auth/refresh` | — | Exchange refresh token for a new access token |
+| `POST` | `/auth/logout` | Bearer | Validate refresh token (no revocation) |
+
+---
 
 ## Product
 
-- [GET] /products
-- [GET] /products/{id}
-- [POST] /products
-- [PATCH] /products/{id}
-- [DELETE] /products/{id}
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/products` | — | List products with optional filters |
+| `GET` | `/products/{product_id}` | — | Get product by ID |
+| `POST` | `/products` | Bearer + Admin | Create a new product |
+| `PATCH` | `/products/{product_id}` | Bearer + Admin | Update an existing product |
+| `DELETE` | `/products/{product_id}` | Bearer + Admin | Remove a product |
 
-Query params supported today:
-- `page`
-- `per_page`
+**Query parameters for `GET /products`:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | `int` | Page number (1-based) |
+| `per_page` | `int` | Items per page (max 100) |
+| `q` | `string` | Search query (name and description) |
+| `category` | `string` | Filter by category |
+| `sort` | `enum` | Sort order: `price_asc`, `price_desc`, `newest` |
+
+---
 
 ## Cart
 
-- [GET] /cart
-- [POST] /cart/items
-- [PATCH] /cart/items/{item_id}
-- [DELETE] /cart/items/{item_id}
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/cart` | Bearer | Get current user's cart |
+| `POST` | `/cart/items` | Bearer | Add item to cart |
+| `PATCH` | `/cart/items/{item_id}` | Bearer | Update item quantity |
+| `DELETE` | `/cart/items/{item_id}` | Bearer | Remove item from cart |
+| `POST` | `/cart/merge` | Bearer | Merge anonymous cart items after login |
+
+---
 
 ## Order
 
-- [POST] /orders/checkout
-- [GET] /orders
-- [GET] /orders/{id}
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/orders/checkout` | Bearer | Complete checkout (converts cart to order) |
+| `POST` | `/orders/{order_id}/retry-payment` | Bearer | Retry payment for a failed order |
+| `GET` | `/orders` | Bearer | List current user's orders |
+| `GET` | `/orders/{order_id}` | Bearer | Get order by ID (owner or admin) |
 
-Notes:
-- checkout supports `Idempotency-Key`
+**Notes:**
+- Checkout supports `Idempotency-Key` header for idempotent requests.
+- Retry-payment supports payment method replacement.
 
-## Payment
+---
 
-- [POST] /payments
-- [GET] /payments/{id}
-- [GET] /admin/payments
+## Admin
 
-Notes:
-- payment flow uses idempotency
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/admin/orders` | Bearer + Admin | List all platform orders |
+| `GET` | `/admin/payments` | Bearer + Admin | List all platform payments |
 
-## FUTURE
+---
+
+## Webhooks
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/webhooks/stripe` | — | Stripe webhook receiver (signature verified) |
+
+---
+
+## Future Roadmap
 
 ### User
-- `/users/me/addresses`
+- `GET /users/me/addresses`
 
-### Auth
-- `/auth/session`
-
-### Product
-- search, category filter, sort, featured, new arrivals, recommended
-
-### Cart
-- `/cart/items/{item_id}/increment`
-- `/cart/items/{item_id}/decrement`
 
 ### Order
-- `/admin/orders`
-- `/orders/{id}/cancel`
+- `POST /orders/{order_id}/cancel`
 
 ### Payment
-- status refinements
+- Payment methods management
+-
 
 ### Admin Analytics
-- `/admin/dashboard`
-- `/admin/stats/orders`
-- `/admin/stats/payments`
-- `/admin/stats/products`
+- `GET /admin/dashboard`
+- `GET /admin/stats/orders`
+- `GET /admin/stats/payments`
+-

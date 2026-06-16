@@ -9,14 +9,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
 
-from backend.app.application.uow.dependencies import get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
-from backend.app.core.exceptions import AuthenticationError
 from backend.app.modules.auth import (
     schemas as auth_schemas,
     use_cases as auth_use_cases,
 )
 from backend.app.modules.auth.deps import get_current_user_id
+from backend.app.uow.dependencies import get_uow
+from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -37,30 +36,22 @@ def token_endpoint(
     Raises:
     - AuthenticationError: Invalid credentials
     """
-    try:
-        return auth_use_cases.login(
-            email=payload.email,
-            password=payload.password,
-            uow=uow,
-        )
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-        ) from e
+    return auth_use_cases.login(
+        email=payload.email,
+        password=payload.password,
+        uow=uow,
+    )
 
 
 @router.post("/logout", status_code=204)
 def logout_endpoint(
     refresh: auth_schemas.RefreshTokenRequest,
-    uow: Annotated[UnitOfWork, Depends(get_uow)],
     _user_id: Annotated[int, Depends(get_current_user_id)],
 ) -> None:
     """Revoke refresh token / logout user.
 
     Parameters
     - refresh: payload containing refresh token
-    - uow: UnitOfWork dependency
 
     Raises:
     - JWTError: Invalid or expired refresh token
@@ -68,7 +59,6 @@ def logout_endpoint(
     try:
         auth_use_cases.logout(
             refresh_token=refresh.refresh_token,
-            uow=uow,
         )
     except JWTError as e:
         raise HTTPException(
@@ -80,13 +70,11 @@ def logout_endpoint(
 @router.post("/refresh", response_model=auth_schemas.TokenResponse)
 def refresh_endpoint(
     refresh: auth_schemas.RefreshTokenRequest,
-    uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> auth_schemas.TokenResponse:
     """Exchange refresh token for new access token.
 
     Parameters:
         refresh: RefreshTokenRequest containing refresh_token
-        uow: UnitOfWork dependency for repository access
 
     Returns:
         TokenResponse with new access_token and same refresh_token
@@ -94,13 +82,6 @@ def refresh_endpoint(
     Raises:
         AuthenticationError: Invalid or expired refresh token
     """
-    try:
-        return auth_use_cases.refresh_access_token(
-            refresh_token=refresh.refresh_token,
-            uow=uow,
-        )
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-        ) from e
+    return auth_use_cases.refresh_access_token(
+        refresh_token=refresh.refresh_token,
+    )

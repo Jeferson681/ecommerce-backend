@@ -8,6 +8,9 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.app.modules.order.domain.models import OrderStatus
+from backend.app.modules.payment.schemas import PaymentRead
+
 
 class OrderItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -26,6 +29,18 @@ class OrderRead(BaseModel):
 
     id: int
     user_id: int
+    status: OrderStatus
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRead] = Field(default_factory=list)
+    payments: list[PaymentRead] = Field(default_factory=list)
+
+
+class PaymentMethodRequest(BaseModel):
+    """Checkout request body.
+
+    Frontend sends payment_method_id obtained from Stripe Elements.
+    The backend never receives raw card data.
+    """
+
+    payment_method_id: str

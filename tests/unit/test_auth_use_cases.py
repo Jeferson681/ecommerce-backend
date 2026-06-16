@@ -12,8 +12,6 @@ from backend.app.core.exceptions import AuthenticationError
 from backend.app.modules.auth import use_cases
 from backend.app.modules.auth.schemas import LoginRequest, RefreshTokenRequest
 
-from .conftest import DummyUoW
-
 # ======================================================================
 # HAPPY PATH
 # ======================================================================
@@ -48,7 +46,7 @@ def test_login_with_valid_credentials(monkeypatch) -> None:
     )
     monkeypatch.setattr(use_cases, "JWT_ACCESS_TOKEN_EXPIRES_MINUTES", 30)
 
-    uow = DummyUoW()
+    uow = SimpleNamespace(session=object())
     response = use_cases.login("ana@mail.com", "correct_password", uow)
 
     assert response.access_token == "access_token_abc"
@@ -66,7 +64,7 @@ def test_logout_with_valid_token(monkeypatch) -> None:
     )
 
     # Should not raise
-    use_cases.logout("valid_refresh_token", DummyUoW())
+    use_cases.logout("valid_refresh_token")
 
 
 def test_refresh_access_token_with_valid_token(monkeypatch) -> None:
@@ -81,7 +79,7 @@ def test_refresh_access_token_with_valid_token(monkeypatch) -> None:
     )
     monkeypatch.setattr(use_cases, "JWT_ACCESS_TOKEN_EXPIRES_MINUTES", 30)
 
-    response = use_cases.refresh_access_token("valid_token", DummyUoW())
+    response = use_cases.refresh_access_token("valid_token")
 
     assert response.access_token == "new_access_token"
     assert response.refresh_token == "valid_token"
@@ -107,7 +105,9 @@ def test_login_with_invalid_email(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.login("nonexistent@mail.com", "password", DummyUoW())
+        use_cases.login(
+            "nonexistent@mail.com", "password", SimpleNamespace(session=object())
+        )
 
 
 def test_login_with_invalid_password(monkeypatch) -> None:
@@ -133,7 +133,9 @@ def test_login_with_invalid_password(monkeypatch) -> None:
     )
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.login("ana@mail.com", "wrong_password", DummyUoW())
+        use_cases.login(
+            "ana@mail.com", "wrong_password", SimpleNamespace(session=object())
+        )
 
 
 # ======================================================================
@@ -152,7 +154,7 @@ def test_logout_with_invalid_token(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "decode_refresh_token", fake_decode)
 
     with pytest.raises(Exception):
-        use_cases.logout("invalid_token", DummyUoW())
+        use_cases.logout("invalid_token")
 
 
 # ======================================================================
@@ -169,7 +171,7 @@ def test_refresh_with_invalid_token(monkeypatch) -> None:
     monkeypatch.setattr(use_cases, "decode_refresh_token", fake_decode)
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.refresh_access_token("bad_token", DummyUoW())
+        use_cases.refresh_access_token("bad_token")
 
 
 def test_refresh_with_missing_sub_claim(monkeypatch) -> None:
@@ -181,7 +183,7 @@ def test_refresh_with_missing_sub_claim(monkeypatch) -> None:
     )
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.refresh_access_token("no_sub_token", DummyUoW())
+        use_cases.refresh_access_token("no_sub_token")
 
 
 # ======================================================================

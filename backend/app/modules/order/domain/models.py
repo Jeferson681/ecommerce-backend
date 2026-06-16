@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, Numeric, func
+from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.database import Base
@@ -18,11 +19,34 @@ if TYPE_CHECKING:
     from backend.app.modules.payment.domain.models import Payment
 
 
+class OrderStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
+
+
 class Order(Base):
     __tablename__ = "orders"
 
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('pending', 'paid', 'cancelled', 'refunded')",
+            name="ck_order_status_valid",
+        ),
+    )
+
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=OrderStatus.PENDING,
+        server_default=OrderStatus.PENDING.value,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -60,7 +84,11 @@ class OrderItem(Base):
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
+    quantity: Mapped[int] = mapped_column(
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

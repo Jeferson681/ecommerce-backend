@@ -5,10 +5,10 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 
 from backend.app.api.routers.cart import get_current_user_id, get_uow
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.database import Base, SessionLocal, engine
 from backend.app.main import app
 from backend.app.modules.product.domain.models import Product
+from backend.app.uow.unit_of_work import UnitOfWork
 
 client = TestClient(app)
 

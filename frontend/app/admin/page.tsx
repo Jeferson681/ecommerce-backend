@@ -56,6 +56,7 @@ export default function Page() {
                   <tr className="border-b text-left text-zinc-500">
                     <th className="pb-2 pr-4">ID</th>
                     <th className="pb-2 pr-4">User</th>
+                    <th className="pb-2 pr-4">Status</th>
                     <th className="pb-2 pr-4">Items</th>
                     <th className="pb-2 pr-4">Total</th>
                     <th className="pb-2">Date</th>
@@ -71,6 +72,17 @@ export default function Page() {
                       <tr key={order.id} className="border-b last:border-0">
                         <td className="py-2 pr-4">#{order.id}</td>
                         <td className="py-2 pr-4">{order.user_id}</td>
+                        <td className="py-2 pr-4">
+                          <span className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${
+                            order.status === "paid" ? "bg-emerald-100 text-emerald-800" :
+                            order.status === "pending" ? "bg-amber-100 text-amber-800" :
+                            order.status === "cancelled" ? "bg-red-100 text-red-800" :
+                            order.status === "refunded" ? "bg-blue-100 text-blue-800" :
+                            "bg-zinc-100 text-zinc-800"
+                          }`}>
+                            {order.status}
+                          </span>
+                        </td>
                         <td className="py-2 pr-4">{order.items.length}</td>
                         <td className="py-2 pr-4">{formatMoney(total)}</td>
                         <td className="py-2">

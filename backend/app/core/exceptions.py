@@ -14,6 +14,8 @@ class Messages:
 
     USER_NOT_FOUND = "User not found."
 
+    INVALID_PAYMENT_STATUS = "Invalid payment status."
+
     EMAIL_ALREADY_EXISTS = "Email already exists."
 
     EMAIL_OR_PASSWORD_INVALID = "Invalid email or password."  # nosec B105
@@ -31,6 +33,10 @@ class Messages:
     ORDER_INSUFFICIENT_STOCK = "Insufficient stock for product."
 
     INVALID_CREDENTIAL_POLICY = "Credential does not meet the required policy."
+
+    NO_FAILED_PAYMENT_FOUND = "No failed payment found for the order."
+
+    ORDER_IS_NOT_PENDING = "Order is not in the pending status."
 
 
 class NotFoundError(AppError):

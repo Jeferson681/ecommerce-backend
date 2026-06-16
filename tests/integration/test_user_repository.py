@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from backend.app.core.database import Base
 from backend.app.modules.user.domain.models import User
 from backend.app.modules.user.repositories.user_repository import UserRepository
 
-SessionLocal: sessionmaker[Session]
+ENGINE = create_engine(
+    "sqlite:///:memory:", connect_args={"check_same_thread": False}, future=True
+)
+SessionLocal = sessionmaker(bind=ENGINE, future=True)
 
 
 def setup_module(module: object) -> None:
-    module.engine = create_engine("sqlite:///:memory:", future=True)
-    Base.metadata.create_all(bind=module.engine)
-    global SessionLocal
-    SessionLocal = sessionmaker(bind=module.engine, future=True)
+    Base.metadata.create_all(bind=ENGINE)
 
 
 def teardown_module(module: object) -> None:
-    Base.metadata.drop_all(bind=module.engine)
+    Base.metadata.drop_all(bind=ENGINE)
 
 
 def test_user_repository_crud_flow() -> None:

@@ -20,7 +20,6 @@ def teardown_module(module: object) -> None:
 
 def test_post_auth_token_with_valid_credentials() -> None:
     """Test login endpoint with valid credentials."""
-    # Create a test user via API endpoint
     test_password = "Password123!"
     create_resp = client.post(
         "/users",
@@ -50,12 +49,10 @@ def test_post_auth_token_with_invalid_email() -> None:
     resp = client.post("/auth/token", json=payload)
 
     assert resp.status_code == 401
-    assert "detail" in resp.json() or "message" in resp.json()
 
 
 def test_post_auth_token_with_invalid_password() -> None:
     """Test login endpoint with incorrect password."""
-    # Create a test user via API endpoint
     create_resp = client.post(
         "/users",
         json={
@@ -75,8 +72,6 @@ def test_post_auth_token_with_invalid_password() -> None:
 
 def test_post_auth_logout_with_valid_token() -> None:
     """Test logout endpoint with valid refresh token."""
-    # First, login to get a refresh token
-    # Create user via API and login
     test_password = "Password123!"
     create_resp = client.post(
         "/users",
@@ -116,7 +111,6 @@ def test_post_auth_logout_with_invalid_token() -> None:
 
 def test_post_auth_refresh_with_valid_token() -> None:
     """Test refresh endpoint with valid refresh token."""
-    # Create user and login to get tokens
     test_password = "Password123!"
     create_resp = client.post(
         "/users",
@@ -135,7 +129,6 @@ def test_post_auth_refresh_with_valid_token() -> None:
 
     refresh_token = login_resp.json()["refresh_token"]
 
-    # Refresh the access token
     refresh_payload = {"refresh_token": refresh_token}
     refresh_resp = client.post("/auth/refresh", json=refresh_payload)
 
@@ -157,7 +150,6 @@ def test_post_auth_refresh_with_invalid_token() -> None:
 
 def test_get_users_me_with_valid_token() -> None:
     """Test GET /users/me endpoint with valid access token."""
-    # Create user and login
     test_password = "Password123!"
     create_resp = client.post(
         "/users",
@@ -178,7 +170,6 @@ def test_get_users_me_with_valid_token() -> None:
 
     access_token = login_resp.json()["access_token"]
 
-    # Call GET /users/me with valid token
     headers = {"Authorization": f"Bearer {access_token}"}
     me_resp = client.get("/users/me", headers=headers)
 

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi.testclient import TestClient
 
 from backend.app.core.database import Base, SessionLocal, engine
@@ -115,3 +117,63 @@ def test_patch_partial_update_and_delete():
     # ensure 404 after delete
     resp3 = client.get(f"/products/{pid}")
     assert resp3.status_code == 404
+
+
+def test_get_products_supports_query_category_and_sort():
+    admin_headers = _admin_headers("admin-query@example.com")
+
+    client.post(
+        "/products",
+        json={
+            "name": "Blue Shirt",
+            "description": "cotton shirt",
+            "category": "clothes",
+            "price": 25.0,
+            "stock_quantity": 3,
+        },
+        headers=admin_headers,
+    )
+    client.post(
+        "/products",
+        json={
+            "name": "Black Pants",
+            "description": "formal pants",
+            "category": "clothes",
+            "price": 40.0,
+            "stock_quantity": 2,
+        },
+        headers=admin_headers,
+    )
+    client.post(
+        "/products",
+        json={
+            "name": "Coffee Mug",
+            "description": "home item",
+            "category": "home",
+            "price": 10.0,
+            "stock_quantity": 6,
+        },
+        headers=admin_headers,
+    )
+
+    search_resp = client.get("/products", params={"q": "shirt"})
+    assert search_resp.status_code == 200
+    assert len(search_resp.json()) == 1
+    assert search_resp.json()[0]["name"] == "Blue Shirt"
+
+    filter_resp = client.get("/products", params={"category": "clothes"})
+    assert filter_resp.status_code == 200
+    assert len(filter_resp.json()) == 2
+
+    sort_resp = client.get("/products", params={"sort": "price_desc"})
+    assert sort_resp.status_code == 200
+    prices = [Decimal(item["price"]) for item in sort_resp.json()]
+    assert prices == sorted(prices, reverse=True)
+
+    composed_resp = client.get(
+        "/products",
+        params={"q": "shirt", "category": "clothes", "sort": "price_asc"},
+    )
+    assert composed_resp.status_code == 200
+    assert len(composed_resp.json()) == 1
+    assert composed_resp.json()[0]["name"] == "Blue Shirt"

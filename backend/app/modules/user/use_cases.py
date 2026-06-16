@@ -1,12 +1,20 @@
 """Use cases for User management."""
 
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
-from backend.app.modules.auth.security import hash_password
-from backend.app.modules.auth.validators import validate_password_policy
-from backend.app.modules.user.domain.models import User
+from backend.app.core.security import hash_password, validate_password_policy
+from backend.app.modules.user.domain.models import User, UserRole
 from backend.app.modules.user.repositories.user_repository import UserRepository
 from backend.app.modules.user.schemas import UserCreate, UserRead, UserUpdate
+from backend.app.uow.unit_of_work import UnitOfWork
+
+
+def is_admin(repository: UserRepository, user_id: int) -> bool:
+    user = repository.get_by_id(user_id)
+
+    if user is None:
+        return False
+
+    return user.role == UserRole.ADMIN
 
 
 def create_user(
@@ -176,13 +184,5 @@ def _check_owner_or_admin(
     if requesting_user_id == target_user_id:
         return
 
-    requester = repository.get_by_id(requesting_user_id)
-    if requester is None or requester.role != "admin":
+    if not is_admin(repository, requesting_user_id):
         raise NotFoundError(Messages.USER_NOT_FOUND)
-
-
-def restore_user(
-    *args: object,
-    **kwargs: object,
-) -> None:
-    raise NotImplementedError("user.use_cases.restore_user " "is not implemented")

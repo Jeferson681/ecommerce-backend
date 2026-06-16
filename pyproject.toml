@@ -91,6 +91,7 @@ module = [
   "pydantic.*",
   "sqlalchemy.*",
   "alembic.*",
+  "stripe",
 ]
 
 ignore_missing_imports = true

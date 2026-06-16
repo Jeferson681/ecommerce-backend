@@ -122,15 +122,19 @@ def test_transaction_rollback_on_exception(monkeypatch):
 
     monkeypatch.setattr(OrderItemRepository, "create", _raise_create)
 
-    # Attempt checkout should fail and rollback: cart should remain and product stock unchanged
-    r2 = client.post(
-        "/orders/checkout",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Idempotency-Key": "rollback-checkout",
-        },
-    )
-    assert r2.status_code == 500
+    # The monkeypatched error propagates through FastAPI. Since checkout_endpoint
+    # delegates exception handling to the global AppError handler (which covers
+    # NotFoundError, ValidationError, etc.), a raw Exception escapes the handler
+    # and is re-raised by TestClient.
+    with pytest.raises(Exception, match="boom"):
+        client.post(
+            "/orders/checkout",
+            json={"payment_method_id": "pm_card_visa"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Idempotency-Key": "rollback-checkout",
+            },
+        )
 
     # Verify cart still exists (GET /cart)
     r3 = client.get("/cart", headers={"Authorization": f"Bearer {token}"})
@@ -138,9 +142,13 @@ def test_transaction_rollback_on_exception(monkeypatch):
     cart = r3.json()
     assert cart["items"] and cart["items"][0]["product_id"] == product.id
 
-    # Verify product stock unchanged
-    session.refresh(product)
-    assert product.stock_quantity == 5
+    # Verify product stock unchanged — use a fresh session to avoid stale ORM cache
+    session.close()
+    verify_session = SessionLocal()
+    fresh_product = verify_session.get(Product, product.id)
+    verify_session.close()
+    assert fresh_product is not None
+    assert fresh_product.stock_quantity == 5
 
 
 @pytest.mark.integration
@@ -175,6 +183,7 @@ def test_concurrent_checkouts_no_oversell():
         token, idem_key = item
         res = client.post(
             "/orders/checkout",
+            json={"payment_method_id": "pm_card_visa"},
             headers={
                 "Authorization": f"Bearer {token}",
                 "Idempotency-Key": idem_key,
@@ -211,9 +220,10 @@ def test_idempotency_risk_duplicate_orders():
     )
     assert r.status_code == 201
 
-    # Call checkout twice (simulating a retry) -- current system doesn't implement idempotency
+    # Call checkout twice (simulating a retry)
     r1 = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "retry-order-1",
@@ -221,6 +231,7 @@ def test_idempotency_risk_duplicate_orders():
     )
     r2 = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "retry-order-1",
@@ -257,12 +268,9 @@ def test_repository_pagination_edge_case():
 def test_db_constraint_unique_cart_item():
     session = SessionLocal()
 
-    # create user, product and cart
-
     user = _create_user(session, "unique@example.com")
     product = _create_product(session, "sku-unique")
 
-    # Better: construct a Cart ORM instance directly
     from backend.app.modules.cart.domain.models import Cart
 
     cart = Cart(user_id=user.id)

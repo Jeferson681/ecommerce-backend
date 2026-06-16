@@ -53,7 +53,9 @@ def test_concurrent_checkout_only_creates_single_order() -> None:
 
     def do_request():
         resp = client.post(
-            "/orders/checkout", headers={"Idempotency-Key": idempotency_key}
+            "/orders/checkout",
+            json={"payment_method_id": "pm_card_visa"},
+            headers={"Idempotency-Key": idempotency_key},
         )
         responses.append(resp)
 

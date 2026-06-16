@@ -44,6 +44,7 @@ def test_checkout_returns_404_when_no_cart() -> None:
 
     resp = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "order-no-cart-1",
@@ -64,6 +65,7 @@ def test_checkout_returns_400_when_cart_empty() -> None:
 
     resp = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "order-empty-cart-1",
@@ -96,6 +98,7 @@ def test_checkout_returns_400_on_insufficient_stock() -> None:
 
     resp = client.post(
         "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
         headers={
             "Authorization": f"Bearer {token}",
             "Idempotency-Key": "order-low-stock-1",

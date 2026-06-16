@@ -1,6 +1,5 @@
 """Use cases for product management."""
 
-from backend.app.application.uow.unit_of_work import UnitOfWork
 from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
@@ -11,12 +10,14 @@ from backend.app.modules.product.schemas import (
     ProductRead,
     ProductUpdate,
 )
+from backend.app.uow.unit_of_work import UnitOfWork
 
 
 def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
     product = Product(
         name=product_data.name,
         description=product_data.description,
+        category=product_data.category,
         price=product_data.price,
         stock_quantity=product_data.stock_quantity,
     )
@@ -33,15 +34,24 @@ def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
     return ProductRead.model_validate(product)
 
 
-def get_product(product_id: int, uow: UnitOfWork) -> ProductRead | None:
+def get_product(product_id: int, uow: UnitOfWork) -> ProductRead:
     """Retrieve a product by its ID."""
     repository = ProductRepository(uow.session)
     product = repository.get_by_id(product_id)
-    return ProductRead.model_validate(product) if product else None
+
+    if not product:
+        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+
+    return ProductRead.model_validate(product)
 
 
 def list_products(
-    uow: UnitOfWork, page: int | None = None, per_page: int | None = None
+    uow: UnitOfWork,
+    page: int | None = None,
+    per_page: int | None = None,
+    query: str | None = None,
+    category: str | None = None,
+    sort: str | None = None,
 ) -> list[ProductRead]:
     """List products optionally paginated.
 
@@ -52,9 +62,15 @@ def list_products(
     if page is not None and per_page is not None:
         # convert to zero-based offset
         offset = (page - 1) * per_page
-        products = repository.list(offset=offset, limit=per_page)
+        products = repository.list(
+            offset=offset,
+            limit=per_page,
+            query=query,
+            category=category,
+            sort=sort,
+        )
     else:
-        products = repository.list()
+        products = repository.list(query=query, category=category, sort=sort)
 
     return [ProductRead.model_validate(product) for product in products]
 

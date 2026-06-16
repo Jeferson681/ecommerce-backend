@@ -23,6 +23,12 @@ class PaymentRepository:
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
+    def get_by_order_id(self, order_id: int) -> list[Payment]:
+        statement = select(Payment).where(Payment.order_id == order_id)
+
+        result = self.session.execute(statement)
+        return list(result.scalars().all())
+
     def get_by_provider_payment_id(self, provider_payment_id: str) -> Payment | None:
         statement = select(Payment).where(
             Payment.provider_payment_id == provider_payment_id

@@ -15,25 +15,13 @@ class IdempotencyRepository:
 
     def get_by_key(
         self,
-        key: str,
+        idempotency_key: str,
         user_id: int | None = None,
     ) -> IdempotencyKey | None:
-        statement = select(IdempotencyKey).where(IdempotencyKey.key == key)
+        statement = select(IdempotencyKey).where(IdempotencyKey.key == idempotency_key)
 
         if user_id is not None:
             statement = statement.where(IdempotencyKey.user_id == user_id)
-
-        result = self.session.execute(statement)
-
-        return result.scalar_one_or_none()
-
-    def get_by_request_hash(
-        self,
-        request_hash: str,
-    ) -> IdempotencyKey | None:
-        statement = select(IdempotencyKey).where(
-            IdempotencyKey.request_hash == request_hash
-        )
 
         result = self.session.execute(statement)
 
@@ -65,7 +53,7 @@ class IdempotencyRepository:
 
     def save_response(
         self,
-        key: str,
+        idempotency_key: str,
         user_id: int,
         status: int,
         body: str,
@@ -73,7 +61,7 @@ class IdempotencyRepository:
         statement = (
             update(IdempotencyKey)
             .where(
-                IdempotencyKey.key == key,
+                IdempotencyKey.key == idempotency_key,
                 IdempotencyKey.user_id == user_id,
                 IdempotencyKey.response_status.is_(None),
             )

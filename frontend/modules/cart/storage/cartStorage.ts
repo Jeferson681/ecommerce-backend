@@ -138,6 +138,38 @@ function findCachedItemByProductId(productId: number): CartItem | undefined {
   return readItems().find((item) => getStoredProductId(item) === productId);
 }
 
+/**
+ * Push locally-only cart items (those without a server id) to the backend.
+ * Handles the case where items were added before login or sync failed.
+ * After sync, refreshes the local state from server to get assigned ids.
+ */
+async function syncLocalItemsToServer(): Promise<void> {
+  if (globalThis.window === undefined) return;
+  if (!tokenStorage.getAccessToken()) return;
+
+  const items = readItems();
+
+  // Only sync items that don't have a server id yet
+  const unsyncedItems = items.filter((item) => item.id === null || item.cartId === null);
+
+  if (unsyncedItems.length === 0) return;
+
+  // Push each unsynced item to the server, one at a time.
+  // Using individual POST /cart/items to match the existing API pattern.
+  for (const item of unsyncedItems) {
+    try {
+      await addCartItem(item.productId, item.quantity);
+    } catch {
+      // If a single item fails, continue with others.
+      // The server will reject duplicates or invalid products on its own.
+      console.error("cartStorage: failed to sync item", item.productId);
+    }
+  }
+
+  // Refresh from server to get the authoritative state with server ids
+  await refreshFromServer();
+}
+
 export const cartStorage = {
   getItems(): CartItem[] {
     return readItems();
@@ -173,8 +205,8 @@ export const cartStorage = {
   },
 
   addItem(product: Product, quantity = 1): void {
-    const items = readItems();
-    const nextItems = items.map((item) =>
+    const previousItems = readItems();
+    const nextItems = previousItems.map((item) =>
       getStoredProductId(item) === product.id
         ? { ...normalizeItem(item), product, productId: product.id, quantity: item.quantity + quantity }
         : item
@@ -195,14 +227,18 @@ export const cartStorage = {
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
       void addCartItem(product.id, quantity)
         .then(() => refreshFromServer())
-        .catch(() => undefined);
+        .catch((err) => {
+          console.error("cartStorage: failed to sync addItem to server", err);
+          // Don't rollback — keep items locally so they can be retried later
+        });
     }
   },
 
   updateQuantity(productId: number, quantity: number): void {
     const cachedItem = findCachedItemByProductId(productId);
+    const previousItems = readItems();
 
-    const nextItems = readItems()
+    const nextItems = previousItems
       .map((item) =>
         getStoredProductId(item) === productId ? { ...normalizeItem(item), quantity } : item
       )
@@ -215,11 +251,17 @@ export const cartStorage = {
         if (quantity > 0) {
           void updateCartItem(cachedItem.id, quantity)
             .then(() => refreshFromServer())
-            .catch(() => undefined);
+            .catch((err) => {
+              console.error("cartStorage: failed to sync updateQuantity to server", err);
+              writeItems(previousItems);
+            });
         } else {
           void removeCartItem(cachedItem.id)
             .then(() => refreshFromServer())
-            .catch(() => undefined);
+            .catch((err) => {
+              console.error("cartStorage: failed to sync removeItem to server", err);
+              writeItems(previousItems);
+            });
         }
       } else {
         void refreshFromServer();
@@ -229,15 +271,19 @@ export const cartStorage = {
 
   removeItem(productId: number): void {
     const cachedItem = findCachedItemByProductId(productId);
+    const previousItems = readItems();
 
-    const nextItems = readItems().filter((item) => getStoredProductId(item) !== productId);
+    const nextItems = previousItems.filter((item) => getStoredProductId(item) !== productId);
     writeItems(nextItems);
 
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
       if (cachedItem?.id) {
         void removeCartItem(cachedItem.id)
           .then(() => refreshFromServer())
-          .catch(() => undefined);
+          .catch((err) => {
+            console.error("cartStorage: failed to sync removeItem to server", err);
+            writeItems(previousItems);
+          });
       } else {
         void refreshFromServer();
       }
@@ -250,5 +296,12 @@ export const cartStorage = {
 
   refresh(): void {
     syncFromServer();
+  },
+
+  /** Push local-only items to the server and refresh state.
+   *  Must be called before checkout to ensure the server cart matches local state.
+   */
+  syncLocalBeforeCheckout(): Promise<void> {
+    return syncLocalItemsToServer();
   },
 };
