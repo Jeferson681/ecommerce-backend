@@ -13,10 +13,6 @@ from backend.app.modules.payment.gateway.base import (
 )
 from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _make_request(
     amount: Decimal | None = None,
@@ -30,75 +26,6 @@ def _make_request(
             {"payment_method_id": payment_method_id} if payment_method_id else None
         ),
     )
-
-
-# ---------------------------------------------------------------------------
-# Mock mode (no STRIPE_SECRET_KEY)
-# ---------------------------------------------------------------------------
-
-
-class TestMockMode:
-    """Gateway falls back to deterministic mock when Stripe is not configured."""
-
-    def test_mock_returns_approved(self, monkeypatch):
-        monkeypatch.setattr("backend.app.core.config.settings.STRIPE_SECRET_KEY", None)
-        gateway = StripeGateway()
-        request = _make_request()
-
-        result = gateway.process_payment(request=request)
-
-        assert result.status == "approved"
-        assert result.failure_reason is None
-        assert result.provider_status == "succeeded"
-
-    def test_mock_provider_payment_id_format(self, monkeypatch):
-        monkeypatch.setattr("backend.app.core.config.settings.STRIPE_SECRET_KEY", None)
-        gateway = StripeGateway()
-        request = _make_request(amount=Decimal("25.00"))
-
-        result = gateway.process_payment(request=request)
-
-        # pi_test_{amount_cents}_{suffix}_{uuid}
-        assert result.provider_payment_id is not None
-        assert result.provider_payment_id.startswith("pi_test_")
-        # 25.00 → 2500 cents
-        assert "2500" in result.provider_payment_id
-
-    def test_mock_with_idempotency_key(self, monkeypatch):
-        monkeypatch.setattr("backend.app.core.config.settings.STRIPE_SECRET_KEY", None)
-        gateway = StripeGateway()
-        request = _make_request()
-
-        result = gateway.process_payment(request=request, idempotency_key="abc123def")
-
-        assert result.provider_payment_id is not None
-        # idempotency key suffix should appear in the id
-        assert "abc123de" in result.provider_payment_id
-
-    def test_mock_without_payment_method_id(self, monkeypatch):
-        """Mock mode still succeeds even without payment_method_id."""
-        monkeypatch.setattr("backend.app.core.config.settings.STRIPE_SECRET_KEY", None)
-        gateway = StripeGateway()
-        request = _make_request(payment_method_id=None)
-
-        result = gateway.process_payment(request=request)
-
-        assert result.status == "approved"
-
-    def test_mock_without_provider_data(self, monkeypatch):
-        """Mock mode succeeds even if provider_data is None."""
-        monkeypatch.setattr("backend.app.core.config.settings.STRIPE_SECRET_KEY", None)
-        gateway = StripeGateway()
-        request = PaymentRequest(amount=Decimal("10.00"), method="card")
-
-        result = gateway.process_payment(request=request)
-
-        assert result.status == "approved"
-
-
-# ---------------------------------------------------------------------------
-# payment_method_id validation (when Stripe is configured)
-# ---------------------------------------------------------------------------
 
 
 class TestPaymentMethodIdValidation:
@@ -147,32 +74,31 @@ class TestPaymentMethodIdValidation:
         assert result.failure_reason == "payment_method_id is required"
 
 
-# ---------------------------------------------------------------------------
-# _create_payment_intent (Stripe API call)
-# ---------------------------------------------------------------------------
-
-
 class TestCreatePaymentIntent:
     """Exercises _create_payment_intent with a mocked Stripe API."""
+
+    def _setup(self, monkeypatch) -> StripeGateway:
+        monkeypatch.setattr(
+            "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
+        )
+        return StripeGateway()
+
+    def _mock_intent(self, status="succeeded", last_error=None):
+        mock_intent = MagicMock()
+        mock_intent.id = "pi_3XYZ"
+        mock_intent.status = status
+        mock_intent.last_payment_error = last_error
+        return mock_intent
 
     def test_successful_payment_intent(self, monkeypatch):
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
-        mock_intent = MagicMock()
-        mock_intent.id = "pi_3XYZ"
-        mock_intent.status = "succeeded"
-        mock_intent.last_payment_error = None
-
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            lambda **kwargs: mock_intent,
-        )
+        mock_intent = self._mock_intent("succeeded")
+        monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: mock_intent)
 
         gateway = StripeGateway()
         request = _make_request(amount=Decimal("30.00"))
-
         result = gateway.process_payment(request=request)
 
         assert result.provider_payment_id == "pi_3XYZ"
@@ -184,20 +110,11 @@ class TestCreatePaymentIntent:
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
-        mock_intent = MagicMock()
-        mock_intent.id = "pi_4ABC"
-        mock_intent.status = "processing"
-        mock_intent.last_payment_error = None
-
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            lambda **kwargs: mock_intent,
-        )
+        mock_intent = self._mock_intent("processing")
+        monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: mock_intent)
 
         gateway = StripeGateway()
         request = _make_request()
-
         result = gateway.process_payment(request=request)
 
         assert result.status == "pending"
@@ -219,14 +136,10 @@ class TestCreatePaymentIntent:
         def _raise(*args, **kwargs):
             raise FakeCardError()
 
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            _raise,
-        )
+        monkeypatch.setattr("stripe.PaymentIntent.create", _raise)
 
         gateway = StripeGateway()
         request = _make_request()
-
         result = gateway.process_payment(request=request)
 
         assert result.status == "failed"
@@ -244,14 +157,10 @@ class TestCreatePaymentIntent:
         def _raise(*args, **kwargs):
             raise FakeStripeError("rate limit exceeded", None)
 
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            _raise,
-        )
+        monkeypatch.setattr("stripe.PaymentIntent.create", _raise)
 
         gateway = StripeGateway()
         request = _make_request()
-
         result = gateway.process_payment(request=request)
 
         assert result.status == "failed"
@@ -262,23 +171,13 @@ class TestCreatePaymentIntent:
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
         mock_error = MagicMock()
         mock_error.message = "Insufficient funds."
-
-        mock_intent = MagicMock()
-        mock_intent.id = "pi_5DEF"
-        mock_intent.status = "requires_payment_method"
-        mock_intent.last_payment_error = mock_error
-
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            lambda **kwargs: mock_intent,
-        )
+        mock_intent = self._mock_intent("requires_payment_method", mock_error)
+        monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: mock_intent)
 
         gateway = StripeGateway()
         request = _make_request()
-
         result = gateway.process_payment(request=request)
 
         assert result.status == "failed"
@@ -289,20 +188,11 @@ class TestCreatePaymentIntent:
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
-        mock_intent = MagicMock()
-        mock_intent.id = "pi_6GHI"
-        mock_intent.status = "requires_action"
-        mock_intent.last_payment_error = None
-
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            lambda **kwargs: mock_intent,
-        )
+        mock_intent = self._mock_intent("requires_action")
+        monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: mock_intent)
 
         gateway = StripeGateway()
         request = _make_request()
-
         result = gateway.process_payment(request=request)
 
         assert result.status == "pending"
@@ -312,34 +202,18 @@ class TestCreatePaymentIntent:
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
-        mock_intent = MagicMock()
-        mock_intent.id = "pi_7JKL"
-        mock_intent.status = "requires_capture"
-        mock_intent.last_payment_error = None
-
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            lambda **kwargs: mock_intent,
-        )
+        mock_intent = self._mock_intent("requires_capture")
+        monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: mock_intent)
 
         gateway = StripeGateway()
         request = _make_request()
-
         result = gateway.process_payment(request=request)
 
         assert result.status == "pending"
         assert result.provider_status == "requires_capture"
 
 
-# ---------------------------------------------------------------------------
-# _map_status
-# ---------------------------------------------------------------------------
-
-
 class TestMapStatus:
-    """Unit tests for the internal status mapping."""
-
     def test_succeeded(self):
         assert StripeGateway()._map_status("succeeded") == "approved"
 
@@ -365,16 +239,9 @@ class TestMapStatus:
         assert StripeGateway()._map_status("unknown_garbage") == "failed"
 
 
-# ---------------------------------------------------------------------------
-# _extract_failure_reason
-# ---------------------------------------------------------------------------
-
-
 class TestExtractFailureReason:
-    """Unit tests for extracting failure reason from a PaymentIntent."""
-
     def test_no_error_returns_none(self):
-        intent = MagicMock(spec=[])  # no last_payment_error at all
+        intent = MagicMock(spec=[])
         assert StripeGateway._extract_failure_reason(intent) is None
 
     def test_error_with_message(self):
@@ -386,23 +253,15 @@ class TestExtractFailureReason:
     def test_error_without_message(self):
         intent = MagicMock()
         intent.last_payment_error = MagicMock()
-        del intent.last_payment_error.message  # simulate missing attribute
+        del intent.last_payment_error.message
         assert StripeGateway._extract_failure_reason(intent) is None
 
 
-# ---------------------------------------------------------------------------
-# Idempotency key passed to Stripe API
-# ---------------------------------------------------------------------------
-
-
 class TestIdempotencyKey:
-    """Ensures idempotency_key is forwarded to stripe.PaymentIntent.create."""
-
     def test_idempotency_key_passed_to_stripe(self, monkeypatch):
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
         captured_kwargs = {}
 
         def mock_create(**kwargs):
@@ -417,19 +276,13 @@ class TestIdempotencyKey:
 
         gateway = StripeGateway()
         request = _make_request()
-
-        gateway.process_payment(
-            request=request,
-            idempotency_key="my-unique-key-123",
-        )
-
+        gateway.process_payment(request=request, idempotency_key="my-unique-key-123")
         assert captured_kwargs.get("idempotency_key") == "my-unique-key-123"
 
     def test_idempotency_key_none_when_omitted(self, monkeypatch):
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
         captured_kwargs = {}
 
         def mock_create(**kwargs):
@@ -441,37 +294,22 @@ class TestIdempotencyKey:
             return mock
 
         monkeypatch.setattr("stripe.PaymentIntent.create", mock_create)
-
         gateway = StripeGateway()
         request = _make_request()
-
         gateway.process_payment(request=request)
-
         assert captured_kwargs.get("idempotency_key") is None
 
 
-# ---------------------------------------------------------------------------
-# PaymentRequest contract with StripeGateway
-# ---------------------------------------------------------------------------
-
-
 class TestPaymentRequestContract:
-    """Verifies that PaymentRequest is the exclusive input to process_payment."""
-
     def test_gateway_accepts_payment_request(self, monkeypatch):
         monkeypatch.setattr(
             "backend.app.core.config.settings.STRIPE_SECRET_KEY", "sk_test_xxx"
         )
-
         mock_intent = MagicMock()
         mock_intent.id = "pi_contract"
         mock_intent.status = "succeeded"
         mock_intent.last_payment_error = None
-
-        monkeypatch.setattr(
-            "stripe.PaymentIntent.create",
-            lambda **kwargs: mock_intent,
-        )
+        monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: mock_intent)
 
         gateway = StripeGateway()
         request = PaymentRequest(
@@ -479,19 +317,14 @@ class TestPaymentRequestContract:
             method="card",
             provider_data={"payment_method_id": "pm_contract_test"},
         )
-
         result = gateway.process_payment(request=request)
-
         assert result.status == "approved"
         assert result.provider_payment_id == "pi_contract"
 
     def test_gateway_refuses_old_signature(self):
-        """process_payment only accepts keyword arguments: request and idempotency_key."""
         gateway = StripeGateway()
-
         with pytest.raises(TypeError):
-            # The old positional/keyword signature should fail
-            gateway.process_payment(  # type: ignore[call-arg]
+            gateway.process_payment(
                 order_id=1,
                 user_id=1,
                 amount=Decimal("10.00"),
@@ -499,8 +332,18 @@ class TestPaymentRequestContract:
             )
 
     def test_gateway_rejects_domain_entities(self):
-        """PaymentRequest must NOT contain order_id or user_id."""
         request = PaymentRequest(amount=Decimal("10.00"), method="card")
         assert not hasattr(request, "order_id")
         assert not hasattr(request, "user_id")
         assert not hasattr(request, "payment_method_id")
+
+
+class TestMissingSecretKey:
+    """Gateway raises ValueError when STRIPE_SECRET_KEY is not set."""
+
+    def test_raises_on_missing_key(self, monkeypatch):
+        monkeypatch.setattr("backend.app.core.config.settings.STRIPE_SECRET_KEY", None)
+        gateway = StripeGateway()
+        request = _make_request()
+        with pytest.raises(ValueError, match="Stripe secret key is not configured"):
+            gateway.process_payment(request=request)

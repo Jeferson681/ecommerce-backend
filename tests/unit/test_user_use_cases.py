@@ -34,6 +34,7 @@ def test_create_user_happy_path(monkeypatch) -> None:
         def create(self, user: object) -> object:
             now = datetime.now(UTC)
             user.id = 1  # type: ignore[attr-defined]
+            user.role = "user"  # type: ignore[attr-defined]
             user.is_active = True  # type: ignore[attr-defined]
             user.created_at = now  # type: ignore[attr-defined]
             user.updated_at = now  # type: ignore[attr-defined]

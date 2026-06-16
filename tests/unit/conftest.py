@@ -113,6 +113,7 @@ def make_order(**overrides: Any) -> SimpleNamespace:
     defaults = dict(
         id=1,
         user_id=1,
+        status="pending",
         items=[],
         created_at=now,
         updated_at=now,

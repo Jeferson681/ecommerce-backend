@@ -31,7 +31,8 @@ class DummyUoW2:
         self.rolled_back = True
 
 
-def test_get_product_returns_none_when_missing(monkeypatch):
+def test_get_product_raises_not_found_when_missing(monkeypatch):
+    """get_product now raises NotFoundError instead of returning None."""
     repo = DummyRepo2()
 
     def fake_repo_factory(session):
@@ -41,9 +42,8 @@ def test_get_product_returns_none_when_missing(monkeypatch):
 
     uow = DummyUoW2()
 
-    result = use_cases.get_product(1, uow)
-
-    assert result is None
+    with pytest.raises(NotFoundError, match="Product not found"):
+        use_cases.get_product(1, uow)
 
 
 def test_list_products_returns_empty(monkeypatch):
@@ -89,10 +89,10 @@ def test_delete_product_commits_and_calls_delete(monkeypatch):
     uow = DummyUoW2()
 
     # monkeypatch get_by_id to return a simple object
-    repo.get_by_id = lambda pk: SimpleNamespace(id=pk)
+    repo.get_by_id = lambda pk: SimpleNamespace(id=pk)  # type: ignore[assignment]
 
     result = use_cases.delete_product(1, uow)
 
-    # delete_product intentionally returns None on success (silence on success)
+    # delete_product intentionally returns None on success
     assert result is None
     assert uow.committed is True

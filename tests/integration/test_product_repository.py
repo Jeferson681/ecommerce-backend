@@ -38,9 +38,9 @@ def test_create_and_get_and_list_and_delete():
     all_products = repo.list()
     assert len(all_products) >= 1
 
-    # update
+    # Update directly via ORM session (ProductRepository.update was removed)
     p.name = "updated"
-    repo.update(p)
+    session.flush()
     session.commit()
 
     updated = repo.get_by_id(p.id)

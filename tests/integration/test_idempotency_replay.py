@@ -1,3 +1,12 @@
+"""Tests for idempotency replay behavior.
+
+Validates that replaying a successful checkout request with the same
+idempotency key returns the same response and does NOT create duplicate
+orders or payments.
+"""
+
+from __future__ import annotations
+
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -61,4 +70,28 @@ def test_checkout_then_replay_returns_same() -> None:
     assert resp2.status_code == 201
     body2 = resp2.json()
 
+    # Same order must be returned (not a new one)
     assert body1["id"] == body2["id"]
+    assert body1["user_id"] == body2["user_id"]
+    assert body1["status"] == body2["status"]
+
+    # Verify only ONE order exists in the database
+    session2 = SessionLocal()
+    from backend.app.modules.order.repositories.order_repository import (
+        OrderRepository,
+    )
+    from backend.app.modules.payment.repositories.payment_repository import (
+        PaymentRepository,
+    )
+
+    order_repo = OrderRepository(session2)
+    orders = order_repo.get_by_user_id(77)
+    assert len(orders) == 1, f"Expected 1 order, got {len(orders)}"
+
+    # Verify only ONE payment exists for the order
+    payment_repo = PaymentRepository(session2)
+    payments = payment_repo.get_by_order_id(body1["id"])
+    assert len(payments) == 1, f"Expected 1 payment, got {len(payments)}"
+
+    session2.close()
+    session.close()

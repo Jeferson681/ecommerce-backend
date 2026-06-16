@@ -13,18 +13,18 @@ from backend.app.modules.cart.repositories.cart_repository import (
 )
 from backend.app.modules.product.domain.models import Product
 
-SessionLocal: sessionmaker[Session]
+ENGINE = create_engine(
+    "sqlite:///:memory:", connect_args={"check_same_thread": False}, future=True
+)
+SessionLocal = sessionmaker(bind=ENGINE, future=True)
 
 
 def setup_module(module: object) -> None:
-    module.engine = create_engine("sqlite:///:memory:", future=True)
-    Base.metadata.create_all(bind=module.engine)
-    global SessionLocal
-    SessionLocal = sessionmaker(bind=module.engine, future=True)
+    Base.metadata.create_all(bind=ENGINE)
 
 
 def teardown_module(module: object) -> None:
-    Base.metadata.drop_all(bind=module.engine)
+    Base.metadata.drop_all(bind=ENGINE)
 
 
 def _create_product(session: Session, name: str = "Produto 1") -> Product:
