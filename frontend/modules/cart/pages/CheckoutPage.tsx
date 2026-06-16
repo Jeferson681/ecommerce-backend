@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 
 import { useCart } from "@/modules/cart/hooks/useCart";
+import { cartStorage } from "@/modules/cart/storage/cartStorage";
 import { formatMoney } from "@/core/utils/money";
 import { orderService } from "@/modules/order/services/orderService";
 import { getUserErrorMessage } from "@/core/exceptions/userMessage";
@@ -26,7 +27,7 @@ type CheckoutState =
   | { phase: "idle" }
   | { phase: "collecting_payment" }
   | { phase: "ordering" }
-  | { phase: "success" }
+  | { phase: "success"; orderId?: number; paymentStatus?: string }
   | { phase: "failed"; reason: string; canRetry: boolean };
 
 export default function CheckoutPage() {
@@ -108,9 +109,17 @@ export default function CheckoutPage() {
     setCheckoutState({ phase: "ordering" });
 
     try {
-      await orderService.checkout(idempotencyKey ?? undefined, paymentMethodId ?? undefined);
+      // Ensure local-only cart items are pushed to server before checkout
+      await cartStorage.syncLocalBeforeCheckout();
+
+      const order = await orderService.checkout(paymentMethodId!, idempotencyKey ?? undefined);
       clear();
-      setCheckoutState({ phase: "success" });
+      const lastPayment = order.payments?.[order.payments.length - 1];
+      setCheckoutState({
+        phase: "success",
+        orderId: order.id,
+        paymentStatus: lastPayment?.status,
+      });
     } catch (err) {
       const message = getUserErrorMessage(err);
       const isTransient = isTransientError(err);
@@ -143,7 +152,10 @@ export default function CheckoutPage() {
     setCheckoutState({ phase: "ordering" });
 
     try {
-      await orderService.checkout(idempotencyKey, paymentMethodId ?? undefined);
+      // Re-sync before retry — items may have been added since last attempt
+      await cartStorage.syncLocalBeforeCheckout();
+
+      await orderService.checkout(paymentMethodId!, idempotencyKey);
       clear();
       setCheckoutState({ phase: "success" });
     } catch (err) {
@@ -169,7 +181,7 @@ export default function CheckoutPage() {
   const isProcessing = checkoutState.phase === "ordering";
 
   if (checkoutState.phase === "success") {
-    return <SuccessConfirmation />;
+    return <SuccessConfirmation orderId={checkoutState.orderId} paymentStatus={checkoutState.paymentStatus} />;
   }
 
   if (checkoutState.phase === "failed") {
@@ -248,25 +260,44 @@ export default function CheckoutPage() {
 
 // --- Sub-components for checkout states ---
 
-function SuccessConfirmation() {
+const paymentStatusConfig: Record<string, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
+  approved: { icon: CheckCircle2, color: "text-emerald-600", bg: "border-emerald-200 bg-emerald-50", label: "Payment approved" },
+  pending: { icon: Loader2, color: "text-amber-600", bg: "border-amber-200 bg-amber-50", label: "Payment pending" },
+  failed: { icon: XCircle, color: "text-red-600", bg: "border-red-200 bg-red-50", label: "Payment failed" },
+  cancelled: { icon: XCircle, color: "text-zinc-600", bg: "border-zinc-200 bg-zinc-50", label: "Payment cancelled" },
+  refunded: { icon: CheckCircle2, color: "text-blue-600", bg: "border-blue-200 bg-blue-50", label: "Payment refunded" },
+};
+
+function SuccessConfirmation({ orderId, paymentStatus }: { orderId?: number; paymentStatus?: string }) {
+  const config = paymentStatusConfig[paymentStatus ?? ""] ?? paymentStatusConfig.pending;
+  const Icon = config.icon;
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Order confirmed" description="Checkout successful" />
-      <Card className="border-emerald-200 bg-emerald-50">
+      <PageHeader title={orderId ? `Order #${orderId}` : "Order confirmed"} description="Checkout completed" />
+      <Card className={config.bg}>
         <CardContent className="space-y-4 p-6">
-          <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+          <Icon className={`h-10 w-10 ${config.color} ${paymentStatus === "pending" ? "animate-spin" : ""}`} />
           <div>
-            <div className="text-lg font-semibold text-emerald-950">
-              Thank you for your order
+            <div className={`text-lg font-semibold ${config.color.replace("600", "950")}`}>
+              {config.label}
             </div>
-            <p className="mt-1 text-sm text-emerald-800">
-              Your order has been placed and is being processed.
+            <p className={`mt-1 text-sm ${config.color.replace("600", "800")}`}>
+              {paymentStatus === "approved"
+                ? "Your payment has been confirmed and your order is being processed."
+                : paymentStatus === "pending"
+                  ? "Your payment is being processed. The order will update once confirmed."
+                  : paymentStatus === "failed"
+                    ? "The payment was declined. You can try again from your orders."
+                    : "Your order has been placed."}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button asChild className="rounded-sm">
-              <Link href="/account/orders">View your orders</Link>
-            </Button>
+            {orderId && (
+              <Button asChild className="rounded-sm">
+                <Link href={`/account/orders/${orderId}`}>View order</Link>
+              </Button>
+            )}
             <Button asChild variant="outline" className="rounded-sm">
               <Link href="/products">Continue shopping</Link>
             </Button>

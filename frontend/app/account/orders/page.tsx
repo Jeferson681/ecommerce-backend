@@ -110,8 +110,19 @@ export default function Page() {
                         {o.items.length} item{o.items.length !== 1 ? "s" : ""} &middot; {formatDate(o.created_at)}
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-zinc-900 whitespace-nowrap">
-                      {formatPrice(total.toString())}
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${
+                        o.status === "paid" ? "bg-emerald-100 text-emerald-800" :
+                        o.status === "pending" ? "bg-amber-100 text-amber-800" :
+                        o.status === "cancelled" ? "bg-red-100 text-red-800" :
+                        o.status === "refunded" ? "bg-blue-100 text-blue-800" :
+                        "bg-zinc-100 text-zinc-800"
+                      }`}>
+                        {o.status}
+                      </span>
+                      <div className="text-sm font-medium text-zinc-900 whitespace-nowrap">
+                        {formatPrice(total.toString())}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

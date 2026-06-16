@@ -1,13 +1,33 @@
 /**
- * Payment method types supported by the backend.
- * Matches PaymentMethod Literal in payment/gateway/base.py.
- */
-export type PaymentMethod = "card" | "pix" | "boleto";
-
-/**
  * Checkout request sent to POST /orders/checkout.
- * Matches CheckoutRequest schema in the backend.
+ * Matches PaymentMethodRequest schema in the backend.
  */
 export type CheckoutRequest = {
-  payment_method_id?: string | null;
+  payment_method_id: string;
 };
+
+/**
+ * Payment response returned in OrderRead.payments[].
+ * Matches PaymentRead schema in the backend.
+ */
+export type PaymentRead = {
+  id: number;
+  order_id: number;
+  user_id: number;
+  amount: string;
+  status: string;
+  provider: string;
+  provider_payment_id: string | null;
+  provider_status: string | null;
+  provider_reference: string | null;
+  failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PaymentStatusType =
+  | "pending"
+  | "approved"
+  | "failed"
+  | "cancelled"
+  | "refunded";
