@@ -1,14 +1,14 @@
 # API Endpoints
 
-Current implemented API surface.
+Complete reference of all HTTP endpoints in the current codebase.
 
 ---
 
 ## Infrastructure
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/healthz` | Health check |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/healthz` | — | Health check |
 
 ---
 
@@ -30,9 +30,9 @@ Current implemented API surface.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/auth/token` | — | Authenticate and receive access + refresh tokens |
-| `POST` | `/auth/refresh` | — | Exchange refresh token for a new access token |
-| `POST` | `/auth/logout` | Bearer | Validate refresh token (no revocation) |
+| `POST` | `/auth/token` | — | Login — receive access + refresh tokens |
+| `POST` | `/auth/refresh` | — | Exchange refresh token for new access token |
+| `POST` | `/auth/logout` | Bearer | Validate refresh token (no-op revocation) |
 
 ---
 
@@ -50,11 +50,11 @@ Current implemented API surface.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `page` | `int` | Page number (1-based) |
-| `per_page` | `int` | Items per page (max 100) |
 | `q` | `string` | Search query (name and description) |
 | `category` | `string` | Filter by category |
 | `sort` | `enum` | Sort order: `price_asc`, `price_desc`, `newest` |
+| `page` | `int` | Page number (1-based) |
+| `per_page` | `int` | Items per page (max 100) |
 
 ---
 
@@ -63,10 +63,10 @@ Current implemented API surface.
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/cart` | Bearer | Get current user's cart |
-| `POST` | `/cart/items` | Bearer | Add item to cart |
+| `POST` | `/cart/items` | Bearer | Add item to cart (auto-creates cart if needed) |
 | `PATCH` | `/cart/items/{item_id}` | Bearer | Update item quantity |
 | `DELETE` | `/cart/items/{item_id}` | Bearer | Remove item from cart |
-| `POST` | `/cart/merge` | Bearer | Merge anonymous cart items after login |
+| `POST` | `/cart/merge` | Bearer | Merge local/anonymous items into authenticated cart |
 
 ---
 
@@ -74,14 +74,15 @@ Current implemented API surface.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/orders/checkout` | Bearer | Complete checkout (converts cart to order) |
+| `POST` | `/orders/checkout` | Bearer | Complete checkout — converts cart to order |
 | `POST` | `/orders/{order_id}/retry-payment` | Bearer | Retry payment for a failed order |
 | `GET` | `/orders` | Bearer | List current user's orders |
-| `GET` | `/orders/{order_id}` | Bearer | Get order by ID (owner or admin) |
+| `GET` | `/orders/{order_id}` | Bearer | Get order by ID with items and payments (owner or admin) |
 
 **Notes:**
-- Checkout supports `Idempotency-Key` header for idempotent requests.
-- Retry-payment supports payment method replacement.
+- `POST /orders/checkout` requires `Idempotency-Key` header.
+- `POST /orders/{order_id}/retry-payment` requires `Idempotency-Key` header.
+- Responses include `payments[]` array with full payment history for each order.
 
 ---
 
@@ -98,25 +99,20 @@ Current implemented API surface.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/webhooks/stripe` | — | Stripe webhook receiver (signature verified) |
+| `POST` | `/webhooks/stripe` | — | Stripe webhook receiver (HMAC signature verified) |
 
 ---
 
-## Future Roadmap
+## Status Codes
 
-### User
-- `GET /users/me/addresses`
-
-
-### Order
-- `POST /orders/{order_id}/cancel`
-
-### Payment
-- Payment methods management
--
-
-### Admin Analytics
-- `GET /admin/dashboard`
-- `GET /admin/stats/orders`
-- `GET /admin/stats/payments`
--
+| Code | Meaning |
+|------|---------|
+| `201` | Created (POST responses) |
+| `200` | Success (GET, PATCH responses) |
+| `204` | No content (DELETE, logout) |
+| `400` | Validation error |
+| `401` | Authentication required or invalid credentials |
+| `403` | Insufficient permissions |
+| `404` | Resource not found |
+| `422` | Schema validation failure |
+| `500` | Internal server error |
