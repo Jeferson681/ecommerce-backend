@@ -1,0 +1,82 @@
+# Byte-compiled / optimized / DLLs
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+
+# Mypy / Ruff cache
+.mypy_cache/
+.ruff_cache/
+
+# Source Control
+.git/
+.github/
+
+# Editors
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+
+# Database files
+*.sqlite3
+*.db
+
+# Private docs
+docs/private_docs/
+
+# Frontend dependencies
+node_modules/
+
+# Frontend build
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# Frontend caches
+.npm/
+.pnpm-store/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# TypeScript
+*.tsbuildinfo
+
+# Frontend test reports
+playwright-report/
+test-results/
+
+# Vite
+vite.svg

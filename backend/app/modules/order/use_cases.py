@@ -69,15 +69,12 @@ def get_order_or_raise(
 
 def persist_idempotent_response_if_needed(
     repository: IdempotencyRepository,
-    order_repository: OrderRepository,
-    order_id: int,
+    order: Order,
     idempotency_key: str | None,
     user_id: int,
 ) -> None:
     if idempotency_key is None:
         return
-
-    order = get_order_or_raise(order_repository, order_id)
 
     response_json = OrderRead.model_validate(order).model_dump_json()
 

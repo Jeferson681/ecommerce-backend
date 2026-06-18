@@ -93,8 +93,7 @@ def retry_payment(
 
         persist_idempotent_response_if_needed(
             repository=idempotency_repository,
-            order_repository=order_repository,
-            order_id=order.id,
+            order=order,
             idempotency_key=idempotency_key,
             user_id=user_id,
         )

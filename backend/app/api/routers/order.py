@@ -53,12 +53,21 @@ async def checkout_endpoint(
     "/{order_id}/retry-payment",
     response_model=OrderRead,
 )
-def retry_payment_endpoint(
+async def retry_payment_endpoint(
+    request: Request,
     order_id: int,
     payload: PaymentMethodRequest,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
+    body_bytes = await request.body()
+    request_hash = hashlib.sha256()
+    request_hash.update(request.method.encode())
+    request_hash.update(request.url.path.encode())
+    request_hash.update(body_bytes)
+    rh = request_hash.hexdigest()
+
     gateway = StripeGateway()
 
     return retry_payment(
@@ -67,6 +76,8 @@ def retry_payment_endpoint(
         payment_method_id=payload.payment_method_id,
         gateway=gateway,
         uow=uow,
+        idempotency_key=idempotency_key,
+        request_hash=rh,
     )
 
 

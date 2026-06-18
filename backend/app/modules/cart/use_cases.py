@@ -121,26 +121,19 @@ def merge_cart_items(
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
 
-    try:
-        cart = get_or_create_cart(cart_repository, user_id)
+    cart = get_or_create_cart(cart_repository, user_id)
 
-        for item in items:
-            _upsert_cart_item(
-                cart_item_repository=cart_item_repository,
-                cart_id=cart.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-            )
+    for item in items:
+        _upsert_cart_item(
+            cart_item_repository=cart_item_repository,
+            cart_id=cart.id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+        )
 
-        uow.commit()
+    uow.commit()
 
-    except Exception:
-        uow.rollback()
-        raise
-
-    refreshed = cart_repository.get_by_id(cart.id)
-
-    return CartRead.model_validate(refreshed)
+    return CartRead.model_validate(cart)
 
 
 def _upsert_cart_item(
