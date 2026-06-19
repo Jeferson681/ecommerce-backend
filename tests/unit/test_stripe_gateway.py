@@ -46,9 +46,14 @@ def test_stale_signature_raises():
         gateway._verify_stripe_signature(payload, header, secret)
 
 
-def test_skip_verification_when_secret_none():
-    # no exception should be raised when secret is falsy
+def test_skip_verification_when_secret_none(monkeypatch):
+    # In DEBUG mode, missing secret logs warning and allows (local dev only)
+    import backend.app.core.config as config
+
+    monkeypatch.setattr(config.settings, "DEBUG", True)
+
     gateway = StripeGateway()
+    # Should not raise in DEBUG mode
     gateway._verify_stripe_signature(b"{}", None, None)
 
 

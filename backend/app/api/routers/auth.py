@@ -47,18 +47,21 @@ def token_endpoint(
 def logout_endpoint(
     refresh: auth_schemas.RefreshTokenRequest,
     _user_id: Annotated[int, Depends(get_current_user_id)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> None:
     """Revoke refresh token / logout user.
 
     Parameters
     - refresh: payload containing refresh token
+    - uow: UnitOfWork dependency for repository access
 
     Raises:
     - JWTError: Invalid or expired refresh token
     """
     try:
         auth_use_cases.logout(
-            refresh_token=refresh.refresh_token,
+            refresh_token_str=refresh.refresh_token,
+            uow=uow,
         )
     except JWTError as e:
         raise HTTPException(
@@ -70,18 +73,21 @@ def logout_endpoint(
 @router.post("/refresh", response_model=auth_schemas.TokenResponse)
 def refresh_endpoint(
     refresh: auth_schemas.RefreshTokenRequest,
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> auth_schemas.TokenResponse:
-    """Exchange refresh token for new access token.
+    """Exchange refresh token for new access + refresh token pair.
 
     Parameters:
         refresh: RefreshTokenRequest containing refresh_token
+        uow: UnitOfWork dependency for repository access
 
     Returns:
-        TokenResponse with new access_token and same refresh_token
+        TokenResponse with new access_token and new refresh_token
 
     Raises:
         AuthenticationError: Invalid or expired refresh token
     """
     return auth_use_cases.refresh_access_token(
-        refresh_token=refresh.refresh_token,
+        refresh_token_str=refresh.refresh_token,
+        uow=uow,
     )

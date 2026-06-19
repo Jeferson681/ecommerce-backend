@@ -135,7 +135,7 @@ def test_post_auth_refresh_with_valid_token() -> None:
     assert refresh_resp.status_code == 200
     body = refresh_resp.json()
     assert "access_token" in body
-    assert body["refresh_token"] == refresh_token
+    assert body["refresh_token"] != refresh_token
     assert body["token_type"] == "bearer"
     assert body["expires_in"] is not None
 
@@ -194,3 +194,243 @@ def test_get_users_me_with_invalid_token() -> None:
     resp = client.get("/users/me", headers=headers)
 
     assert resp.status_code == 401
+
+
+# ===========================================================================
+# Refresh Token Rotation — Integration Tests
+# ===========================================================================
+
+
+def _create_and_login(email: str, password: str) -> dict:
+    """Helper: create user + return login response json."""
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "email": email,
+            "password": password,
+        },
+    )
+    assert create_resp.status_code == 201
+    login_resp = client.post(
+        "/auth/token",
+        json={"email": email, "password": password},
+    )
+    assert login_resp.status_code == 200
+    return login_resp.json()
+
+
+def test_refresh_rotates_token_new_token_different_from_old() -> None:
+    """Refresh must return a NEW refresh token (rotation), not the same one."""
+    password = "Password123!"
+    login = _create_and_login("rotate1@mail.com", password)
+
+    old_refresh = login["refresh_token"]
+
+    refresh_resp = client.post(
+        "/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+    assert refresh_resp.status_code == 200
+    new_body = refresh_resp.json()
+
+    assert new_body["refresh_token"] != old_refresh
+    assert new_body["access_token"] != login["access_token"]
+    assert new_body["token_type"] == "bearer"
+    assert new_body["expires_in"] is not None
+
+
+def test_refresh_revokes_old_token_replay_attack_blocked() -> None:
+    """After refresh, the OLD refresh token must be blocked (rotation replay protection)."""
+    password = "Password123!"
+    login = _create_and_login("replay1@mail.com", password)
+
+    old_refresh = login["refresh_token"]
+
+    # First refresh (valid)
+    first_refresh = client.post(
+        "/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+    assert first_refresh.status_code == 200
+
+    # Second refresh with the same old token (replay attack) must fail
+    replay_resp = client.post(
+        "/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+    assert replay_resp.status_code == 401
+
+
+def test_logout_revokes_token_can_no_longer_refresh() -> None:
+    """After logout, the refresh token must be blocked."""
+    password = "Password123!"
+    login = _create_and_login("logout1@mail.com", password)
+
+    refresh_token = login["refresh_token"]
+    access_token = login["access_token"]
+
+    # Logout
+    logout_resp = client.post(
+        "/auth/logout",
+        json={"refresh_token": refresh_token},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert logout_resp.status_code == 204
+
+    # Refresh after logout must fail
+    refresh_after_logout = client.post(
+        "/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert refresh_after_logout.status_code == 401
+
+
+def test_logout_then_login_creates_new_token() -> None:
+    """Logout of one session doesn't affect a fresh login.
+
+    User logs in twice (two sessions), then logs out of the first.
+    The second session remains valid.
+    """
+    password = "Password123!"
+
+    # Create user once
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Multi",
+            "last_name": "User",
+            "email": "multisession1@mail.com",
+            "password": password,
+        },
+    )
+    assert create_resp.status_code == 201
+
+    # First session
+    login1 = client.post(
+        "/auth/token",
+        json={"email": "multisession1@mail.com", "password": password},
+    )
+    assert login1.status_code == 200
+    login1_body = login1.json()
+    r1 = login1_body["refresh_token"]
+
+    # Second session (same user, new login)
+    login2 = client.post(
+        "/auth/token",
+        json={"email": "multisession1@mail.com", "password": password},
+    )
+    assert login2.status_code == 200
+    login2_body = login2.json()
+    r2 = login2_body["refresh_token"]
+
+    # Logout from first session
+    logout1 = client.post(
+        "/auth/logout",
+        json={"refresh_token": r1},
+        headers={"Authorization": f"Bearer {login1_body['access_token']}"},
+    )
+    assert logout1.status_code == 204
+
+    # Second session should still work for refresh
+    refresh_resp = client.post(
+        "/auth/refresh",
+        json={"refresh_token": r2},
+    )
+    assert refresh_resp.status_code == 200
+
+
+def test_double_refresh_both_tokens_invalid() -> None:
+    """After two consecutive refreshes, neither old token should work."""
+    password = "Password123!"
+    login = _create_and_login("double1@mail.com", password)
+
+    t0 = login["refresh_token"]
+
+    # First refresh
+    r1 = client.post("/auth/refresh", json={"refresh_token": t0})
+    assert r1.status_code == 200
+    t1 = r1.json()["refresh_token"]
+
+    # Second refresh (rotate again)
+    r2 = client.post("/auth/refresh", json={"refresh_token": t1})
+    assert r2.status_code == 200
+    t2 = r2.json()["refresh_token"]
+
+    # None of the old tokens should work
+    for stolen_token in [t0, t1]:
+        fail_resp = client.post("/auth/refresh", json={"refresh_token": stolen_token})
+        assert fail_resp.status_code == 401, (
+            f"Token {stolen_token[:20]}... should be blocked"
+        )
+
+    # Only the latest token should work
+    latest = client.post("/auth/refresh", json={"refresh_token": t2})
+    assert latest.status_code == 200
+
+
+def test_logout_twice_with_same_token_fails() -> None:
+    """Logout with an already-revoked token must fail."""
+    password = "Password123!"
+    login = _create_and_login("doublesubmit1@mail.com", password)
+
+    rt = login["refresh_token"]
+    at = login["access_token"]
+
+    # First logout (valid)
+    r1 = client.post(
+        "/auth/logout",
+        json={"refresh_token": rt},
+        headers={"Authorization": f"Bearer {at}"},
+    )
+    assert r1.status_code == 204
+
+    # Second logout with same token (revoked) must fail
+    r2 = client.post(
+        "/auth/logout",
+        json={"refresh_token": rt},
+        headers={"Authorization": f"Bearer {at}"},
+    )
+    assert r2.status_code == 401
+
+
+def test_refresh_with_revoked_token_after_logout() -> None:
+    """Refresh token revoked by logout cannot be used for refresh."""
+    password = "Password123!"
+    login = _create_and_login("revoked1@mail.com", password)
+
+    rt = login["refresh_token"]
+    at = login["access_token"]
+
+    # Logout
+    client.post(
+        "/auth/logout",
+        json={"refresh_token": rt},
+        headers={"Authorization": f"Bearer {at}"},
+    )
+
+    # Refresh must fail
+    resp = client.post("/auth/refresh", json={"refresh_token": rt})
+    assert resp.status_code == 401
+
+
+def test_login_returns_valid_access_token_works_after_refresh() -> None:
+    """Access token from login must remain valid even after refresh rotation."""
+    password = "Password123!"
+    login = _create_and_login("accesstest1@mail.com", password)
+
+    at = login["access_token"]
+
+    # Refresh (rotates refresh token)
+    client.post(
+        "/auth/refresh",
+        json={"refresh_token": login["refresh_token"]},
+    )
+
+    # Old access token should still work (valid until expiry)
+    me_resp = client.get(
+        "/users/me",
+        headers={"Authorization": f"Bearer {at}"},
+    )
+    assert me_resp.status_code == 200

@@ -1,92 +1,99 @@
-"""Use cases for authentication."""
+"""Use cases for authentication.
+
+Phase 3: Refresh token rotation with stateful persistence and revocation.
+"""
+
+from datetime import UTC, datetime
 
 from backend.app.core.exceptions import AuthenticationError, Messages
 from backend.app.core.security import verify_password
+from backend.app.modules.auth.domain.models import RefreshToken
+from backend.app.modules.auth.repositories.refresh_token_repository import (
+    RefreshTokenRepository,
+)
 from backend.app.modules.auth.schemas import TokenResponse
 from backend.app.modules.auth.tokens import (
     JWT_ACCESS_TOKEN_EXPIRES_MINUTES,
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
+    jti_hash,
 )
 from backend.app.modules.user.repositories.user_repository import UserRepository
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
 def login(email: str, password: str, uow: UnitOfWork) -> TokenResponse:
-    """Authenticate a user and return token information.
-
-    Parameters:
-        email: User email address.
-        password: Plain text password to validate.
-        uow: UnitOfWork instance for repository access.
-
-    Returns:
-        TokenResponse with access_token, refresh_token, token_type, and expires_in.
-
-    Raises:
-        AuthenticationError: Invalid email or password.
-    """
-    repository = UserRepository(uow.session)
-    user = repository.get_by_email(email)
-
+    user_repo = UserRepository(uow.session)
+    user = user_repo.get_by_email(email)
     if not user:
         raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
-
     if not verify_password(password, user.password_hash):
         raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
-
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-
+    payload = decode_refresh_token(refresh_token)
+    expires_at = datetime.fromtimestamp(payload["exp"], tz=UTC)
+    token_repo = RefreshTokenRepository(uow.session)
+    token_record = RefreshToken(
+        jti_hash=jti_hash(payload["jti"]),
+        user_id=user.id,
+        expires_at=expires_at,
+    )
+    token_repo.create(token_record)
+    uow.commit()
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer",  # nosec B106 - string literal, not a password
+        token_type="bearer",  # nosec B106
         expires_in=JWT_ACCESS_TOKEN_EXPIRES_MINUTES * 60,
     )
 
 
-def logout(refresh_token: str) -> None:
-    """Revoke or validate a refresh token during logout.
-
-    Parameters:
-        refresh_token: Refresh token to revoke.
-
-    Returns:
-        None
-    """
-    decode_refresh_token(refresh_token)
-
-
-def refresh_access_token(refresh_token: str) -> TokenResponse:
-    """Exchange a valid refresh token for a new access token.
-
-    Parameters:
-        refresh_token: Refresh token to validate and exchange.
-
-    Returns:
-        TokenResponse with new access_token and same refresh_token.
-
-    Raises:
-        AuthenticationError: Invalid or expired refresh token.
-    """
-
+def logout(refresh_token_str: str, uow: UnitOfWork) -> None:
     try:
-        payload = decode_refresh_token(refresh_token)
+        payload = decode_refresh_token(refresh_token_str)
     except Exception as e:
         raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID) from e
+    token_repo = RefreshTokenRepository(uow.session)
+    record = token_repo.get_by_jti_hash(jti_hash(payload["jti"]))
+    if record is None:
+        raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
+    if record.revoked:
+        raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
+    token_repo.revoke(record.id)
+    uow.commit()
 
+
+def refresh_access_token(refresh_token_str: str, uow: UnitOfWork) -> TokenResponse:
+    try:
+        payload = decode_refresh_token(refresh_token_str)
+    except Exception as e:
+        raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID) from e
     user_id = payload.get("sub")
     if not user_id:
         raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
-
-    # Generate new access token with same user_id
-    access_token = create_access_token(data={"sub": user_id})
-
+    token_repo = RefreshTokenRepository(uow.session)
+    record = token_repo.get_by_jti_hash(jti_hash(payload["jti"]))
+    if record is None:
+        raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
+    if record.revoked:
+        raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
+    token_repo.revoke(record.id)
+    new_access_token = create_access_token(data={"sub": str(user_id)})
+    new_refresh_token = create_refresh_token(data={"sub": str(user_id)})
+    new_payload = decode_refresh_token(new_refresh_token)
+    new_expires_at = datetime.fromtimestamp(new_payload["exp"], tz=UTC)
+    new_record = RefreshToken(
+        jti_hash=jti_hash(new_payload["jti"]),
+        user_id=int(user_id),
+        expires_at=new_expires_at,
+    )
+    token_repo.create(new_record)
+    uow.commit()
     return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,  # Return the same refresh token
-        token_type="bearer",  # nosec B106 - string literal, not a password
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer",  # nosec B106
         expires_in=JWT_ACCESS_TOKEN_EXPIRES_MINUTES * 60,
     )

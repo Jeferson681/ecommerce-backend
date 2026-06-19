@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import time
 from decimal import Decimal
 
@@ -17,6 +18,8 @@ from backend.app.modules.payment.gateway.base import (
     PaymentRequest,
     PaymentWebhookPayload,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class StripeGateway:
@@ -194,10 +197,27 @@ class StripeGateway:
 
         Uses manual HMAC verification for portability (avoids relying on
         the SDK's internal event parsing).
+
+        Security (fail-fast):
+        - If secret is missing and DEBUG=False → raise ValueError (production block).
+        - If secret is missing and DEBUG=True → log warning and allow (local dev only).
+        - If signature is missing → raise ValueError.
+        - If signature is invalid → raise ValueError.
         """
 
+        # --- Fail-fast: webhook secret is mandatory in production ---
         if not secret:
-            return
+            if settings.DEBUG:
+                logger.warning(
+                    "STRIPE_WEBHOOK_SECRET is not configured. "
+                    "Webhook signature verification DISABLED (DEBUG mode). "
+                    "This is unsafe for production."
+                )
+                return
+            raise ValueError(
+                "STRIPE_WEBHOOK_SECRET is not configured. "
+                "Webhook processing is disabled in production without a secret."
+            )
 
         if not signature:
             raise ValueError("Missing Stripe-Signature header")

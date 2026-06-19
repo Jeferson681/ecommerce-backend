@@ -34,8 +34,10 @@ def _create_test_schema() -> None:
     # Import modules that register ORM models so they are present in metadata.
     # This avoids NoReferencedTableError when creating the schema.
     import backend.app.idempotency.domain.models  # noqa: F401
+    import backend.app.modules.auth.domain.models  # noqa: F401
     import backend.app.modules.cart.domain.models  # noqa: F401
     import backend.app.modules.order.domain.models  # noqa: F401
+    import backend.app.modules.payment.domain.models  # noqa: F401
     import backend.app.modules.product.domain.models  # noqa: F401
     import backend.app.modules.user.domain.models  # noqa: F401
     from backend.app.core.database import Base, engine

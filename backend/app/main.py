@@ -1,3 +1,4 @@
+import logging
 import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -24,6 +25,8 @@ from backend.app.core.exceptions import (
     ValidationError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -32,8 +35,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-def create_app() -> FastAPI:
+def create_app() -> "FastAPI":
     app = FastAPI(title="ecommerce-backend", lifespan=lifespan)
+
+    # Validate critical configuration on startup
+    # DEBUG=False by default — never leak stack traces to clients in production
+    if not settings.DEBUG:
+        # In production, JWT_SECRET_KEY is mandatory
+        if not getattr(settings, "JWT_SECRET_KEY", None):
+            logger.critical(
+                "JWT_SECRET_KEY is not configured. Aborting startup because DEBUG=False."
+            )
+            raise RuntimeError("Missing required configuration: JWT_SECRET_KEY")
+    else:
+        logger.warning(
+            "DEBUG mode is enabled. Stack traces may be exposed to clients. "
+            "This is unsafe for production."
+        )
 
     app.add_middleware(
         CORSMiddleware,
@@ -67,7 +85,6 @@ def create_app() -> FastAPI:
             status_code = 403
         elif isinstance(exc, ValidationError):
             status_code = 400
-
         return JSONResponse(
             status_code=status_code,
             content={

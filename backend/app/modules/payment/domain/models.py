@@ -40,10 +40,6 @@ class Payment(Base):
             "amount > 0",
             name="ck_payment_amount_positive",
         ),
-        CheckConstraint(
-            "amount > 0",
-            name="ck_payment_amount_positive",
-        ),
     )
 
     id: Mapped[int] = mapped_column(

@@ -44,6 +44,11 @@ def validate_stock_and_build_product_map(
         if product is None:
             raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
 
+        if not product.is_active:
+            raise ValidationError(
+                f"{Messages.PRODUCT_NOT_FOUND} (product_id={cart_item.product_id})"
+            )
+
         if product.stock_quantity < cart_item.quantity:
             raise ValidationError(
                 f"{Messages.ORDER_INSUFFICIENT_STOCK} "

@@ -110,5 +110,5 @@ def delete_product_endpoint(
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Integrity error while deleting product.",
+            detail="Product cannot be deleted because it has associated orders.",
         ) from e

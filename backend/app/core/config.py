@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,12 +15,20 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'ecommerce.db'}"
     APP_NAME: str = "ecommerce-backend"
-    DEBUG: bool = True
-    # Optional webhook secret for Stripe signatures. Leave empty for local/dev.
+    DEBUG: bool = False
+
     STRIPE_WEBHOOK_SECRET: str | None = None
-    # Stripe API keys for real payment processing in test mode.
     STRIPE_SECRET_KEY: str | None = None
     STRIPE_PUBLISHABLE_KEY: str | None = None
 
+    JWT_SECRET_KEY: str
+    JWT_ISSUER: str = "ecommerce-backend"
+    JWT_AUDIENCE: str = "ecommerce-frontend"
 
-settings = Settings()
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]
+
+
+settings = get_settings()
