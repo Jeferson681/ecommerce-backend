@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from backend.app.api.routers.admin import router as admin_router
 from backend.app.api.routers.auth import router as auth_router
@@ -24,6 +25,7 @@ from backend.app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
+from backend.app.core.rate_limit import limiter, rate_limit_exceeded_handler
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,10 @@ def create_app() -> "FastAPI":
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Rate limiting middleware (brute-force protection)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     app.include_router(auth_router)
     app.include_router(admin_router)

@@ -23,8 +23,18 @@ os.environ.setdefault("DATABASE_URL", _sqlite_temp_db_url())
 # drops the temporary test schema used by integration tests.
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Reset in-memory rate limiter storage between tests."""
+    from backend.app.core.rate_limit import limiter
+
+    if hasattr(limiter, "_storage") and hasattr(limiter._storage, "storage"):
+        limiter._storage.storage.clear()
+    yield
+
+
 @pytest.fixture(scope="session", autouse=True)
-def _create_test_schema() -> None:
+def _create_test_schema():
     """Create the default test schema once for integration tests.
 
     The schema is created at session start and dropped at the end. This

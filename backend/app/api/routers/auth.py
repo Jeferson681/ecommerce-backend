@@ -6,9 +6,10 @@ intentionally left unimplemented (bodies contain `pass`).
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError
 
+from backend.app.core.rate_limit import limiter
 from backend.app.modules.auth import (
     schemas as auth_schemas,
     use_cases as auth_use_cases,
@@ -21,7 +22,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/token", response_model=auth_schemas.TokenResponse)
+@limiter.limit("5/minute")
 def token_endpoint(
+    request: Request,
     payload: auth_schemas.LoginRequest,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> auth_schemas.TokenResponse:
@@ -71,7 +74,9 @@ def logout_endpoint(
 
 
 @router.post("/refresh", response_model=auth_schemas.TokenResponse)
+@limiter.limit("10/minute")
 def refresh_endpoint(
+    request: Request,
     refresh: auth_schemas.RefreshTokenRequest,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> auth_schemas.TokenResponse:
