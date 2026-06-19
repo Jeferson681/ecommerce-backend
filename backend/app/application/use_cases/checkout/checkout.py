@@ -52,8 +52,8 @@ def checkout(
     uow: UnitOfWork,
     *,
     gateway: PaymentGateway,
-    idempotency_key: str | None = None,
-    request_hash: str | None = None,
+    idempotency_key: str,
+    request_hash: str,
 ) -> OrderRead:
     """Complete checkout for the authenticated user."""
 

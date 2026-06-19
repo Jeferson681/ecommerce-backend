@@ -40,8 +40,8 @@ def retry_payment(
     *,
     payment_method_id: str,
     gateway: PaymentGateway,
-    idempotency_key: str | None = None,
-    request_hash: str | None = None,
+    idempotency_key: str,
+    request_hash: str,
 ) -> OrderRead:
     """Retry a payment for the authenticated user."""
 

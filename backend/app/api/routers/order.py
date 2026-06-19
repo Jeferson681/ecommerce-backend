@@ -26,7 +26,7 @@ async def checkout_endpoint(
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
     body: PaymentMethodRequest,
-    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
 ) -> OrderRead:
     """Complete checkout: convert cart items into an order."""
     body_bytes = await request.body()
@@ -59,7 +59,7 @@ async def retry_payment_endpoint(
     payload: PaymentMethodRequest,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
-    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
 ):
     body_bytes = await request.body()
     request_hash = hashlib.sha256()
