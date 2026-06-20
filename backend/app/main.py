@@ -26,6 +26,10 @@ from backend.app.core.exceptions import (
     ValidationError,
 )
 from backend.app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from backend.app.observability.health.health_check import healthz, readyz
+from backend.app.observability.logging.request_logger import (
+    StructuredRequestLoggingMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +70,9 @@ def create_app() -> "FastAPI":
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Structured request logging middleware (correlation ID + access logs)
+    app.add_middleware(StructuredRequestLoggingMiddleware)
 
     # Rate limiting middleware (brute-force protection)
     app.state.limiter = limiter
@@ -126,10 +133,8 @@ def create_app() -> "FastAPI":
             },
         )
 
-    def healthz() -> dict[str, str]:
-        return {"status": "ok"}
-
     app.add_api_route("/healthz", healthz, methods=["GET"])
+    app.add_api_route("/readyz", readyz, methods=["GET"])
 
     return app
 
