@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { ChevronDown } from "lucide-react";
 
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
-import { cartStorage } from "@/modules/cart/storage/cartStorage";
 
 export function AuthNav() {
   const hasToken = useSyncExternalStore(
@@ -14,53 +12,38 @@ export function AuthNav() {
     () => false
   );
 
-  // Static href avoids hydration mismatch. The /checkout and /cart pages
-  // already handle redirect via ?next= query param when needed.
-  const loginHref = "/login";
-
-  if (hasToken) {
+  if (!hasToken) {
     return (
-      <div className="flex items-center">
+      <div className="flex items-center gap-3">
         <Link
-          href="/account"
-          className="flex flex-col px-2 py-1 text-white/90 hover:text-white transition-colors"
+          href="/login"
+          className="text-xs text-white/80 hover:text-white transition-colors"
         >
-          <span className="text-[10px] text-zinc-400 leading-none">Account</span>
-          <span className="text-[13px] font-bold leading-tight">
-            My Account <ChevronDown className="inline h-3 w-3" />
-          </span>
+          Sign in
         </Link>
-        <button
-          className="px-2 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors"
-          onClick={() => {
-            cartStorage.clear();
-            tokenStorage.clear();
-            location.href = "/";
-          }}
+        <Link
+          href="/signup"
+          className="text-xs text-white/80 hover:text-white transition-colors"
         >
-          Sign Out
-        </button>
+          Sign up
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-3">
       <Link
-        href={loginHref}
-        className="flex flex-col px-2 py-1 text-white/90 hover:text-white transition-colors"
+        href="/account"
+        className="text-xs text-white/80 hover:text-white transition-colors"
       >
-        <span className="text-[10px] text-zinc-400 leading-none">Hello, Sign in</span>
-        <span className="text-[13px] font-bold leading-tight">
-          Account & Lists <ChevronDown className="inline h-3 w-3" />
-        </span>
+        My Account
       </Link>
       <Link
-        href="/signup"
-        className="flex flex-col px-2 py-1 text-white/90 hover:text-white transition-colors"
+        href="/logout"
+        className="text-xs text-zinc-400 hover:text-red-400 transition-colors"
       >
-        <span className="text-[10px] text-zinc-400 leading-none">New customer?</span>
-        <span className="text-[13px] font-bold leading-tight">Start here</span>
+        Sign out
       </Link>
     </div>
   );

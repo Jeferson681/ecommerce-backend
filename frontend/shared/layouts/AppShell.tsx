@@ -18,44 +18,31 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
-      {/* Top announcement bar - Amazon style */}
-      <div className="bg-[#131921] px-4 py-1.5 text-center text-[11px] font-medium tracking-wide text-[#febd69]">
-        <span className="inline-block">
-          <span className="text-white/70">Free shipping on orders over $50.</span> Fast checkout.
-        </span>
+      {/* Announcement bar */}
+      <div className="bg-[#131921] px-4 py-1 text-center text-[11px] text-white/70">
+        Free shipping on orders over $50. Fast checkout.
       </div>
 
-      {/* Main header - Amazon style dark nav */}
-      <header className="sticky top-0 z-50 bg-[#131921] shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="flex shrink-0 items-baseline gap-0 no-underline"
-          >
-            <span className="text-xl font-bold tracking-tight text-white">
-              Storefront
-            </span>
-            <span className="ml-1 text-[10px] font-light text-[#febd69]">
-              .com
-            </span>
+      {/* Main header */}
+      <header className="sticky top-0 z-50 bg-[#131921]">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2">
+          <Link href="/" className="flex shrink-0 items-baseline gap-0 no-underline">
+            <span className="text-lg font-bold tracking-tight text-white">Storefront</span>
+            <span className="ml-0.5 text-[10px] text-[#febd69]">.com</span>
           </Link>
 
-          {/* Search bar - centered, takes remaining space */}
-          <div className="flex-1 group">
+          <div className="flex-1">
             <SearchBar />
           </div>
 
-          {/* Right actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <AuthNav />
             <CartButton />
           </div>
         </div>
       </header>
 
-      {/* Category navigation bar - Amazon style */}
-      {!isAdmin && <CategoryNav />}
+      <CategoryNav />
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4">

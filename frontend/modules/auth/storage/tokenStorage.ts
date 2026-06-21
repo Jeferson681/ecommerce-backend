@@ -8,10 +8,42 @@ function notify(): void {
   window.dispatchEvent(new Event(TOKEN_EVENT));
 }
 
+/**
+ * Decode JWT payload without verifying signature.
+ * Extracts the `exp` claim for expiration checking.
+ */
+function decodeTokenPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const payload = decodeTokenPayload(token);
+  if (!payload) return true;
+  const exp = payload.exp as number | undefined;
+  if (!exp) return true;
+  // Add 10s buffer to account for clock skew
+  return Date.now() >= (exp * 1000) - 10000;
+}
+
 export const tokenStorage = {
   getAccessToken(): string | null {
     if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+    const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (!token) return null;
+    // If token is expired, clear it and return null
+    if (isTokenExpired(token)) {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      return null;
+    }
+    return token;
   },
 
   subscribe(listener: Listener): () => void {
@@ -29,6 +61,11 @@ export const tokenStorage = {
 
   setAccessToken(token: string): void {
     if (typeof window === "undefined") return;
+    // Validate token structure before storing
+    if (!decodeTokenPayload(token)) {
+      console.warn("tokenStorage: invalid token format, not storing");
+      return;
+    }
     window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
     notify();
   },

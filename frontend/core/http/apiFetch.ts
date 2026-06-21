@@ -23,23 +23,83 @@ function tryParseJson(text: string): unknown {
   }
 }
 
+function getLocalStorage(): Storage | null {
+  const runtime = globalThis as typeof globalThis & { localStorage?: Storage };
+  if (typeof runtime.localStorage?.getItem === "function") {
+    return runtime.localStorage;
+  }
+  return null;
+}
+
+function getAccessToken(): string | null {
+  return getLocalStorage()?.getItem("access_token") ?? null;
+}
+
+function setAccessToken(token: string): void {
+  getLocalStorage()?.setItem("access_token", token);
+}
+
+function clearAuth(): void {
+  const ls = getLocalStorage();
+  if (!ls) return;
+  ls.removeItem("access_token");
+  ls.removeItem("refresh_token");
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth_token_changed"));
+  }
+}
+
+function getRefreshToken(): string | null {
+  const ls = getLocalStorage();
+  if (!ls) return null;
+  return ls.getItem("refresh_token");
+}
+
+function setRefreshToken(token: string): void {
+  getLocalStorage()?.setItem("refresh_token", token);
+}
+
+async function attemptTokenRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!res.ok) {
+      clearAuth();
+      return false;
+    }
+
+    const data = await res.json();
+    setAccessToken(data.access_token);
+    if (data.refresh_token) {
+      setRefreshToken(data.refresh_token);
+    }
+    return true;
+  } catch {
+    clearAuth();
+    return false;
+  }
+}
+
+export { clearAuth };
+
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const url = `${API_URL}${path}`;
-  const runtime = globalThis as typeof globalThis & {
-    localStorage?: Storage;
-  };
 
   try {
     const headers = new Headers(options.headers);
     if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
-    // Optional auth: if an access token exists, attach it by default.
-    // Guard access to localStorage: some server runtimes (Turbopack) expose
-    // a `localStorage` object that doesn't implement `getItem`. Check
-    // that `getItem` is a function before calling it.
-    if (typeof runtime.localStorage?.getItem === "function" && !headers.has("Authorization")) {
-      const token = runtime.localStorage.getItem("access_token");
-      if (token) headers.set("Authorization", `Bearer ${token}`);
+    // Attach access token automatically
+    const token = getAccessToken();
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
     }
 
     let body: BodyInit | undefined;
@@ -62,6 +122,37 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
         "Unable to connect to the server. Please check your connection and try again.",
         0
       );
+    }
+
+    // If 401 and we have a refresh token, attempt refresh and retry once
+    if (response.status === 401 && getRefreshToken()) {
+      const refreshed = await attemptTokenRefresh();
+      if (refreshed) {
+        // Retry with new token
+        const newToken = getAccessToken();
+        if (newToken) {
+          headers.set("Authorization", `Bearer ${newToken}`);
+        }
+
+        try {
+          response = await fetch(url, {
+            ...options,
+            headers,
+            body,
+            cache: "no-store",
+          });
+        } catch (e) {
+          console.error("apiFetch: network error on retry", url, e);
+          throw new ApiError(
+            "Unable to connect to the server. Please check your connection and try again.",
+            0
+          );
+        }
+      } else {
+        // Refresh failed — clear auth
+        clearAuth();
+        throw new ApiError("Your session has expired. Please sign in again.", 401);
+      }
     }
 
     if (response.status === 204) {
