@@ -1,14 +1,15 @@
+"""Integration tests for cart API with real auth flow."""
+
 from __future__ import annotations
 
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
-from backend.app.api.routers.cart import get_current_user_id, get_uow
 from backend.app.core.database import Base, SessionLocal, engine
 from backend.app.main import app
 from backend.app.modules.product.domain.models import Product
-from backend.app.uow.unit_of_work import UnitOfWork
+from tests.integration import unique_email
 
 client = TestClient(app)
 
@@ -22,15 +23,28 @@ def teardown_module(module: object) -> None:
     app.dependency_overrides.clear()
 
 
-def _override_auth_and_uow(user_id: int, session):
-    app.dependency_overrides[get_current_user_id] = lambda: user_id
+def _create_user_and_login() -> dict:
+    """Create user and return auth token."""
+    email = unique_email("cart")
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Cart",
+            "last_name": "Tester",
+            "email": email,
+            "password": "Password123!",
+        },
+    )
+    assert create_resp.status_code == 201
+    user_id = create_resp.json()["id"]
 
-    def _uow_for(s=session):
-        u = UnitOfWork(lambda: s)
-        u.attach(s)
-        return u
-
-    app.dependency_overrides[get_uow] = lambda: _uow_for()
+    login_resp = client.post(
+        "/auth/token",
+        json={"email": email, "password": "Password123!"},
+    )
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+    return {"token": token, "user_id": user_id}
 
 
 def test_post_cart_items_adds_item_and_get_cart_returns_cart() -> None:
@@ -41,12 +55,14 @@ def test_post_cart_items_adds_item_and_get_cart_returns_cart() -> None:
     session.add(product)
     session.commit()
     session.refresh(product)
+    session.close()
 
-    _override_auth_and_uow(user_id=1, session=session)
+    user = _create_user_and_login()
 
     add_resp = client.post(
         "/cart/items",
         json={"product_id": product.id, "quantity": 2},
+        headers={"Authorization": f"Bearer {user['token']}"},
     )
 
     assert add_resp.status_code == 201
@@ -54,10 +70,13 @@ def test_post_cart_items_adds_item_and_get_cart_returns_cart() -> None:
     assert body["product_id"] == product.id
     assert body["quantity"] == 2
 
-    cart_resp = client.get("/cart")
+    cart_resp = client.get(
+        "/cart",
+        headers={"Authorization": f"Bearer {user['token']}"},
+    )
     assert cart_resp.status_code == 200
     cart = cart_resp.json()
-    assert cart["user_id"] == 1
+    assert cart["user_id"] == user["user_id"]
     assert len(cart["items"]) == 1
     assert cart["items"][0]["product_id"] == product.id
 
@@ -70,41 +89,52 @@ def test_patch_and_delete_cart_item() -> None:
     session.add(product)
     session.commit()
     session.refresh(product)
+    session.close()
 
-    _override_auth_and_uow(user_id=2, session=session)
+    user = _create_user_and_login()
 
     add_resp = client.post(
         "/cart/items",
         json={"product_id": product.id, "quantity": 1},
+        headers={"Authorization": f"Bearer {user['token']}"},
     )
     assert add_resp.status_code == 201
     item_id = add_resp.json()["id"]
 
-    patch_resp = client.patch(f"/cart/items/{item_id}", json={"quantity": 5})
+    patch_resp = client.patch(
+        f"/cart/items/{item_id}",
+        json={"quantity": 5},
+        headers={"Authorization": f"Bearer {user['token']}"},
+    )
     assert patch_resp.status_code == 200
     assert patch_resp.json()["quantity"] == 5
 
-    delete_resp = client.delete(f"/cart/items/{item_id}")
+    delete_resp = client.delete(
+        f"/cart/items/{item_id}",
+        headers={"Authorization": f"Bearer {user['token']}"},
+    )
     assert delete_resp.status_code == 204
 
-    session.expire_all()
-    cart_resp = client.get("/cart")
+    cart_resp = client.get(
+        "/cart",
+        headers={"Authorization": f"Bearer {user['token']}"},
+    )
     assert cart_resp.status_code == 200
     assert cart_resp.json()["items"] == []
 
 
 def test_patch_and_delete_missing_cart_item_returns_404() -> None:
-    session = SessionLocal()
-    product = Product(
-        name="Produto API 3", description="d", price=Decimal("13.00"), stock_quantity=10
+    user = _create_user_and_login()
+
+    patch_resp = client.patch(
+        "/cart/items/999999",
+        json={"quantity": 5},
+        headers={"Authorization": f"Bearer {user['token']}"},
     )
-    session.add(product)
-    session.commit()
-
-    _override_auth_and_uow(user_id=3, session=session)
-
-    patch_resp = client.patch("/cart/items/999999", json={"quantity": 5})
     assert patch_resp.status_code == 404
 
-    delete_resp = client.delete("/cart/items/999999")
+    delete_resp = client.delete(
+        "/cart/items/999999",
+        headers={"Authorization": f"Bearer {user['token']}"},
+    )
     assert delete_resp.status_code == 404

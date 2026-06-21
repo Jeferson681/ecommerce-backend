@@ -212,9 +212,8 @@ class TestCartMerge:
             json=[{"product_id": 999999, "quantity": 1}],
             headers={"Authorization": f"Bearer {token}"},
         )
-        # Currently merge returns 200 even for invalid products
-        # (the product is not added but no error is raised)
-        assert resp.status_code in (200, 404)
+        # Merge returns 404 when product does not exist
+        assert resp.status_code == 404
 
         session.close()
 

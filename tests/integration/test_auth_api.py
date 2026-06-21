@@ -106,7 +106,7 @@ def test_post_auth_logout_with_invalid_token() -> None:
     payload = {"refresh_token": "invalid_token_12345"}
     resp = client.post("/auth/logout", json=payload)
 
-    assert resp.status_code == 422 or resp.status_code == 401
+    assert resp.status_code == 401
 
 
 def test_post_auth_refresh_with_valid_token() -> None:
