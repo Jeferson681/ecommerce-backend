@@ -7,9 +7,6 @@ import logging
 from decimal import Decimal
 
 from backend.app.application.use_cases.checkout.services import (
-    clear_cart,
-    create_order_from_cart,
-    get_cart_items_or_raise,
     validate_stock_and_build_product_map,
 )
 from backend.app.idempotency.helpers import (
@@ -21,7 +18,11 @@ from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
     CartRepository,
 )
-from backend.app.modules.cart.use_cases import get_cart_or_raise
+from backend.app.modules.cart.use_cases import (
+    clear_cart,
+    get_cart_items_or_raise,
+    get_cart_or_raise,
+)
 from backend.app.modules.order.domain.models import OrderStatus
 from backend.app.modules.order.repositories.order_repository import (
     OrderItemRepository,
@@ -29,6 +30,7 @@ from backend.app.modules.order.repositories.order_repository import (
 )
 from backend.app.modules.order.schemas import OrderRead
 from backend.app.modules.order.use_cases import (
+    create_order_from_cart,
     persist_idempotent_response_if_needed,
     try_order_response_replay,
 )
@@ -41,6 +43,7 @@ from backend.app.modules.payment.use_cases import (
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
+from backend.app.modules.product.use_cases import reserve_stock
 from backend.app.uow.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -111,9 +114,15 @@ def checkout(
             product_map=product_map,
             order_repository=order_repository,
             order_item_repository=order_item_repository,
-            product_repository=product_repository,
             user_id=user_id,
         )
+
+        for cart_item in cart_items:
+            reserve_stock(
+                product_repository,
+                product_id=cart_item.product_id,
+                quantity=cart_item.quantity,
+            )
 
         total_amount = sum(
             product_map[item.product_id].price * item.quantity for item in cart_items
@@ -154,9 +163,6 @@ def checkout(
         return OrderRead.model_validate(order)
 
     except Exception:
-        # If an exception occurs after the idempotency key was claimed
-        # and committed, the session is in an invalid state.
-        # First rollback the session, then delete the stuck key.
         if idempotency_key is not None:
             try:
                 uow.rollback()

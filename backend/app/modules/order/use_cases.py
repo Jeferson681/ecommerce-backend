@@ -8,11 +8,14 @@ from backend.app.idempotency.helpers import persist_idempotency_response, try_re
 from backend.app.idempotency.repositories.idempotency_repository import (
     IdempotencyRepository,
 )
-from backend.app.modules.order.domain.models import Order
+from backend.app.modules.cart.domain.models import CartItem
+from backend.app.modules.order.domain.models import Order, OrderItem
 from backend.app.modules.order.repositories.order_repository import (
+    OrderItemRepository,
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
+from backend.app.modules.product.domain.models import Product
 from backend.app.modules.user.repositories.user_repository import UserRepository
 from backend.app.modules.user.use_cases import is_admin
 from backend.app.uow.unit_of_work import UnitOfWork
@@ -53,6 +56,32 @@ def list_orders(user_id: int, uow: UnitOfWork) -> list[OrderRead]:
     orders = repository.get_by_user_id(user_id)
 
     return [OrderRead.model_validate(order) for order in orders]
+
+
+def create_order_from_cart(
+    cart_items: list[CartItem],
+    product_map: dict[int, Product],
+    order_repository: OrderRepository,
+    order_item_repository: OrderItemRepository,
+    user_id: int,
+) -> Order:
+    order = order_repository.create(Order(user_id=user_id))
+
+    for cart_item in cart_items:
+        product = product_map[cart_item.product_id]
+
+        order_item = OrderItem(
+            order_id=order.id,
+            product_id=cart_item.product_id,
+            quantity=cart_item.quantity,
+            price=product.price,
+        )
+
+        order.items.append(order_item)
+
+        order_item_repository.create(order_item)
+
+    return order
 
 
 def get_order_or_raise(

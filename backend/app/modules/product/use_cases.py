@@ -1,6 +1,6 @@
 """Use cases for product management."""
 
-from backend.app.core.exceptions import Messages, NotFoundError
+from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
@@ -109,7 +109,33 @@ def delete_product(product_id: int, uow: UnitOfWork) -> None:
     try:
         repository.delete(product)
         uow.commit()
-        return None
     except Exception:
         uow.rollback()
         raise
+
+
+def reserve_stock(
+    repository: ProductRepository,
+    product_id: int,
+    quantity: int,
+) -> None:
+    """Reserve stock for a product if enough quantity exists."""
+
+    success = repository.decrement_stock_if_enough(
+        product_id=product_id, quantity=quantity
+    )
+
+    if not success:
+        raise ValidationError(f"{Messages.ORDER_INSUFFICIENT_STOCK} ")
+
+
+def restore_stock(
+    repository: ProductRepository,
+    product_id: int,
+    quantity: int,
+) -> None:
+    """Restore previously reserved stock for a product."""
+    repository.increment_stock(
+        product_id=product_id,
+        quantity=quantity,
+    )

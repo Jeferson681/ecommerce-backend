@@ -80,6 +80,13 @@ def update_item(
     return CartItemRead.model_validate(cart_item)
 
 
+def clear_cart(
+    repository: CartRepository,
+    cart: Cart,
+) -> None:
+    repository.delete(cart)
+
+
 def remove_item(item_id: int, user_id: int, uow: UnitOfWork) -> None:
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
@@ -178,3 +185,15 @@ def _upsert_cart_item(
     cart_item.quantity += quantity
 
     return cart_item_repository.update(cart_item)
+
+
+def get_cart_items_or_raise(
+    repository: CartItemRepository,
+    cart_id: int,
+) -> list[CartItem]:
+    cart_items = repository.get_by_cart_id(cart_id)
+
+    if not cart_items:
+        raise ValidationError(Messages.ORDER_CART_EMPTY)
+
+    return cart_items

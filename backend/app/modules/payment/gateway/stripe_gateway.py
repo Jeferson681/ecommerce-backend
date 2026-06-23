@@ -111,7 +111,7 @@ class StripeGateway:
         try:
             intent = stripe.PaymentIntent.create(
                 amount=amount_cents,
-                currency="brl",
+                currency="usd",
                 payment_method=payment_method_id,
                 confirm=True,
                 automatic_payment_methods={

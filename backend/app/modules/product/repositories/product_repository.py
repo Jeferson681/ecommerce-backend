@@ -87,3 +87,16 @@ class ProductRepository:
         row = result.fetchone()
         # No row returned -> condition not met (insufficient stock)
         return row is not None
+
+    def increment_stock(
+        self,
+        product_id: int,
+        quantity: int,
+    ) -> None:
+        stmt = (
+            sa_update(Product)
+            .where(Product.id == product_id)
+            .values(stock_quantity=Product.stock_quantity + quantity)
+        )
+
+        self.session.execute(stmt)
