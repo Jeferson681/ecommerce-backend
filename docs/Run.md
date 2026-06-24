@@ -8,6 +8,7 @@ Step-by-step instructions to run the project locally on Windows.
 
 - Python 3.13+
 - Git
+- Node.js (18+) and npm or pnpm — required to run the frontend
 - (Optional) Stripe account for payment testing
 
 ## 2. Setup
@@ -95,7 +96,9 @@ pre-commit run --all-files
 
 ```powershell
 Set-Location frontend
-npm run dev
+ npm ci
+ npm run dev
+
 ```
 
 Frontend available at `http://localhost:3000`.
