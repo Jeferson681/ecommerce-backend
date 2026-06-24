@@ -26,7 +26,7 @@ The system follows a **layered architecture** with four distinct layers. Depende
 
 **Key rules:**
 - Presentation never accesses repositories directly
-- Application never contains business logic — it orchestrates domain objects
+- Application orchestrates business workflows across domain modules and manages transaction boundaries
 - Domain never depends on infrastructure (gateway protocol, not implementation)
 - All write operations go through `UnitOfWork`
 
@@ -36,8 +36,8 @@ The system follows a **layered architecture** with four distinct layers. Depende
 
 All system guarantees are documented as Architectural Decision Records in [DECISIONS.md](./DECISIONS.md):
 
-- **Atomic Checkout** — single transaction across 6 repositories, rollback on any failure
-- **Atomic Retry Payment** — isolated transaction with stuck key cleanup
+- **Checkout Consistency** — two-phase transaction: idempotency key reservation (phase 1) followed by checkout execution (phase 2), with compensating cleanup on failure
+- **Retry Payment Consistency** — two-phase transaction: idempotency key reservation (phase 1) followed by payment retry (phase 2), with compensating cleanup on failure
 - **Idempotency** — key-based deduplication with database-level unique constraint
 - **Cart Merge Consistency** — atomic upsert of local items into server cart
 - **Stripe Webhook Verification** — HMAC-SHA256 signature verification before processing
@@ -57,7 +57,7 @@ For the detailed rationale behind each guarantee, see [DECISIONS.md](./DECISIONS
 | Cart add item | `add_item()` in module | Cart, CartItem |
 | Cart merge | `merge_cart_items()` in module | Cart, CartItem |
 
-Each boundary opens one `UnitOfWork` instance, performs reads and writes, then calls `commit()` or `rollback()`. Repositories never manage transactions.
+Each boundary is executed through a `UnitOfWork` instance that owns the database session and transaction lifecycle. Repositories never manage transactions directly. Most operations execute within a single transaction. Checkout and retry-payment use a two-phase pattern: the idempotency key is reserved and committed first, followed by the business operation in a second transaction. On failure, the reserved key is released through a compensating transaction.
 
 ---
 

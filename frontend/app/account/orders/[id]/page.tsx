@@ -27,7 +27,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 function formatPrice(value: string) {
   const numberValue = Number(value);
   if (Number.isFinite(numberValue)) {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: "" }).format(numberValue);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(numberValue);
   }
   return value;
 }

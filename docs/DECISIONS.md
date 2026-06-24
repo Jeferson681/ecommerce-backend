@@ -1,107 +1,348 @@
-# Architectural Decision Records
+# Architectural Decisions
 
-Decisions documented here are observable in the current codebase.
+This document records the major architectural decisions that shape the system.
 
----
+Each decision captures:
 
-## Modular Monolith
+- Context
+- Decision
+- Consequences
 
-**Context:** The project needed to support multiple bounded contexts (cart, order, payment) without the operational overhead of microservices.
-
-**Decision:** Keep all modules in a single deployment unit with clear package-level boundaries. Each module has its own domain models, repositories, schemas, and use cases. Cross-module orchestration (checkout, retry payment, webhook) lives in `application/use_cases/`.
-
-**Consequence:** Clear separation per aggregate root with low operational overhead. Modules communicate through use cases, not direct repository access.
+The goal is to document the reasoning behind the architecture and the trade-offs accepted during development.
 
 ---
 
-## Single Domain Model (No Separate ORM Layer)
+# 1. Modular Monolith
 
-**Context:** Many Python projects separate ORM models from domain models, creating duplication and drift risk.
+## Context
 
-**Decision:** Use the same SQLAlchemy model as both the ORM entity and the domain entity.
+The system contains multiple business domains:
 
-**Consequence:** Reduces duplication and ensures the domain model always reflects the actual database schema. The trade-off is that domain logic is coupled to SQLAlchemy.
+- Users
+- Products
+- Cart
+- Orders
+- Payments
+- Idempotency
 
----
+The project required clear domain boundaries without introducing the operational complexity of distributed systems.
 
-## Unit of Work Pattern
+## Decision
 
-**Context:** Checkout involves multiple repositories (cart, order, payment, product, idempotency) that must be updated atomically.
+The application is implemented as a modular monolith.
 
-**Decision:** All write operations receive a `UnitOfWork` instance. The UoW wraps a SQLAlchemy `Session` and exposes `commit()`, `rollback()`, and `flush()`. Repositories never manage transactions.
+Each domain owns its:
 
-**Consequence:** Atomic writes across aggregate roots. Exception handlers in use cases call `uow.rollback()` before cleanup.
+- Models
+- Schemas
+- Repositories
+- Use cases
 
----
+Cross-domain workflows are coordinated through application-level use cases.
 
-## Gateway Pattern for Payments
+## Consequences
 
-**Context:** Payment processing should be decoupled from the payment provider.
+### Benefits
 
-**Decision:** Define a `PaymentGateway` protocol with `process_payment()` and `process_webhook()` methods. `StripeGateway` implements both. The checkout and retry use cases receive a `PaymentGateway` instance via dependency injection.
+- Simple deployment model
+- Low operational overhead
+- Clear domain ownership
+- Easier local development and testing
 
-**Consequence:** Adding a new provider (e.g., PayPal, Pix) requires only a new class implementing the protocol.
+### Trade-offs
 
----
-
-## Idempotency via Dedicated Table
-
-**Context:** Network retries can cause duplicate checkouts. The system needs to detect and reject duplicates without race conditions.
-
-**Decision:** Store idempotency keys in a dedicated `idempotency_keys` table with a unique constraint on `(user_id, key)`. The `claim()` method uses a nested transaction to detect constraint violations. After claim, the use case commits before proceeding with checkout, making the reservation visible to concurrent requests.
-
-**Consequence:** Duplicate requests return the same response (replay). Stuck keys after failures are released via `rollback()` + `delete_by_key()` in the exception handler.
-
----
-
-## Payment Exposed Through Order Read
-
-**Context:** The frontend needs payment status and transaction details when displaying an order.
-
-**Decision:** Include `payments[]` in the `OrderRead` schema. The `OrderRepository` already loads payments via `selectinload(Order.payments)`.
-
-**Consequence:** Single API call returns order items plus payment history. No additional endpoint needed for payment details.
+- Entire system is deployed as a single unit
+- Module boundaries rely on architectural discipline
+- Domains cannot scale independently
 
 ---
 
-## Retry Payment Through Order Endpoint
+# 2. Layered Architecture
 
-**Context:** Failed payments should be retryable without creating a new checkout or cart.
+## Context
 
-**Decision:** Expose `POST /orders/{order_id}/retry-payment`. The use case finds the pending order and failed payment, then calls `process_payment` with a new `payment_method_id`.
+Business rules, HTTP concerns, persistence, and external integrations should evolve independently.
 
-**Consequence:** Retry is a separate, simpler flow from checkout. No cart manipulation needed.
+## Decision
+
+The application follows a layered architecture:
+
+```text
+Presentation
+    ↓
+Application
+    ↓
+Domain
+    ↓
+Infrastructure
+```
+
+Dependencies flow inward.
+
+Higher layers depend on abstractions exposed by lower layers rather than implementation details.
+
+## Consequences
+
+### Benefits
+
+- Clear separation of responsibilities
+- Easier testing
+- Lower coupling between concerns
+- Better maintainability
+
+### Trade-offs
+
+- Additional abstractions increase project structure complexity
+- New features require traversing multiple layers
 
 ---
 
-## Centralized Status Enums
+# 3. Single Domain and Persistence Model
 
-**Context:** Payment and order status values are referenced across multiple modules.
+## Context
 
-**Decision:** Define `PaymentStatus` and `OrderStatus` as `StrEnum` classes in their respective domain models. All comparisons use enum members, not string literals.
+Many systems maintain separate domain entities and ORM models.
 
-**Consequence:** Type-safe status handling. Adding a new status updates a single location.
+While this increases separation, it also introduces duplication and mapping overhead.
+
+## Decision
+
+SQLAlchemy models are used directly as domain entities.
+
+No separate mapping layer exists between persistence and domain objects.
+
+## Consequences
+
+### Benefits
+
+- Reduced code duplication
+- Simpler repositories
+- Faster development
+- Domain structure remains aligned with the database schema
+
+### Trade-offs
+
+- Domain entities are coupled to SQLAlchemy
+- Replacing the ORM would require broader refactoring
+- Complex domain behavior may become harder to isolate as the system grows
 
 ---
 
-## Cart Merge Strategy
+# 4. Repository Pattern
 
-**Context:** Users may add items to a local cart before authenticating. After login, those items must merge with any existing server-side cart.
+## Context
 
-**Decision:** Expose `POST /cart/merge` that accepts a list of `(product_id, quantity)` pairs. The use case calls `get_or_create_cart()` then `_upsert_cart_item()` for each item (sums quantities for duplicates).
+Business workflows should not depend directly on ORM queries or database access details.
 
-**Consequence:** The frontend is responsible for storing local cart state in localStorage and calling `/cart/merge` after login. The backend simply upserts the provided items.
+## Decision
+
+All persistence operations are encapsulated behind repositories.
+
+Repositories are responsible for:
+
+- Aggregate retrieval
+- Query execution
+- Persistence operations
+
+Use cases interact with repositories rather than SQLAlchemy directly.
+
+## Consequences
+
+### Benefits
+
+- Cleaner business logic
+- Better testability
+- Centralized persistence rules
+
+### Trade-offs
+
+- Additional abstraction layer
+- More classes and files to maintain
 
 ---
 
-## Transaction Rollback on Failure
+# 5. Unit of Work Pattern
 
-**Context:** If checkout fails after creating an order or payment, partial writes must be reverted.
+## Context
 
-**Decision:** All write operations within checkout and retry-payment are wrapped in `try/except`. On exception:
-1. `uow.rollback()` resets the session
-2. If an idempotency key was claimed, `delete_by_key()` removes it
-3. `uow.commit()` persists the deletion
-4. The original exception is re-raised
+Checkout and payment workflows modify multiple aggregates within a single business operation.
 
-**Consequence:** No stale orders, payments, or idempotency keys after failures.
+These updates must succeed or fail together.
+
+## Decision
+
+Write operations are coordinated through a Unit of Work.
+
+The Unit of Work owns the database transaction and exposes:
+
+- `commit()`
+- `rollback()`
+- `flush()`
+
+Repositories never manage transactions directly.
+
+## Consequences
+
+### Benefits
+
+- Consistent transaction boundaries
+- Atomic business operations within a transaction boundary
+- Centralized transaction management
+
+### Trade-offs
+
+- Use cases must explicitly coordinate transactional flow
+- Transaction management becomes an application-level responsibility
+
+---
+
+# 6. Payment Gateway Abstraction
+
+## Context
+
+Payment processing should not depend directly on a specific provider.
+
+The business workflow should remain stable even if payment providers change.
+
+## Decision
+
+Payment providers are accessed through a gateway abstraction.
+
+The application defines a payment gateway contract and provides a Stripe implementation.
+
+Business workflows depend on the abstraction rather than the concrete provider.
+
+## Consequences
+
+### Benefits
+
+- Easier testing
+- Reduced coupling to Stripe
+- Simplified provider replacement
+- Clear separation between business rules and external services
+
+### Trade-offs
+
+- Additional abstraction for a single provider
+- Gateway contracts must evolve as provider capabilities expand
+
+---
+
+# 7. Idempotent Checkout
+
+## Context
+
+Network retries, client failures, and duplicate requests can cause the same checkout operation to be executed multiple times.
+
+Duplicate order creation must be prevented.
+
+## Decision
+
+Checkout operations require an idempotency key.
+
+The key is stored and validated before the business workflow proceeds.
+
+Repeated requests with the same key return the previously generated result.
+
+## Consequences
+
+### Benefits
+
+- Prevents duplicate orders
+- Prevents duplicate payment attempts
+- Improves resilience during retries
+- Provides predictable behavior under failure scenarios
+
+### Trade-offs
+
+- Additional persistence requirements
+- Key lifecycle management and cleanup become necessary
+- Increased complexity in checkout orchestration
+
+---
+
+# 8. Inventory Managed by Product
+
+## Context
+
+The system requires inventory tracking and stock validation during checkout.
+
+Inventory data could be modeled as a separate domain or remain part of the product aggregate.
+
+## Decision
+
+Stock ownership belongs to the Product aggregate.
+
+Inventory is represented directly through product stock information.
+
+Checkout workflows validate and update stock through the product domain.
+
+## Consequences
+
+### Benefits
+
+- Simpler domain model
+- Straightforward inventory queries
+- Reduced operational complexity
+- Easier implementation for a transactional ecommerce workflow
+
+### Trade-offs
+
+- Product and inventory concerns remain coupled
+- Future reservation-based inventory models would require refactoring
+- High-scale inventory scenarios may benefit from a dedicated inventory domain
+
+---
+
+# 9. Checkout Transaction Boundary
+
+## Context
+
+Checkout coordinates multiple aggregates (Cart, Order, Payment, Product) and requires idempotency to prevent duplicate execution.
+
+The idempotency key is claimed before the main operation to prevent concurrent execution of the same checkout request.
+
+Using a single database transaction would keep the transaction open during the Stripe API call, holding database connections and locks for the duration of a network round-trip.
+
+## Decision
+
+Checkout executes in two phases:
+
+- **Phase 1 (reservation):** Reserve the idempotency key in a dedicated transaction. If the key already exists, return the cached response when available. Commit.
+- **Phase 2 (execution):** Create the order, decrement stock, process payment, clear the cart, persist the idempotency response, and commit.
+
+If phase 2 fails, the reserved key is released through a compensating transaction.
+
+## Consequences
+
+### Benefits
+
+- Concurrent requests with the same idempotency key are serialized at the database level
+- Replay can be served without re-executing checkout logic
+- Consistent write operations within each phase
+- Supports safe retries after transient failures
+
+### Trade-offs
+
+- The two-phase approach is not fully atomic across the entire checkout workflow
+- Phase 1 can succeed while phase 2 fails, leaving an orphaned idempotency key
+- Compensating cleanup requires an additional transaction and can itself fail
+- Orphaned keys require periodic cleanup
+- Database connections remain allocated during the Stripe API call because payment processing occurs inside the execution phase transaction
+- Error handling is more complex than a single-transaction design
+
+---
+
+# Decision Summary
+
+| Decision | Primary Goal |
+|-----------|-------------|
+| Modular Monolith | Clear domain boundaries with low operational complexity |
+| Layered Architecture | Separation of concerns |
+| Single Domain and Persistence Model | Reduced duplication |
+| Repository Pattern | Persistence isolation |
+| Unit of Work Pattern | Transaction consistency |
+| Payment Gateway Abstraction | Provider independence |
+| Idempotent Checkout | Protection against duplicate execution |
+| Inventory Managed by Product | Simplified inventory management |
+| Checkout Transaction Boundary | Idempotent checkout execution |
