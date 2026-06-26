@@ -5,7 +5,6 @@ from backend.app.idempotency.helpers import persist_idempotency_response, try_re
 from backend.app.modules.cart.domain.models import CartItem
 from backend.app.modules.order.domain.models import Order, OrderItem, OrderStatus
 from backend.app.modules.order.repositories.order_repository import (
-    OrderItemRepository,
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
@@ -24,6 +23,23 @@ def get_order_or_raise(
     return order
 
 
+def get_order_for_user(
+    order_repository: OrderRepository,
+    order_id: int,
+    user_id: int,
+) -> Order:
+    """Retrieve an order for a specific user.
+
+    Validates that the order belongs to the user.
+    """
+    order = get_order_or_raise(order_repository, order_id)
+
+    if order.user_id != user_id:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+
+    return order
+
+
 def get_order(
     order_id: int,
     user_id: int,
@@ -37,10 +53,7 @@ def get_order(
 
     repository = OrderRepository(uow.session)
 
-    order = get_order_or_raise(repository, order_id)
-
-    if order.user_id != user_id:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+    order = get_order_for_user(repository, order_id, user_id)
 
     return OrderRead.model_validate(order)
 
@@ -50,7 +63,7 @@ def list_orders(user_id: int, uow: UnitOfWork) -> list[OrderRead]:
 
     repository = OrderRepository(uow.session)
 
-    orders = repository.get_by_user_id(user_id)
+    orders = repository.list_by_user(user_id)
 
     return [OrderRead.model_validate(order) for order in orders]
 
@@ -59,7 +72,6 @@ def create_order_from_cart(
     cart_items: list[CartItem],
     product_map: dict[int, Product],
     order_repository: OrderRepository,
-    order_item_repository: OrderItemRepository,
     user_id: int,
 ) -> Order:
 
@@ -77,7 +89,7 @@ def create_order_from_cart(
 
         order.items.append(order_item)
 
-        order_item_repository.create(order_item)
+        order_repository.create_item(order_item)
 
     return order
 
@@ -128,26 +140,9 @@ def get_pending_order_for_user(
     order_id: int,
     user_id: int,
 ) -> Order:
-    order = get_order_or_raise(order_repository, order_id)
-
-    if order.user_id != user_id:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+    order = get_order_for_user(order_repository, order_id, user_id)
 
     if order.status != OrderStatus.PENDING:
         raise ValidationError(Messages.ORDER_IS_NOT_PENDING)
-
-    return order
-
-
-def get_order_for_user(
-    order_repository: OrderRepository,
-    *,
-    order_id: int,
-    user_id: int,
-) -> Order:
-    order = get_order_or_raise(order_repository, order_id)
-
-    if order.user_id != user_id:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     return order

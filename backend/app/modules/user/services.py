@@ -1,6 +1,11 @@
 """Services for User management."""
 
-from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
+from backend.app.core.exceptions import (
+    EmailAlreadyExistsError,
+    InvalidPasswordError,
+    Messages,
+    NotFoundError,
+)
 from backend.app.core.security import hash_password, validate_password_policy
 from backend.app.modules.user.domain.models import User, UserRole
 from backend.app.modules.user.repositories.user_repository import UserRepository
@@ -33,6 +38,9 @@ def create_user(
         raise InvalidPasswordError(Messages.INVALID_CREDENTIAL_POLICY)
 
     repository = UserRepository(uow.session)
+
+    if repository.get_by_email(user_data.email) is not None:
+        raise EmailAlreadyExistsError(Messages.EMAIL_ALREADY_EXISTS)
 
     user = User(
         first_name=user_data.first_name,

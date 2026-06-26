@@ -6,14 +6,12 @@ Responsibility: orchestrate checkout workflows.
 import logging
 from decimal import Decimal
 
-from backend.app.application.use_cases.checkout.services import (
-    validate_stock_and_build_product_map,
-)
 from backend.app.idempotency.helpers import (
     reserve_idempotency_if_needed,
     validate_idempotency_input,
 )
 from backend.app.idempotency.repositories import IdempotencyRepository
+from backend.app.modules.cart.domain.models import CartItem
 from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
     CartRepository,
@@ -25,7 +23,6 @@ from backend.app.modules.cart.services import (
 )
 from backend.app.modules.order.domain.models import OrderStatus
 from backend.app.modules.order.repositories.order_repository import (
-    OrderItemRepository,
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
@@ -40,10 +37,14 @@ from backend.app.modules.payment.services import (
     create_payment,
     process_payment,
 )
+from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
-from backend.app.modules.product.services import reserve_stock
+from backend.app.modules.product.services import (
+    reserve_stock,
+    validate_product_for_purchase,
+)
 from backend.app.uow.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,6 @@ def checkout(
     cart_item_repository = CartItemRepository(uow.session)
     product_repository = ProductRepository(uow.session)
     order_repository = OrderRepository(uow.session)
-    order_item_repository = OrderItemRepository(uow.session)
     idempotency_repository = IdempotencyRepository(uow.session)
 
     replay = try_order_response_replay(
@@ -113,7 +113,6 @@ def checkout(
             cart_items=cart_items,
             product_map=product_map,
             order_repository=order_repository,
-            order_item_repository=order_item_repository,
             user_id=user_id,
         )
 
@@ -178,3 +177,19 @@ def checkout(
                     cleanup_err,
                 )
         raise
+
+
+def validate_stock_and_build_product_map(
+    cart_items: list[CartItem],
+    product_repository,
+) -> dict[int, Product]:
+    product_map: dict[int, Product] = {}
+
+    for cart_item in cart_items:
+        product = validate_product_for_purchase(
+            product_repository, cart_item.product_id, quantity=cart_item.quantity
+        )
+
+        product_map[cart_item.product_id] = product
+
+    return product_map

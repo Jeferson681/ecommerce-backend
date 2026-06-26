@@ -23,7 +23,7 @@ class OrderRepository:
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    def get_by_user_id(self, user_id: int) -> list[Order]:
+    def list_by_user(self, user_id: int) -> list[Order]:
         statement = (
             select(Order)
             .where(Order.user_id == user_id)
@@ -61,40 +61,9 @@ class OrderRepository:
         self.session.delete(order)
         self.session.flush()
 
-
-class OrderItemRepository:
-    def __init__(self, session: Session):
-        self.session = session
-
-    def get_by_id(self, item_id: int) -> OrderItem | None:
-        statement = select(OrderItem).where(OrderItem.id == item_id)
-
-        result = self.session.execute(statement)
-        return result.scalar_one_or_none()
-
-    def get_by_order_id(self, order_id: int) -> list[OrderItem]:
-        statement = (
-            select(OrderItem)
-            .where(OrderItem.order_id == order_id)
-            .order_by(OrderItem.id)
-        )
-
-        result = self.session.execute(statement)
-        return list(result.scalars().all())
-
-    def create(self, item: OrderItem) -> OrderItem:
+    def create_item(self, item: OrderItem) -> OrderItem:
+        """Create an order item."""
         self.session.add(item)
         self.session.flush()
         self.session.refresh(item)
-
         return item
-
-    def update(self, item: OrderItem) -> OrderItem:
-        self.session.flush()
-        self.session.refresh(item)
-
-        return item
-
-    def delete(self, item: OrderItem) -> None:
-        self.session.delete(item)
-        self.session.flush()

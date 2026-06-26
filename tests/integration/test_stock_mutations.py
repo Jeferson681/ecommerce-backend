@@ -95,7 +95,8 @@ def test_checkout_decrements_stock() -> None:
 def test_checkout_insufficient_stock_raises_error() -> None:
     """Stock reservation: insufficient stock must raise ValidationError.
 
-    The checkout must fail before payment is processed when stock is insufficient.
+    Stock validation occurs at add_item time. Adding an item with quantity
+    exceeding available stock must fail before checkout is attempted.
     """
     session = SessionLocal()
     user = _create_user(session, "stock-insuf@example.com")
@@ -109,21 +110,11 @@ def test_checkout_insufficient_stock_raises_error() -> None:
     session.refresh(product)
     product_id = product.id
 
-    # Add item with quantity exceeding stock
-    client.post(
+    # Add item with quantity exceeding stock — must fail at add_item time
+    resp = client.post(
         "/cart/items",
         json={"product_id": product_id, "quantity": 10},
         headers={"Authorization": f"Bearer {token}"},
-    )
-
-    # Checkout must fail with 400 (ValidationError)
-    resp = client.post(
-        "/orders/checkout",
-        json={"payment_method_id": "pm_card_visa"},
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Idempotency-Key": "stock-insuf-1",
-        },
     )
     assert resp.status_code == 400
 

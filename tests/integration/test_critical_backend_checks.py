@@ -112,15 +112,15 @@ def test_transaction_rollback_on_exception(monkeypatch):
     )
     assert r.status_code == 201
 
-    # Force an exception during order creation by monkeypatching OrderItemRepository.create
+    # Force an exception during order creation by monkeypatching OrderRepository.create_item
     from backend.app.modules.order.repositories.order_repository import (
-        OrderItemRepository,
+        OrderRepository,
     )
 
     def _raise_create(*args: Any, **kwargs: Any):
         raise Exception("boom")
 
-    monkeypatch.setattr(OrderItemRepository, "create", _raise_create)
+    monkeypatch.setattr(OrderRepository, "create_item", _raise_create)
 
     # The monkeypatched error propagates through FastAPI. Since checkout_endpoint
     # delegates exception handling to the global AppError handler (which covers

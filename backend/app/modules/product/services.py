@@ -77,6 +77,7 @@ def update_product(
 ) -> ProductRead:
     """Update an existing product."""
     product_repository = ProductRepository(uow.session)
+
     product = get_product_or_raise(product_repository, product_id)
 
     update_data = product_data.model_dump(exclude_unset=True)
@@ -140,4 +141,22 @@ def get_product_or_raise(
     product = repository.get_by_id(product_id)
     if not product:
         raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+    return product
+
+
+def validate_product_for_purchase(
+    repository: ProductRepository,
+    product_id: int,
+    quantity: int,
+) -> Product:
+    """Validate that a product is active and has enough stock for purchase."""
+    product = get_product_or_raise(repository, product_id)
+
+    if not product.is_active:
+        raise ValidationError(Messages.PRODUCT_NOT_FOUND)
+
+    if product.stock_quantity < quantity:
+        raise ValidationError(
+            f"{Messages.ORDER_INSUFFICIENT_STOCK} (product_id={product_id})"
+        )
     return product

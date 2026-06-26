@@ -2,7 +2,7 @@
 
 Technical overview of the e-commerce backend.
 
-This document provides a high-level understanding of the system, its architecture, business flows, and engineering decisions before diving into the detailed documentation.
+This document provides a high-level understanding of the system, its architecture, business workflows, and engineering decisions before diving into the detailed documentation.
 
 ---
 
@@ -18,39 +18,67 @@ The project implements a complete e-commerce purchase lifecycle, covering:
 - Payment retries
 - Webhook-driven payment synchronization
 
-The system was designed to prioritize transactional consistency, modularity, and testability rather than focusing solely on CRUD operations.
+The architecture prioritizes consistency, simplicity, and maintainability while remaining practical for real-world backend development.
+
+---
+
+# Architectural Overview
+
+The system follows a layered architecture composed of:
+
+- Presentation
+- Application
+- Domain Modules
+- Infrastructure
+
+Business functionality is organized around domain-oriented modules.
+
+Simple single-domain workflows remain inside their owning module.
+
+Only workflows coordinating multiple domains execute through the Application layer.
+
+This keeps CRUD operations simple while making orchestration explicit where it provides real value.
 
 ---
 
 # Main Architectural Objectives
 
-The architecture was designed around five goals:
+The architecture is designed around five goals.
 
 ## Separation of Concerns
 
-Business rules remain isolated from HTTP, database, and payment provider implementations.
+Each layer has a single responsibility.
 
-## Transactional Consistency
+- Presentation handles HTTP.
+- Application orchestrates cross-domain workflows.
+- Domain modules own business logic.
+- Infrastructure provides technical implementations.
 
-Critical operations execute within well-defined transaction boundaries to maintain data consistency and support safe recovery from failures.
+## Consistency
+
+Transaction boundaries, business rules, and persistence responsibilities remain explicit and predictable across the project.
+
+## Simplicity
+
+Avoid abstractions that do not provide practical value.
+
+CRUD operations stay inside their domain module.
+
+Application orchestration is introduced only for multi-domain workflows.
 
 ## Testability
 
 Business behavior can be validated independently from infrastructure concerns.
 
-## Extensibility
+## Maintainability
 
-External providers and persistence implementations can evolve without forcing changes across the entire system.
-
-## Predictability
-
-Idempotency and explicit business workflows reduce the risk of duplicated operations and inconsistent states.
+Domain ownership and module boundaries allow the system to evolve without unnecessary coupling.
 
 ---
 
 # Core Domains
 
-The system is organized around business domains rather than technical layers.
+The system is organized around business domains.
 
 ## Users
 
@@ -74,24 +102,66 @@ Payment processing, retries, provider communication, and status tracking.
 
 ## Idempotency
 
-Protection against duplicate checkout execution.
+Protection against duplicate execution of critical workflows.
+
+---
+
+# Business Workflow Model
+
+The system distinguishes between two categories of workflows.
+
+## Module Workflows
+
+Single-domain business operations remain inside their owning module.
+
+Examples:
+
+- Create User
+- Update Product
+- Add Cart Item
+- Delete User
+
+These use cases own:
+
+- business rules;
+- repositories;
+- transaction boundaries through UnitOfWork.
+
+## Application Workflows
+
+Only workflows involving multiple domains execute through the Application layer.
+
+Examples:
+
+- Checkout
+- Retry Payment
+- Stripe Webhook Processing
+
+These use cases coordinate multiple modules without owning domain-specific business rules.
 
 ---
 
 # Purchase Flow
 
-The primary workflow of the system is:
+The primary workflow is:
 
 User
+
 → Authentication
+
 → Product Selection
+
 → Cart Management
+
 → Checkout
+
 → Order Creation
+
 → Payment Creation
+
 → Payment Confirmation
 
-The checkout process coordinates multiple domains and represents the most complex transactional workflow in the application.
+Checkout represents the primary cross-domain orchestration of the system.
 
 ---
 
@@ -101,23 +171,39 @@ Payment processing is isolated behind a gateway abstraction.
 
 This allows:
 
-- Provider replacement
-- Easier testing
-- Reduced coupling between business rules and Stripe
+- provider replacement;
+- easier testing;
+- reduced coupling between business rules and Stripe.
 
-Stripe is currently the concrete implementation used by the project.
+Stripe is currently the concrete implementation.
 
-Payment updates may occur through:
+Payment state may change through:
 
-- Direct checkout responses
-- Retry operations
-- Stripe webhooks
+- Checkout
+- Retry Payment
+- Stripe Webhooks
+
+---
+
+# Transaction Management
+
+Every write operation executes through a UnitOfWork.
+
+Repositories:
+
+- never commit;
+- never rollback.
+
+Transaction ownership belongs to:
+
+- module use cases for single-domain workflows;
+- application use cases for cross-domain workflows.
 
 ---
 
 # Testing Philosophy
 
-The project uses multiple testing layers because different risks exist at different levels.
+Different testing layers validate different system risks.
 
 ## Unit Tests
 
@@ -125,7 +211,7 @@ Validate isolated business rules.
 
 ## Integration Tests
 
-Validate interaction with the database and infrastructure components.
+Validate interaction between business logic and infrastructure.
 
 ## Workflow Tests
 
@@ -133,8 +219,8 @@ Validate complete business journeys through public HTTP APIs.
 
 Examples include:
 
-- Authentication flows
-- Checkout execution
+- Authentication
+- Checkout
 - Payment processing
 - Stock updates
 - Idempotency guarantees
@@ -144,18 +230,18 @@ Examples include:
 # Documentation Map
 
 | Document | Purpose |
-|-----------|----------|
-| ARCHITECTURE.md | Detailed architecture, layers, transaction boundaries, and flows |
-| DECISIONS.md | Major architectural decisions and trade-offs |
-| ENDPOINTS.md | Complete API reference |
+|----------|---------|
+| ARCHITECTURE.md | Layers, transaction boundaries, workflow model, and architecture overview |
+| DECISIONS.md | Architectural decisions and accepted trade-offs |
+| ENDPOINTS.md | Complete HTTP API reference |
 | PROJECT_STRUCTURE.md | Repository organization and module layout |
-| RUN.md | Setup, execution, and development workflow |
+| RUN.md | Setup and development workflow |
 
 ---
 
 # Suggested Reading Order
 
-## Understanding the System
+## Understanding the Architecture
 
 1. README-TECH.md
 2. ARCHITECTURE.md
@@ -164,9 +250,10 @@ Examples include:
 ## Working on the Codebase
 
 1. README-TECH.md
-2. RUN.md
-3. PROJECT_STRUCTURE.md
-4. ARCHITECTURE.md
+2. PROJECT_STRUCTURE.md
+3. ARCHITECTURE.md
+4. DECISIONS.md
+5. RUN.md
 
 ## Consuming the API
 
@@ -184,7 +271,8 @@ Examples include:
 - Validation: Pydantic v2
 - Payments: Stripe
 - Authentication: JWT
-- Architecture: Layered + Domain-Oriented Modules
-- Patterns: Unit of Work, Repository, Gateway
+- Architecture: Layered Architecture with Domain-Oriented Modules
+- Transaction Pattern: Unit of Work
+- Persistence Pattern: Repository
+- External Integration: Gateway
 - Testing: Unit, Integration, and Workflow Tests
--

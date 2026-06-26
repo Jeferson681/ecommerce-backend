@@ -15,7 +15,7 @@ from backend.app.modules.cart.schemas import (
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
-from backend.app.modules.product.services import get_product_or_raise
+from backend.app.modules.product.services import validate_product_for_purchase
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
@@ -35,10 +35,9 @@ def add_item(
     cart_item_repository = CartItemRepository(uow.session)
     product_repository = ProductRepository(uow.session)
 
-    product = get_product_or_raise(product_repository, item_data.product_id)
-
-    if not product.is_active:
-        raise ValidationError(Messages.PRODUCT_NOT_FOUND)
+    validate_product_for_purchase(
+        product_repository, item_data.product_id, quantity=item_data.quantity
+    )
 
     try:
         cart = get_or_create_cart(cart_repository, user_id)
@@ -140,9 +139,9 @@ def merge_cart_items(
     product_repository = ProductRepository(uow.session)
 
     for item in items:
-        product = get_product_or_raise(product_repository, item.product_id)
-        if not product.is_active:
-            raise ValidationError(Messages.PRODUCT_NOT_FOUND)
+        validate_product_for_purchase(
+            product_repository, item.product_id, quantity=item.quantity
+        )
 
     cart = get_or_create_cart(cart_repository, user_id)
 

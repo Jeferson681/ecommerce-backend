@@ -17,6 +17,7 @@ def _sqlite_temp_db_url() -> str:
 
 # Ensure tests never touch the developer Postgres DB by default.
 os.environ.setdefault("DATABASE_URL", _sqlite_temp_db_url())
+os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-for-unit-tests")
 
 
 # Integration tests run by default. The session fixture below creates and

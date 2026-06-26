@@ -67,3 +67,9 @@ class AuthorizationError(AppError):
     """Raised when authorization fails."""
 
     pass
+
+
+class EmailAlreadyExistsError(AppError):
+    """Raised when a user with the given email already exists."""
+
+    pass

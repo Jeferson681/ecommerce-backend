@@ -135,7 +135,7 @@ def test_checkout_replay_does_not_create_duplicate_orders() -> None:
 
     session = SessionLocal()
     order_repo = OrderRepository(session)
-    orders = order_repo.get_by_user_id(103)
+    orders = order_repo.list_by_user(103)
     session.close()
 
     assert len(orders) == 1

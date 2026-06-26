@@ -78,5 +78,5 @@ def test_concurrent_checkout_only_creates_single_order() -> None:
     # checkout succeeds for a shared idempotency key.
     session2 = SessionLocal()
     order_repo = OrderRepository(session2)
-    orders = order_repo.get_by_user_id(42)
+    orders = order_repo.list_by_user(42)
     assert len(orders) == 1

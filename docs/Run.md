@@ -41,13 +41,13 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 
 ## Install Backend Dependencies
 
-Runtime dependencies:
+Install runtime dependencies:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-Development dependencies:
+Install development dependencies:
 
 ```powershell
 pip install -r requirements-dev.txt
@@ -67,7 +67,7 @@ STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-JWT configuration (optional):
+JWT configuration:
 
 ```env
 JWT_SECRET_KEY=dev-secret
@@ -92,13 +92,13 @@ alembic upgrade head
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Backend URLs:
+Backend:
 
 ```text
-Application:
+Application
 http://127.0.0.1:8000
 
-Swagger UI:
+Swagger UI
 http://127.0.0.1:8000/docs
 ```
 
@@ -126,7 +126,7 @@ Start the development server:
 npm run dev
 ```
 
-Frontend URL:
+Frontend:
 
 ```text
 http://localhost:3000
@@ -134,15 +134,15 @@ http://localhost:3000
 
 Notes:
 
-- Run `npm ci` only during the initial setup.
-- Run `npm ci` again if `package.json` or `package-lock.json` changes.
-- For daily development, usually only `npm run dev` is required.
+- Run `npm ci` during the initial setup.
+- Run `npm ci` again whenever `package.json` or `package-lock.json` changes.
+- For day-to-day development, `npm run dev` is usually sufficient.
 
 ---
 
 ## Run Tests
 
-Run all tests:
+Run the full test suite:
 
 ```powershell
 pytest
@@ -160,7 +160,13 @@ Run integration tests:
 pytest tests/integration -q
 ```
 
-Generate coverage report:
+Generate terminal coverage:
+
+```powershell
+pytest --cov=backend.app
+```
+
+Generate HTML coverage report:
 
 ```powershell
 pytest --cov=backend.app --cov-report=html
@@ -170,8 +176,22 @@ pytest --cov=backend.app --cov-report=html
 
 ## Code Quality
 
-Run all configured checks:
+Run all configured quality checks:
 
 ```powershell
 pre-commit run --all-files
 ```
+
+This executes all configured formatting, linting, and static analysis hooks.
+
+---
+
+## Next Steps
+
+To understand the project architecture and organization, read the documentation in the following order:
+
+1. `docs/README-TECH.md`
+2. `docs/ARCHITECTURE.md`
+3. `docs/DECISIONS.md`
+4. `docs/PROJECT_STRUCTURE.md`
+5. `docs/ENDPOINTS.md`

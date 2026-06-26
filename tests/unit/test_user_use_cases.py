@@ -31,6 +31,9 @@ def test_create_user_happy_path(monkeypatch) -> None:
         def __init__(self, session: object) -> None:
             self.session = session
 
+        def get_by_email(self, email: str) -> object | None:
+            return None
+
         def create(self, user: object) -> object:
             now = datetime.now(UTC)
             user.id = 1  # type: ignore[attr-defined]
@@ -554,6 +557,9 @@ def test_create_user_rolls_back_on_repo_error(monkeypatch) -> None:
     class Repo:
         def __init__(self, session: object) -> None:
             self.session = session
+
+        def get_by_email(self, email: str) -> object | None:
+            return None
 
         def create(self, _user: object) -> object:
             raise RuntimeError("db error")

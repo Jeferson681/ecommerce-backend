@@ -61,7 +61,7 @@ class TestGetOrderHappyPath:
             def __init__(self, session: object) -> None:
                 self.session = session
 
-            def get_by_user_id(self, user_id: int) -> list[SimpleNamespace]:
+            def list_by_user(self, user_id: int) -> list[SimpleNamespace]:
                 return [
                     make_order(id=1, user_id=user_id),
                     make_order(id=2, user_id=user_id),
@@ -110,7 +110,7 @@ class TestGetOrderSadPath:
             def __init__(self, session: object) -> None:
                 self.session = session
 
-            def get_by_user_id(self, user_id: int) -> list:
+            def list_by_user(self, user_id: int) -> list:
                 return []
 
         monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))

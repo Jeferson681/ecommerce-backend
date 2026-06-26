@@ -36,7 +36,7 @@ Each domain owns its:
 - Models
 - Schemas
 - Repositories
-- Use cases
+- Use Cases
 
 Cross-domain workflows are coordinated through application-level use cases.
 
@@ -275,7 +275,7 @@ Stock ownership belongs to the Product aggregate.
 
 Inventory is represented directly through product stock information.
 
-Checkout workflows validate and update stock through the product domain.
+Checkout workflows validate and update stock through the Product domain.
 
 ## Consequences
 
@@ -306,12 +306,24 @@ Using a single database transaction would keep the transaction open during the S
 
 ## Decision
 
-Checkout executes in two phases:
+Checkout executes in two phases.
 
-- **Phase 1 (reservation):** Reserve the idempotency key in a dedicated transaction. If the key already exists, return the cached response when available. Commit.
-- **Phase 2 (execution):** Create the order, decrement stock, process payment, clear the cart, persist the idempotency response, and commit.
+**Phase 1 (reservation)**
 
-If phase 2 fails, the reserved key is released through a compensating transaction.
+- Reserve the idempotency key in a dedicated transaction.
+- If the key already exists, return the cached response when available.
+- Commit.
+
+**Phase 2 (execution)**
+
+- Create the order.
+- Decrement stock.
+- Process payment.
+- Clear the cart.
+- Persist the idempotency response.
+- Commit.
+
+If phase two fails, the reserved key is released through a compensating transaction.
 
 ## Consequences
 
@@ -325,10 +337,10 @@ If phase 2 fails, the reserved key is released through a compensating transactio
 ### Trade-offs
 
 - The two-phase approach is not fully atomic across the entire checkout workflow
-- Phase 1 can succeed while phase 2 fails, leaving an orphaned idempotency key
-- Compensating cleanup requires an additional transaction and can itself fail
+- Phase one can succeed while phase two fails
+- Compensating cleanup requires an additional transaction
 - Orphaned keys require periodic cleanup
-- Database connections remain allocated during the Stripe API call because payment processing occurs inside the execution phase transaction
+- Database connections remain allocated during the Stripe API call
 - Error handling is more complex than a single-transaction design
 
 ---

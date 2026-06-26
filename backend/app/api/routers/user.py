@@ -2,9 +2,8 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
-from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
 from backend.app.modules.auth.deps import get_current_user_id, require_admin
 from backend.app.modules.user.schemas import (
     UserChangePassword,
@@ -47,13 +46,7 @@ def create_user_endpoint(
     user_data: UserCreate,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> UserRead:
-    try:
-        return create_user_use_case(user_data, uow)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=Messages.EMAIL_ALREADY_EXISTS,
-        ) from e
+    return create_user_use_case(user_data, uow)
 
 
 @router.get("/{user_id}", response_model=UserRead)
@@ -92,19 +85,12 @@ def update_user_endpoint(
 
     Access: owner or admin (enforced in use case).
     """
-    try:
-        return update_user_use_case(
-            user_id,
-            user_data,
-            uow,
-            requesting_user_id=user_id_current,
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=Messages.EMAIL_ALREADY_EXISTS,
-        ) from e
+    return update_user_use_case(
+        user_id,
+        user_data,
+        uow,
+        requesting_user_id=user_id_current,
+    )
 
 
 @router.patch(
@@ -121,19 +107,12 @@ def change_password_endpoint(
 
     Access: owner only (enforced in use case).
     """
-    try:
-        return change_user_password(
-            user_id=user_id,
-            new_password=password_data.new_password,
-            uow=uow,
-            requesting_user_id=user_id_current,
-        )
-
-    except (NotFoundError, InvalidPasswordError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+    return change_user_password(
+        user_id=user_id,
+        new_password=password_data.new_password,
+        uow=uow,
+        requesting_user_id=user_id_current,
+    )
 
 
 @router.delete(

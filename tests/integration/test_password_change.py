@@ -110,7 +110,7 @@ def test_password_change_wrong_owner_fails() -> None:
         json={"new_password": "Hacked1@"},
         headers={"Authorization": f"Bearer {token_b}"},
     )
-    assert change_resp.status_code == 400
+    assert change_resp.status_code == 404
 
 
 def test_password_change_weak_password_fails() -> None:

@@ -21,6 +21,7 @@ from backend.app.core.exceptions import (
     AppError,
     AuthenticationError,
     AuthorizationError,
+    EmailAlreadyExistsError,
     Messages,
     NotFoundError,
     ValidationError,
@@ -97,6 +98,8 @@ def create_app() -> "FastAPI":
         elif isinstance(exc, AuthorizationError):
             status_code = 403
         elif isinstance(exc, ValidationError):
+            status_code = 400
+        elif isinstance(exc, EmailAlreadyExistsError):
             status_code = 400
         return JSONResponse(
             status_code=status_code,
