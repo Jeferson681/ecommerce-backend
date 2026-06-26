@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.core.exceptions import NotFoundError, ValidationError
-from backend.app.modules.payment import use_cases
+from backend.app.modules.payment import services
 
 
 def test_process_payment_rejects_invalid_status() -> None:
@@ -35,7 +35,7 @@ def test_process_payment_rejects_invalid_status() -> None:
             )
 
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+    monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
     class FakeGateway:
         name = "fake"
@@ -51,7 +51,7 @@ def test_process_payment_rejects_invalid_status() -> None:
 
     uow = SimpleNamespace(session=object(), flush=lambda: None)
     with pytest.raises(ValidationError, match="Invalid payment status"):
-        use_cases.process_payment(
+        services.process_payment(
             payment_id=1,
             payment_method_id="pm_1",
             uow=uow,
@@ -72,7 +72,7 @@ def test_process_payment_raises_not_found_when_missing() -> None:
             return None
 
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+    monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
     class FakeGateway:
         name = "fake"
@@ -88,7 +88,7 @@ def test_process_payment_raises_not_found_when_missing() -> None:
 
     uow = SimpleNamespace(session=object(), flush=lambda: None)
     with pytest.raises(NotFoundError, match="Payment not found"):
-        use_cases.process_payment(
+        services.process_payment(
             payment_id=999,
             payment_method_id="pm_1",
             uow=uow,

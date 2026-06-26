@@ -1,4 +1,4 @@
-"""Use cases for product management."""
+"""Services for product management."""
 
 from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.modules.product.domain.models import Product
@@ -36,11 +36,8 @@ def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
 
 def get_product(product_id: int, uow: UnitOfWork) -> ProductRead:
     """Retrieve a product by its ID."""
-    repository = ProductRepository(uow.session)
-    product = repository.get_by_id(product_id)
-
-    if not product:
-        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+    product_repository = ProductRepository(uow.session)
+    product = get_product_or_raise(product_repository, product_id)
 
     return ProductRead.model_validate(product)
 
@@ -79,11 +76,8 @@ def update_product(
     product_id: int, product_data: ProductUpdate, uow: UnitOfWork
 ) -> ProductRead:
     """Update an existing product."""
-    repository = ProductRepository(uow.session)
-    product = repository.get_by_id(product_id)
-
-    if not product:
-        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+    product_repository = ProductRepository(uow.session)
+    product = get_product_or_raise(product_repository, product_id)
 
     update_data = product_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -100,14 +94,11 @@ def update_product(
 
 def delete_product(product_id: int, uow: UnitOfWork) -> None:
     """Delete a product by its ID."""
-    repository = ProductRepository(uow.session)
-    product = repository.get_by_id(product_id)
-
-    if not product:
-        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+    product_repository = ProductRepository(uow.session)
+    product = get_product_or_raise(product_repository, product_id)
 
     try:
-        repository.delete(product)
+        product_repository.delete(product)
         uow.commit()
     except Exception:
         uow.rollback()
@@ -139,3 +130,14 @@ def restore_stock(
         product_id=product_id,
         quantity=quantity,
     )
+
+
+def get_product_or_raise(
+    repository: ProductRepository,
+    product_id: int,
+) -> Product:
+    """Retrieve a product or raise NotFoundError if it doesn't exist."""
+    product = repository.get_by_id(product_id)
+    if not product:
+        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+    return product

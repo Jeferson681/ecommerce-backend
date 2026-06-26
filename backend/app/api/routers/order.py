@@ -12,9 +12,9 @@ from backend.app.application.use_cases.checkout.checkout import checkout
 from backend.app.application.use_cases.retry_payment.retry_payment import retry_payment
 from backend.app.modules.auth.deps import get_current_user_id
 from backend.app.modules.order.schemas import OrderRead, PaymentMethodRequest
-from backend.app.modules.order.use_cases import get_order, list_orders
-from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
-from backend.app.uow.dependencies import get_uow
+from backend.app.modules.order.services import get_order, list_orders
+from backend.app.modules.payment.gateway.base import PaymentGateway
+from backend.app.uow.dependencies import get_payment_gateway, get_uow
 from backend.app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -25,6 +25,7 @@ async def checkout_endpoint(
     request: Request,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
     body: PaymentMethodRequest,
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
 ) -> OrderRead:
@@ -36,8 +37,6 @@ async def checkout_endpoint(
     request_hash.update(request.url.path.encode())
     request_hash.update(body_bytes)
     rh = request_hash.hexdigest()
-
-    gateway = StripeGateway()
 
     return checkout(
         user_id,
@@ -59,6 +58,7 @@ async def retry_payment_endpoint(
     payload: PaymentMethodRequest,
     user_id: Annotated[int, Depends(get_current_user_id)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
 ):
     body_bytes = await request.body()
@@ -67,8 +67,6 @@ async def retry_payment_endpoint(
     request_hash.update(request.url.path.encode())
     request_hash.update(body_bytes)
     rh = request_hash.hexdigest()
-
-    gateway = StripeGateway()
 
     return retry_payment(
         user_id=user_id,
@@ -100,4 +98,4 @@ def get_order_endpoint(
 
     Access: owner or admin (enforced in use case).
     """
-    return get_order(order_id, user_id, uow, requesting_user_id=user_id)
+    return get_order(order_id, user_id, uow)

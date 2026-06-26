@@ -3,7 +3,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.exc import IntegrityError
 
 from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
 from backend.app.modules.auth.deps import get_current_user_id, require_admin
@@ -13,7 +12,7 @@ from backend.app.modules.user.schemas import (
     UserRead,
     UserUpdate,
 )
-from backend.app.modules.user.use_cases import (
+from backend.app.modules.user.services import (
     change_password as change_user_password,
     create_user as create_user_use_case,
     delete_user as delete_user_use_case,
@@ -50,7 +49,7 @@ def create_user_endpoint(
 ) -> UserRead:
     try:
         return create_user_use_case(user_data, uow)
-    except IntegrityError as e:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Messages.EMAIL_ALREADY_EXISTS,
@@ -101,7 +100,7 @@ def update_user_endpoint(
             requesting_user_id=user_id_current,
         )
 
-    except IntegrityError as e:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Messages.EMAIL_ALREADY_EXISTS,

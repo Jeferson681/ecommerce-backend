@@ -11,7 +11,7 @@ from backend.app.modules.payment.gateway.base import (
     PaymentGatewayResult,
     PaymentRequest,
 )
-from backend.app.modules.payment.payment_service import (
+from backend.app.modules.payment.helpers import (
     build_payment_request,
     process_gateway_payment,
 )

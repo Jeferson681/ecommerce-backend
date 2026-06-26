@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.core.exceptions import NotFoundError, ValidationError
-from backend.app.modules.payment import use_cases
+from backend.app.modules.payment import services
 from backend.app.modules.payment.gateway.base import (
     PaymentGatewayResult,
     PaymentRequest,
@@ -78,11 +78,11 @@ class TestProcessPaymentNotFound:
             def get_by_id(self, payment_id: int) -> None:
                 return None
 
-        monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+        monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
         uow = SimpleNamespace(session=object(), flush=lambda: None)
         with pytest.raises(NotFoundError, match="Payment not found"):
-            use_cases.process_payment(
+            services.process_payment(
                 payment_id=999,
                 payment_method_id="pm_1",
                 uow=uow,
@@ -102,11 +102,11 @@ class TestProcessPaymentInvalidStatus:
             def get_by_id(self, payment_id: int) -> SimpleNamespace:
                 return _make_payment(status=status)
 
-        monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+        monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
         uow = SimpleNamespace(session=object(), flush=lambda: None)
         with pytest.raises(ValidationError, match="Invalid payment status"):
-            use_cases.process_payment(
+            services.process_payment(
                 payment_id=1,
                 payment_method_id="pm_1",
                 uow=uow,
@@ -125,12 +125,12 @@ class TestProcessPaymentHappyPath:
             def get_by_id(self, payment_id: int) -> SimpleNamespace:
                 return _make_payment(status="pending")
 
-        monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+        monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
         gateway = FakeGateway()
         uow = SimpleNamespace(session=object(), flush=lambda: None)
 
-        result = use_cases.process_payment(
+        result = services.process_payment(
             payment_id=1,
             payment_method_id="pm_success",
             uow=uow,
@@ -156,7 +156,7 @@ class TestProcessPaymentHappyPath:
             def get_by_id(self, payment_id: int) -> SimpleNamespace:
                 return _make_payment(status="pending")
 
-        monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+        monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
         gateway = FakeGateway(
             result=PaymentGatewayResult(
@@ -167,7 +167,7 @@ class TestProcessPaymentHappyPath:
         )
         uow = SimpleNamespace(session=object(), flush=lambda: None)
 
-        result = use_cases.process_payment(
+        result = services.process_payment(
             payment_id=1, payment_method_id="pm_decline", uow=uow, gateway=gateway
         )
 
@@ -185,12 +185,12 @@ class TestProcessPaymentHappyPath:
             def get_by_id(self, payment_id: int) -> SimpleNamespace:
                 return _make_payment(status="failed")
 
-        monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+        monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
         gateway = FakeGateway()
         uow = SimpleNamespace(session=object(), flush=lambda: None)
 
-        result = use_cases.process_payment(
+        result = services.process_payment(
             payment_id=1, payment_method_id="pm_retry", uow=uow, gateway=gateway
         )
 
@@ -207,7 +207,7 @@ class TestProcessPaymentHappyPath:
             def get_by_id(self, payment_id: int) -> SimpleNamespace:
                 return _make_payment(status="pending")
 
-        monkeypatch.setattr(use_cases, "PaymentRepository", lambda s: PaymentRepo(s))
+        monkeypatch.setattr(services, "PaymentRepository", lambda s: PaymentRepo(s))
 
         gateway = FakeGateway(
             result=PaymentGatewayResult(
@@ -220,7 +220,7 @@ class TestProcessPaymentHappyPath:
         )
         uow = SimpleNamespace(session=object(), flush=lambda: None)
 
-        result = use_cases.process_payment(
+        result = services.process_payment(
             payment_id=1, payment_method_id="pm_full", uow=uow, gateway=gateway
         )
 

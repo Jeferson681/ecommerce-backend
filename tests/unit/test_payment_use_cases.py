@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 from sqlalchemy.orm import Session
 
-from backend.app.modules.payment import use_cases
+from backend.app.modules.payment import services
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
@@ -85,12 +85,12 @@ def test_process_payment_happy_path(monkeypatch) -> None:
             )
 
     monkeypatch.setattr(
-        use_cases,
+        services,
         "PaymentRepository",
         lambda session: PaymentRepo(session),
     )
 
-    payload = use_cases.create_payment(
+    payload = services.create_payment(
         order_id=1,
         user_id=1,
         amount=Decimal("10.00"),
@@ -98,7 +98,7 @@ def test_process_payment_happy_path(monkeypatch) -> None:
         provider="stripe",
     )
 
-    result = use_cases.process_payment(
+    result = services.process_payment(
         payment_id=payload.id,
         payment_method_id="pm_1",
         uow=uow,

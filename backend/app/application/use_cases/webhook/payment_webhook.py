@@ -6,9 +6,10 @@ Responsibility: synchronize payment state from provider events.
 from backend.app.core.exceptions import Messages, NotFoundError
 from backend.app.modules.order.domain.models import OrderStatus
 from backend.app.modules.order.repositories.order_repository import OrderRepository
+from backend.app.modules.order.services import get_order_or_raise
 from backend.app.modules.payment.domain.models import PaymentStatus
 from backend.app.modules.payment.gateway.base import PaymentGateway
-from backend.app.modules.payment.payment_service import process_gateway_webhook
+from backend.app.modules.payment.helpers import process_gateway_webhook
 from backend.app.modules.payment.repositories.payment_repository import (
     PaymentRepository,
 )
@@ -45,10 +46,7 @@ def process_provider_webhook(
     if payment is None:
         raise NotFoundError(Messages.PAYMENT_NOT_FOUND)
 
-    order = order_repository.get_by_id(payment.order_id)
-
-    if order is None:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+    order = get_order_or_raise(order_repository, payment.order_id)
 
     payment.status = payload.status
     payment.provider_status = payload.provider_status

@@ -1,49 +1,46 @@
-"""Order use cases.
+"""Services related to orders."""
 
-Responsibility: coordinate checkout and order retrieval workflows.
-"""
-
-from backend.app.core.exceptions import Messages, NotFoundError
+from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.idempotency.helpers import persist_idempotency_response, try_replay
-from backend.app.idempotency.repositories.idempotency_repository import (
-    IdempotencyRepository,
-)
 from backend.app.modules.cart.domain.models import CartItem
-from backend.app.modules.order.domain.models import Order, OrderItem
+from backend.app.modules.order.domain.models import Order, OrderItem, OrderStatus
 from backend.app.modules.order.repositories.order_repository import (
     OrderItemRepository,
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
 from backend.app.modules.product.domain.models import Product
-from backend.app.modules.user.repositories.user_repository import UserRepository
-from backend.app.modules.user.use_cases import is_admin
 from backend.app.uow.unit_of_work import UnitOfWork
+
+
+def get_order_or_raise(
+    order_repository: OrderRepository,
+    order_id: int,
+) -> Order:
+    """Retrieve an order or raise NotFoundError if it doesn't exist."""
+    order = order_repository.get_by_id(order_id)
+    if order is None:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+    return order
 
 
 def get_order(
     order_id: int,
     user_id: int,
     uow: UnitOfWork,
-    requesting_user_id: int | None = None,
 ) -> OrderRead:
-    """Retrieve a single order by ID."""
+    """Retrieve a single order by ID.
+
+    Access: owner only.
+    Admin access is handled by the caller when needed.
+    """
 
     repository = OrderRepository(uow.session)
 
-    order = repository.get_by_id(order_id)
+    order = get_order_or_raise(repository, order_id)
 
-    if order is None:
+    if order.user_id != user_id:
         raise NotFoundError(Messages.ORDER_NOT_FOUND)
-
-    is_owner = order.user_id == user_id
-
-    if not is_owner:
-        if requesting_user_id is None:
-            raise NotFoundError(Messages.ORDER_NOT_FOUND)
-        user_repository = UserRepository(uow.session)
-        if not is_admin(user_repository, requesting_user_id):
-            raise NotFoundError(Messages.ORDER_NOT_FOUND)
 
     return OrderRead.model_validate(order)
 
@@ -65,6 +62,7 @@ def create_order_from_cart(
     order_item_repository: OrderItemRepository,
     user_id: int,
 ) -> Order:
+
     order = order_repository.create(Order(user_id=user_id))
 
     for cart_item in cart_items:
@@ -84,21 +82,9 @@ def create_order_from_cart(
     return order
 
 
-def get_order_or_raise(
-    repository: OrderRepository,
-    order_id: int,
-) -> Order:
-    order = repository.get_by_id(order_id)
-
-    if order is None:
-        raise NotFoundError(Messages.ORDER_NOT_FOUND)
-
-    return order
-
-
 def persist_idempotent_response_if_needed(
-    repository: IdempotencyRepository,
-    order: Order,
+    repository,
+    order,
     idempotency_key: str | None,
     user_id: int,
 ) -> None:
@@ -117,7 +103,7 @@ def persist_idempotent_response_if_needed(
 
 
 def try_order_response_replay(
-    repository: IdempotencyRepository,
+    repository,
     idempotency_key: str | None,
     user_id: int,
 ) -> OrderRead | None:
@@ -134,3 +120,34 @@ def try_order_response_replay(
         return None
 
     return OrderRead.model_validate(raw)
+
+
+def get_pending_order_for_user(
+    order_repository: OrderRepository,
+    *,
+    order_id: int,
+    user_id: int,
+) -> Order:
+    order = get_order_or_raise(order_repository, order_id)
+
+    if order.user_id != user_id:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+
+    if order.status != OrderStatus.PENDING:
+        raise ValidationError(Messages.ORDER_IS_NOT_PENDING)
+
+    return order
+
+
+def get_order_for_user(
+    order_repository: OrderRepository,
+    *,
+    order_id: int,
+    user_id: int,
+) -> Order:
+    order = get_order_or_raise(order_repository, order_id)
+
+    if order.user_id != user_id:
+        raise NotFoundError(Messages.ORDER_NOT_FOUND)
+
+    return order

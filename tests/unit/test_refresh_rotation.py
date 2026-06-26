@@ -18,7 +18,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-for-unit-tests")
 
 from backend.app.core.config import Settings
 from backend.app.core.database import Base, engine
-from backend.app.modules.auth import tokens as token_module, use_cases as auth_use_cases
+from backend.app.modules.auth import services as auth_use_cases, tokens as token_module
 from backend.app.modules.auth.repositories.refresh_token_repository import (
     RefreshTokenRepository,
 )

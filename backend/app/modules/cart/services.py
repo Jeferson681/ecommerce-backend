@@ -1,4 +1,4 @@
-"""Cart use cases."""
+"""Services related to carts."""
 
 from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.modules.cart.domain.models import Cart, CartItem
@@ -15,6 +15,7 @@ from backend.app.modules.cart.schemas import (
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
+from backend.app.modules.product.services import get_product_or_raise
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
@@ -34,9 +35,7 @@ def add_item(
     cart_item_repository = CartItemRepository(uow.session)
     product_repository = ProductRepository(uow.session)
 
-    product = product_repository.get_by_id(item_data.product_id)
-    if product is None:
-        raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+    product = get_product_or_raise(product_repository, item_data.product_id)
 
     if not product.is_active:
         raise ValidationError(Messages.PRODUCT_NOT_FOUND)
@@ -141,9 +140,7 @@ def merge_cart_items(
     product_repository = ProductRepository(uow.session)
 
     for item in items:
-        product = product_repository.get_by_id(item.product_id)
-        if product is None:
-            raise NotFoundError(Messages.PRODUCT_NOT_FOUND)
+        product = get_product_or_raise(product_repository, item.product_id)
         if not product.is_active:
             raise ValidationError(Messages.PRODUCT_NOT_FOUND)
 

@@ -1,7 +1,7 @@
 from datetime import UTC
 from types import SimpleNamespace
 
-from backend.app.modules.product import use_cases
+from backend.app.modules.product import services
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.schemas import ProductCreate, ProductUpdate
 
@@ -69,7 +69,7 @@ def test_create_product_calls_repo_and_commit(monkeypatch):
         created["repo"] = repo
         return repo
 
-    monkeypatch.setattr(use_cases, "ProductRepository", fake_repo_factory)
+    monkeypatch.setattr(services, "ProductRepository", fake_repo_factory)
 
     uow = DummyUoW()
     data = ProductCreate(name="p", description="d", price=1.0, stock_quantity=5)
@@ -83,9 +83,9 @@ def test_create_product_calls_repo_and_commit(monkeypatch):
             self.price = price
             self.stock_quantity = stock_quantity
 
-    monkeypatch.setattr(use_cases, "Product", DummyProduct)
+    monkeypatch.setattr(services, "Product", DummyProduct)
 
-    product = use_cases.create_product(data, uow)
+    product = services.create_product(data, uow)
 
     assert created["repo"].created is True
     assert uow.committed is True
@@ -99,14 +99,14 @@ def test_update_product_commits_and_updates_fields(monkeypatch):
     def fake_repo_factory(session):
         return repo
 
-    monkeypatch.setattr(use_cases, "ProductRepository", fake_repo_factory)
+    monkeypatch.setattr(services, "ProductRepository", fake_repo_factory)
 
     uow = DummyUoW()
     update = ProductUpdate(
         name="new", description="new", price=2.5, stock_quantity=10, is_active=False
     )
 
-    product = use_cases.update_product(1, update, uow)
+    product = services.update_product(1, update, uow)
 
     # repository.update may be removed because the object is attached to the session
     # so we assert commit happened and the returned product has updated fields.

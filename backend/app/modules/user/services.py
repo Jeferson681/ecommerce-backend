@@ -1,4 +1,4 @@
-"""Use cases for User management."""
+"""Services for User management."""
 
 from backend.app.core.exceptions import InvalidPasswordError, Messages, NotFoundError
 from backend.app.core.security import hash_password, validate_password_policy
@@ -6,6 +6,14 @@ from backend.app.modules.user.domain.models import User, UserRole
 from backend.app.modules.user.repositories.user_repository import UserRepository
 from backend.app.modules.user.schemas import UserCreate, UserRead, UserUpdate
 from backend.app.uow.unit_of_work import UnitOfWork
+
+
+def get_user_or_raise(repository: UserRepository, user_id: int) -> User:
+    """Retrieve a user or raise NotFoundError if it doesn't exist."""
+    user = repository.get_by_id(user_id)
+    if not user:
+        raise NotFoundError(Messages.USER_NOT_FOUND)
+    return user
 
 
 def is_admin(repository: UserRepository, user_id: int) -> bool:
@@ -55,10 +63,7 @@ def get_user(
     When `requesting_user_id` is provided, only the owner or an admin can access.
     """
     repository = UserRepository(uow.session)
-    user = repository.get_by_id(user_id)
-
-    if not user:
-        raise NotFoundError(Messages.USER_NOT_FOUND)
+    user = get_user_or_raise(repository, user_id)
 
     if requesting_user_id is not None:
         _check_owner_or_admin(repository, user_id, requesting_user_id)
@@ -89,10 +94,7 @@ def update_user(
     When `requesting_user_id` is provided, only the owner or an admin can update.
     """
     repository = UserRepository(uow.session)
-    user = repository.get_by_id(user_id)
-
-    if not user:
-        raise NotFoundError(Messages.USER_NOT_FOUND)
+    user = get_user_or_raise(repository, user_id)
 
     if requesting_user_id is not None:
         _check_owner_or_admin(repository, user_id, requesting_user_id)
@@ -124,10 +126,7 @@ def change_password(
     When `requesting_user_id` is provided, only the owner can change the password.
     """
     repository = UserRepository(uow.session)
-    user = repository.get_by_id(user_id)
-
-    if not user:
-        raise NotFoundError(Messages.USER_NOT_FOUND)
+    user = get_user_or_raise(repository, user_id)
 
     if requesting_user_id is not None and requesting_user_id != user_id:
         raise NotFoundError(Messages.USER_NOT_FOUND)
@@ -158,10 +157,7 @@ def delete_user(
     When `requesting_user_id` is provided, only the owner or an admin can delete.
     """
     repository = UserRepository(uow.session)
-    user = repository.get_by_id(user_id)
-
-    if not user:
-        raise NotFoundError(Messages.USER_NOT_FOUND)
+    user = get_user_or_raise(repository, user_id)
 
     if requesting_user_id is not None:
         _check_owner_or_admin(repository, user_id, requesting_user_id)

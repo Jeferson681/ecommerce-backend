@@ -7,7 +7,7 @@ from jose import JWTError
 
 from backend.app.modules.auth.tokens import decode_access_token
 from backend.app.modules.user.repositories.user_repository import UserRepository
-from backend.app.modules.user.use_cases import is_admin
+from backend.app.modules.user.services import is_admin
 from backend.app.uow.dependencies import get_uow
 from backend.app.uow.unit_of_work import UnitOfWork
 

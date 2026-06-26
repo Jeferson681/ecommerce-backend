@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.core.exceptions import AuthenticationError
-from backend.app.modules.auth import use_cases
+from backend.app.modules.auth import services
 from backend.app.modules.auth.schemas import LoginRequest, RefreshTokenRequest
 
 # ======================================================================
@@ -41,27 +41,27 @@ def test_login_with_valid_credentials(monkeypatch) -> None:
         def create(self, token):
             return token
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
     monkeypatch.setattr(
-        use_cases, "verify_password", lambda plain, hashed: plain == "correct_password"
+        services, "verify_password", lambda plain, hashed: plain == "correct_password"
     )
     monkeypatch.setattr(
-        use_cases, "create_access_token", lambda data: "access_token_abc"
+        services, "create_access_token", lambda data: "access_token_abc"
     )
     monkeypatch.setattr(
-        use_cases, "create_refresh_token", lambda data: "refresh_token_abc"
+        services, "create_refresh_token", lambda data: "refresh_token_abc"
     )
     monkeypatch.setattr(
-        use_cases,
+        services,
         "decode_refresh_token",
         lambda token: {"sub": "1", "jti": "abc123", "exp": 9999999999},
     )
-    monkeypatch.setattr(use_cases, "JWT_ACCESS_TOKEN_EXPIRES_MINUTES", 30)
-    monkeypatch.setattr(use_cases, "jti_hash", lambda jti: "hashed_jti")
-    monkeypatch.setattr(use_cases, "RefreshTokenRepository", FakeTokenRepo)
+    monkeypatch.setattr(services, "JWT_ACCESS_TOKEN_EXPIRES_MINUTES", 30)
+    monkeypatch.setattr(services, "jti_hash", lambda jti: "hashed_jti")
+    monkeypatch.setattr(services, "RefreshTokenRepository", FakeTokenRepo)
 
     uow = SimpleNamespace(session=object(), commit=lambda: None)
-    response = use_cases.login("ana@mail.com", "correct_password", uow)
+    response = services.login("ana@mail.com", "correct_password", uow)
 
     assert response.access_token == "access_token_abc"
     assert response.refresh_token == "refresh_token_abc"
@@ -72,7 +72,7 @@ def test_login_with_valid_credentials(monkeypatch) -> None:
 def test_logout_with_valid_token(monkeypatch) -> None:
     """Logout with a valid refresh token does not raise an exception."""
     monkeypatch.setattr(
-        use_cases,
+        services,
         "decode_refresh_token",
         lambda token: {
             "sub": "1",
@@ -81,7 +81,7 @@ def test_logout_with_valid_token(monkeypatch) -> None:
             "type": "refresh",
         },
     )
-    monkeypatch.setattr(use_cases, "jti_hash", lambda jti: "hashed_jti")
+    monkeypatch.setattr(services, "jti_hash", lambda jti: "hashed_jti")
 
     class FakeRepo:
         def __init__(self, session):
@@ -93,17 +93,17 @@ def test_logout_with_valid_token(monkeypatch) -> None:
         def revoke(self, token_id):
             pass
 
-    monkeypatch.setattr(use_cases, "RefreshTokenRepository", FakeRepo)
+    monkeypatch.setattr(services, "RefreshTokenRepository", FakeRepo)
 
     uow = SimpleNamespace(session=object(), commit=lambda: None)
     # Should not raise
-    use_cases.logout("valid_refresh_token", uow)
+    services.logout("valid_refresh_token", uow)
 
 
 def test_refresh_access_token_with_valid_token(monkeypatch) -> None:
     """Exchanging a valid refresh token returns a new access token."""
     monkeypatch.setattr(
-        use_cases,
+        services,
         "decode_refresh_token",
         lambda token: {
             "sub": "1",
@@ -113,13 +113,13 @@ def test_refresh_access_token_with_valid_token(monkeypatch) -> None:
         },
     )
     monkeypatch.setattr(
-        use_cases, "create_access_token", lambda data: "new_access_token"
+        services, "create_access_token", lambda data: "new_access_token"
     )
     monkeypatch.setattr(
-        use_cases, "create_refresh_token", lambda data: "new_refresh_token"
+        services, "create_refresh_token", lambda data: "new_refresh_token"
     )
-    monkeypatch.setattr(use_cases, "JWT_ACCESS_TOKEN_EXPIRES_MINUTES", 30)
-    monkeypatch.setattr(use_cases, "jti_hash", lambda jti: "hashed_jti")
+    monkeypatch.setattr(services, "JWT_ACCESS_TOKEN_EXPIRES_MINUTES", 30)
+    monkeypatch.setattr(services, "jti_hash", lambda jti: "hashed_jti")
 
     class FakeRepo:
         def __init__(self, session):
@@ -134,10 +134,10 @@ def test_refresh_access_token_with_valid_token(monkeypatch) -> None:
         def create(self, token):
             return token
 
-    monkeypatch.setattr(use_cases, "RefreshTokenRepository", FakeRepo)
+    monkeypatch.setattr(services, "RefreshTokenRepository", FakeRepo)
 
     uow = SimpleNamespace(session=object(), commit=lambda: None)
-    response = use_cases.refresh_access_token("valid_token", uow)
+    response = services.refresh_access_token("valid_token", uow)
 
     assert response.access_token == "new_access_token"
     assert response.refresh_token == "new_refresh_token"
@@ -160,10 +160,10 @@ def test_login_with_invalid_email(monkeypatch) -> None:
         def get_by_email(self, email: str) -> None:
             return None
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.login(
+        services.login(
             "nonexistent@mail.com", "password", SimpleNamespace(session=object())
         )
 
@@ -185,13 +185,13 @@ def test_login_with_invalid_password(monkeypatch) -> None:
                 is_active=True,
             )
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
     monkeypatch.setattr(
-        use_cases, "verify_password", lambda plain, hashed: plain == "correct_password"
+        services, "verify_password", lambda plain, hashed: plain == "correct_password"
     )
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.login(
+        services.login(
             "ana@mail.com", "wrong_password", SimpleNamespace(session=object())
         )
 
@@ -209,10 +209,10 @@ def test_logout_with_invalid_token(monkeypatch) -> None:
 
         raise JWTError("Invalid token")
 
-    monkeypatch.setattr(use_cases, "decode_refresh_token", fake_decode)
+    monkeypatch.setattr(services, "decode_refresh_token", fake_decode)
 
     with pytest.raises(Exception):
-        use_cases.logout(
+        services.logout(
             "invalid_token", SimpleNamespace(session=object(), commit=lambda: None)
         )
 
@@ -228,10 +228,10 @@ def test_refresh_with_invalid_token(monkeypatch) -> None:
     def fake_decode(*args: object) -> object:
         raise Exception("bad token")
 
-    monkeypatch.setattr(use_cases, "decode_refresh_token", fake_decode)
+    monkeypatch.setattr(services, "decode_refresh_token", fake_decode)
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.refresh_access_token(
+        services.refresh_access_token(
             "bad_token", SimpleNamespace(session=object(), commit=lambda: None)
         )
 
@@ -239,13 +239,13 @@ def test_refresh_with_invalid_token(monkeypatch) -> None:
 def test_refresh_with_missing_sub_claim(monkeypatch) -> None:
     """Refresh with a token missing 'sub' claim raises AuthenticationError."""
     monkeypatch.setattr(
-        use_cases,
+        services,
         "decode_refresh_token",
         lambda token: {"type": "refresh"},  # no 'sub' key
     )
 
     with pytest.raises(AuthenticationError, match="Invalid email or password"):
-        use_cases.refresh_access_token(
+        services.refresh_access_token(
             "no_sub_token", SimpleNamespace(session=object(), commit=lambda: None)
         )
 

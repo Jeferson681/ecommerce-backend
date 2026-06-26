@@ -18,7 +18,7 @@ from backend.app.modules.cart.repositories.cart_repository import (
     CartItemRepository,
     CartRepository,
 )
-from backend.app.modules.cart.use_cases import (
+from backend.app.modules.cart.services import (
     clear_cart,
     get_cart_items_or_raise,
     get_cart_or_raise,
@@ -29,21 +29,21 @@ from backend.app.modules.order.repositories.order_repository import (
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
-from backend.app.modules.order.use_cases import (
+from backend.app.modules.order.services import (
     create_order_from_cart,
     persist_idempotent_response_if_needed,
     try_order_response_replay,
 )
 from backend.app.modules.payment.domain.models import PaymentStatus
 from backend.app.modules.payment.gateway.base import PaymentGateway
-from backend.app.modules.payment.use_cases import (
+from backend.app.modules.payment.services import (
     create_payment,
     process_payment,
 )
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
 )
-from backend.app.modules.product.use_cases import reserve_stock
+from backend.app.modules.product.services import reserve_stock
 from backend.app.uow.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)

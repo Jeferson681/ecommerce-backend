@@ -11,7 +11,7 @@ from backend.app.modules.cart.schemas import (
     CartItemUpdate,
     CartRead,
 )
-from backend.app.modules.cart.use_cases import (
+from backend.app.modules.cart.services import (
     add_item,
     get_cart,
     merge_cart_items,

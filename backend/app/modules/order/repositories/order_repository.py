@@ -51,9 +51,6 @@ class OrderRepository:
 
         return order
 
-    def add(self, order: Order) -> Order:
-        return self.create(order)
-
     def update(self, order: Order) -> Order:
         self.session.flush()
         self.session.refresh(order)

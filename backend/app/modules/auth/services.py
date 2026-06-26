@@ -1,7 +1,4 @@
-"""Use cases for authentication.
-
-Phase 3: Refresh token rotation with stateful persistence and revocation.
-"""
+"""Services related to authentication."""
 
 from datetime import UTC, datetime
 

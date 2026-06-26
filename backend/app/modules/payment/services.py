@@ -1,4 +1,4 @@
-"""Use cases related to payments."""
+"""Services related to payments."""
 
 from decimal import Decimal
 
@@ -7,7 +7,7 @@ from backend.app.modules.payment.domain.models import Payment, PaymentStatus
 from backend.app.modules.payment.gateway.base import (
     PaymentGateway,
 )
-from backend.app.modules.payment.payment_service import (
+from backend.app.modules.payment.helpers import (
     apply_gateway_result,
     build_payment_request,
     process_gateway_payment,
@@ -89,3 +89,17 @@ def process_payment(
     )
 
     return payment
+
+
+def get_failed_payment_for_order(
+    payment_repository: PaymentRepository,
+    *,
+    order_id: int,
+) -> Payment:
+    payments = payment_repository.get_by_order_id(order_id)
+
+    for payment in payments:
+        if payment.status == PaymentStatus.FAILED:
+            return payment
+
+    raise ValidationError(Messages.NO_FAILED_PAYMENT_FOUND)

@@ -12,7 +12,7 @@ from jose import JWTError
 from backend.app.core.rate_limit import limiter
 from backend.app.modules.auth import (
     schemas as auth_schemas,
-    use_cases as auth_use_cases,
+    services as auth_use_cases,
 )
 from backend.app.modules.auth.deps import get_current_user_id
 from backend.app.uow.dependencies import get_uow

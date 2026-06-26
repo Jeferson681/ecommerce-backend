@@ -3,9 +3,6 @@ responsible for retrying a payment that has failed."""
 
 import logging
 
-from backend.app.application.use_cases.retry_payment.services import (
-    get_pending_order_and_failed_payment,
-)
 from backend.app.idempotency.helpers import (
     reserve_idempotency_if_needed,
     validate_idempotency_input,
@@ -16,7 +13,8 @@ from backend.app.modules.order.repositories.order_repository import (
     OrderRepository,
 )
 from backend.app.modules.order.schemas import OrderRead
-from backend.app.modules.order.use_cases import (
+from backend.app.modules.order.services import (
+    get_pending_order_for_user,
     persist_idempotent_response_if_needed,
     try_order_response_replay,
 )
@@ -25,7 +23,8 @@ from backend.app.modules.payment.gateway.base import PaymentGateway
 from backend.app.modules.payment.repositories.payment_repository import (
     PaymentRepository,
 )
-from backend.app.modules.payment.use_cases import (
+from backend.app.modules.payment.services import (
+    get_failed_payment_for_order,
     process_payment,
 )
 from backend.app.uow.unit_of_work import UnitOfWork
@@ -71,11 +70,14 @@ def retry_payment(
         uow.commit()
 
     try:
-        order, payment = get_pending_order_and_failed_payment(
+        order = get_pending_order_for_user(
             order_repository=order_repository,
-            payment_repository=payment_repository,
             order_id=order_id,
             user_id=user_id,
+        )
+        payment = get_failed_payment_for_order(
+            payment_repository=payment_repository,
+            order_id=order.id,
         )
 
         payment = process_payment(

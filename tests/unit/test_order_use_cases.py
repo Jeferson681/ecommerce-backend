@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.core.exceptions import NotFoundError
-from backend.app.modules.order import use_cases
+from backend.app.modules.order import services
 from backend.app.modules.order.schemas import OrderItemRead, OrderRead
 
 from .conftest import DummyUoW, make_order
@@ -28,47 +28,31 @@ class TestGetOrderHappyPath:
             def get_by_id(self, order_id: int) -> SimpleNamespace:
                 return make_order(id=order_id, user_id=1)
 
-        monkeypatch.setattr(use_cases, "OrderRepository", lambda s: OrderRepo(s))
+        monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))
 
-        order = use_cases.get_order(order_id=1, user_id=1, uow=DummyUoW())
+        order = services.get_order(order_id=1, user_id=1, uow=DummyUoW())
         assert order.id == 1
         assert order.user_id == 1
 
-    def test_admin_can_get_any_order(self, monkeypatch) -> None:
-        """Admin can retrieve any user's order."""
+    def test_get_order_owner_only(self, monkeypatch) -> None:
+        """Only the owner can retrieve an order."""
 
         class OrderRepo:
             def __init__(self, session: object) -> None:
                 self.session = session
 
             def get_by_id(self, order_id: int) -> SimpleNamespace:
-                return make_order(id=order_id, user_id=2)
+                return make_order(id=order_id, user_id=1)
 
-        class UserRepo:
-            def __init__(self, session: object) -> None:
-                self.session = session
+        monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))
 
-            def get_by_id(self, user_id: int) -> SimpleNamespace:
-                from datetime import UTC, datetime
+        # Owner can access
+        result = services.get_order(order_id=1, user_id=1, uow=DummyUoW())
+        assert result.id == 1
 
-                return SimpleNamespace(
-                    id=user_id,
-                    first_name="Admin",
-                    last_name="User",
-                    email="admin@mail.com",
-                    role="admin",
-                    is_active=True,
-                    created_at=datetime.now(UTC),
-                    updated_at=datetime.now(UTC),
-                )
-
-        monkeypatch.setattr(use_cases, "OrderRepository", lambda s: OrderRepo(s))
-        monkeypatch.setattr(use_cases, "UserRepository", lambda s: UserRepo(s))
-
-        order = use_cases.get_order(
-            order_id=1, user_id=2, uow=DummyUoW(), requesting_user_id=999
-        )
-        assert order.id == 1
+        # Non-owner gets NotFoundError
+        with pytest.raises(NotFoundError):
+            services.get_order(order_id=1, user_id=2, uow=DummyUoW())
 
     def test_list_orders_returns_user_orders(self, monkeypatch) -> None:
         """Listing orders returns all orders for the authenticated user."""
@@ -83,9 +67,9 @@ class TestGetOrderHappyPath:
                     make_order(id=2, user_id=user_id),
                 ]
 
-        monkeypatch.setattr(use_cases, "OrderRepository", lambda s: OrderRepo(s))
+        monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))
 
-        orders = use_cases.list_orders(user_id=1, uow=DummyUoW())
+        orders = services.list_orders(user_id=1, uow=DummyUoW())
         assert len(orders) == 2
         assert orders[0].id == 1
         assert orders[1].id == 2
@@ -101,12 +85,12 @@ class TestGetOrderSadPath:
             def get_by_id(self, order_id: int) -> None:
                 return None
 
-        monkeypatch.setattr(use_cases, "OrderRepository", lambda s: OrderRepo(s))
+        monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))
 
         with pytest.raises(NotFoundError, match="Order not found"):
-            use_cases.get_order(order_id=999, user_id=1, uow=DummyUoW())
+            services.get_order(order_id=999, user_id=1, uow=DummyUoW())
 
-    def test_get_order_raises_for_non_owner_non_admin(self, monkeypatch) -> None:
+    def test_get_order_raises_for_non_owner(self, monkeypatch) -> None:
 
         class OrderRepo:
             def __init__(self, session: object) -> None:
@@ -115,31 +99,10 @@ class TestGetOrderSadPath:
             def get_by_id(self, order_id: int) -> SimpleNamespace:
                 return make_order(id=order_id, user_id=2)
 
-        class UserRepo:
-            def __init__(self, session: object) -> None:
-                self.session = session
-
-            def get_by_id(self, user_id: int) -> SimpleNamespace:
-                from datetime import UTC, datetime
-
-                return SimpleNamespace(
-                    id=user_id,
-                    first_name="Regular",
-                    last_name="User",
-                    email="regular@mail.com",
-                    role="user",
-                    is_active=True,
-                    created_at=datetime.now(UTC),
-                    updated_at=datetime.now(UTC),
-                )
-
-        monkeypatch.setattr(use_cases, "OrderRepository", lambda s: OrderRepo(s))
-        monkeypatch.setattr(use_cases, "UserRepository", lambda s: UserRepo(s))
+        monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))
 
         with pytest.raises(NotFoundError, match="Order not found"):
-            use_cases.get_order(
-                order_id=1, user_id=3, uow=DummyUoW(), requesting_user_id=3
-            )
+            services.get_order(order_id=1, user_id=3, uow=DummyUoW())
 
     def test_list_orders_empty(self, monkeypatch) -> None:
 
@@ -150,9 +113,9 @@ class TestGetOrderSadPath:
             def get_by_user_id(self, user_id: int) -> list:
                 return []
 
-        monkeypatch.setattr(use_cases, "OrderRepository", lambda s: OrderRepo(s))
+        monkeypatch.setattr(services, "OrderRepository", lambda s: OrderRepo(s))
 
-        orders = use_cases.list_orders(user_id=999, uow=DummyUoW())
+        orders = services.list_orders(user_id=999, uow=DummyUoW())
         assert orders == []
 
 

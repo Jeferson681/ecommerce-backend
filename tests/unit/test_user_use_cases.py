@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 import pytest
 
 from backend.app.core.exceptions import InvalidPasswordError, NotFoundError
-from backend.app.modules.user import use_cases
+from backend.app.modules.user import services
 from backend.app.modules.user.schemas import (
     UserChangePassword,
     UserCreate,
@@ -41,9 +41,9 @@ def test_create_user_happy_path(monkeypatch) -> None:
             created.append(user)
             return user
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: True)
-    monkeypatch.setattr(use_cases, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
+    monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     uow = DummyUoW()
     data = UserCreate(
@@ -53,7 +53,7 @@ def test_create_user_happy_path(monkeypatch) -> None:
         password="Abcd1234!",
     )
 
-    result = use_cases.create_user(data, uow)
+    result = services.create_user(data, uow)
 
     assert uow.committed is True
     assert result.id == 1
@@ -74,9 +74,9 @@ def test_get_user_happy_path(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id)
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
-    result = use_cases.get_user(42, DummyUoW())
+    result = services.get_user(42, DummyUoW())
 
     assert result.id == 42
     assert result.email == "ana@mail.com"
@@ -95,9 +95,9 @@ def test_get_user_owner_access(monkeypatch) -> None:
             return make_user(id=user_id, role="user")
 
     repo_instance = Repo(object())
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: repo_instance)
+    monkeypatch.setattr(services, "UserRepository", lambda s: repo_instance)
 
-    result = use_cases.get_user(1, DummyUoW(), requesting_user_id=1)
+    result = services.get_user(1, DummyUoW(), requesting_user_id=1)
     assert result.id == 1
 
 
@@ -114,9 +114,9 @@ def test_get_user_admin_access(monkeypatch) -> None:
                 return make_user(id=999, role="admin")
             return make_user(id=user_id, role="user")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
-    result = use_cases.get_user(1, DummyUoW(), requesting_user_id=999)
+    result = services.get_user(1, DummyUoW(), requesting_user_id=999)
     assert result.id == 1
 
 
@@ -130,9 +130,9 @@ def test_list_users_happy_path(monkeypatch) -> None:
         def list(self, limit: int = 20, offset: int = 0) -> list[object]:
             return [make_user(id=1), make_user(id=2)]
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
-    results = use_cases.list_users(DummyUoW())
+    results = services.list_users(DummyUoW())
 
     assert len(results) == 2
     assert results[0].id == 1
@@ -152,9 +152,9 @@ def test_list_users_with_pagination(monkeypatch) -> None:
             captured["offset"] = offset
             return []
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
-    use_cases.list_users(DummyUoW(), limit=10, offset=5)
+    services.list_users(DummyUoW(), limit=10, offset=5)
 
     assert captured["limit"] == 10
     assert captured["offset"] == 5
@@ -170,11 +170,11 @@ def test_update_user_happy_path(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id, first_name="Old")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     uow = DummyUoW()
     update = UserUpdate(first_name="Bea", is_active=False)
-    result = use_cases.update_user(1, update, uow)
+    result = services.update_user(1, update, uow)
 
     assert uow.committed is True
     assert result.first_name == "Bea"
@@ -191,10 +191,10 @@ def test_update_user_partial(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id, first_name="Ana", last_name="Silva")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     uow = DummyUoW()
-    result = use_cases.update_user(1, UserUpdate(last_name="Costa"), uow)
+    result = services.update_user(1, UserUpdate(last_name="Costa"), uow)
 
     assert result.first_name == "Ana"  # unchanged
     assert result.last_name == "Costa"  # changed
@@ -211,9 +211,9 @@ def test_update_user_owner_access(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id)
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
-    result = use_cases.update_user(
+    result = services.update_user(
         1, UserUpdate(first_name="New"), DummyUoW(), requesting_user_id=1
     )
     assert result.first_name == "New"
@@ -229,12 +229,12 @@ def test_change_password_happy_path(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id, password_hash="hashed:old")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: True)
-    monkeypatch.setattr(use_cases, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
+    monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     uow = DummyUoW()
-    result = use_cases.change_password(1, "NovaSenha123!", uow)
+    result = services.change_password(1, "NovaSenha123!", uow)
 
     assert uow.committed is True
     assert result.id == 1
@@ -254,10 +254,10 @@ def test_delete_user_happy_path(monkeypatch) -> None:
         def delete(self, user: object) -> None:
             deleted.append(user)
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     uow = DummyUoW()
-    result = use_cases.delete_user(1, uow)
+    result = services.delete_user(1, uow)
 
     assert result is None
     assert uow.committed is True
@@ -379,10 +379,10 @@ def test_get_user_raises_not_found_when_missing(monkeypatch) -> None:
         def get_by_id(self, _user_id: int) -> None:
             return None
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.get_user(1, DummyUoW())
+        services.get_user(1, DummyUoW())
 
 
 def test_get_user_raises_not_found_for_non_owner(monkeypatch) -> None:
@@ -395,10 +395,10 @@ def test_get_user_raises_not_found_for_non_owner(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id, role="user")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.get_user(2, DummyUoW(), requesting_user_id=1)
+        services.get_user(2, DummyUoW(), requesting_user_id=1)
 
 
 def test_update_user_raises_not_found_when_missing(monkeypatch) -> None:
@@ -409,10 +409,10 @@ def test_update_user_raises_not_found_when_missing(monkeypatch) -> None:
         def get_by_id(self, _user_id: int) -> None:
             return None
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.update_user(1, UserUpdate(first_name="Ana"), DummyUoW())
+        services.update_user(1, UserUpdate(first_name="Ana"), DummyUoW())
 
 
 def test_update_user_raises_not_found_for_non_owner(monkeypatch) -> None:
@@ -423,10 +423,10 @@ def test_update_user_raises_not_found_for_non_owner(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id, role="user")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.update_user(
+        services.update_user(
             2, UserUpdate(first_name="New"), DummyUoW(), requesting_user_id=1
         )
 
@@ -439,10 +439,10 @@ def test_change_password_raises_not_found_when_missing(monkeypatch) -> None:
         def get_by_id(self, _user_id: int) -> None:
             return None
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.change_password(1, "NovaSenha123!", DummyUoW())
+        services.change_password(1, "NovaSenha123!", DummyUoW())
 
 
 def test_change_password_raises_invalid_policy(monkeypatch) -> None:
@@ -453,11 +453,11 @@ def test_change_password_raises_invalid_policy(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id)
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: False)
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: False)
 
     with pytest.raises(InvalidPasswordError, match="Credential does not meet"):
-        use_cases.change_password(1, "weak", DummyUoW())
+        services.change_password(1, "weak", DummyUoW())
 
 
 def test_change_password_raises_not_found_for_different_user(monkeypatch) -> None:
@@ -470,12 +470,12 @@ def test_change_password_raises_not_found_for_different_user(monkeypatch) -> Non
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id)
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: True)
-    monkeypatch.setattr(use_cases, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
+    monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.change_password(2, "NovaSenha123!", DummyUoW(), requesting_user_id=1)
+        services.change_password(2, "NovaSenha123!", DummyUoW(), requesting_user_id=1)
 
 
 def test_delete_user_raises_not_found_when_missing(monkeypatch) -> None:
@@ -486,10 +486,10 @@ def test_delete_user_raises_not_found_when_missing(monkeypatch) -> None:
         def get_by_id(self, _user_id: int) -> None:
             return None
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.delete_user(1, DummyUoW())
+        services.delete_user(1, DummyUoW())
 
 
 def test_delete_user_raises_not_found_for_non_owner(monkeypatch) -> None:
@@ -500,16 +500,16 @@ def test_delete_user_raises_not_found_for_non_owner(monkeypatch) -> None:
         def get_by_id(self, user_id: int) -> object:
             return make_user(id=user_id, role="user")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        use_cases.delete_user(2, DummyUoW(), requesting_user_id=1)
+        services.delete_user(2, DummyUoW(), requesting_user_id=1)
 
 
 def test_create_user_raises_invalid_password_policy(monkeypatch) -> None:
     """Creating a user with a weak password that fails policy check raises InvalidPasswordError."""
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: False)
-    monkeypatch.setattr(use_cases, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: False)
+    monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     uow = DummyUoW()
     # Password must be >=8 chars to satisfy schema, but fails the application-level policy
@@ -521,7 +521,7 @@ def test_create_user_raises_invalid_password_policy(monkeypatch) -> None:
     )
 
     with pytest.raises(InvalidPasswordError, match="Credential does not meet"):
-        use_cases.create_user(data, uow)
+        services.create_user(data, uow)
 
     assert uow.committed is False  # no commit on validation failure
 
@@ -539,9 +539,9 @@ def test_list_users_empty(monkeypatch) -> None:
         def list(self, limit: int = 20, offset: int = 0) -> list[object]:
             return []
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
-    results = use_cases.list_users(DummyUoW())
+    results = services.list_users(DummyUoW())
     assert results == []
 
 
@@ -558,9 +558,9 @@ def test_create_user_rolls_back_on_repo_error(monkeypatch) -> None:
         def create(self, _user: object) -> object:
             raise RuntimeError("db error")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: True)
-    monkeypatch.setattr(use_cases, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
+    monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     uow = DummyUoW()
     data = UserCreate(
@@ -571,7 +571,7 @@ def test_create_user_rolls_back_on_repo_error(monkeypatch) -> None:
     )
 
     with pytest.raises(RuntimeError, match="db error"):
-        use_cases.create_user(data, uow)
+        services.create_user(data, uow)
 
     assert uow.rolled_back is True
 
@@ -588,10 +588,10 @@ def test_update_user_rolls_back_on_commit_error(monkeypatch) -> None:
         def commit(self) -> None:
             raise RuntimeError("commit fail")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(RuntimeError, match="commit fail"):
-        use_cases.update_user(1, UserUpdate(first_name="Nova"), FailingUoW())
+        services.update_user(1, UserUpdate(first_name="Nova"), FailingUoW())
 
 
 def test_change_password_rolls_back_on_commit_error(monkeypatch) -> None:
@@ -606,12 +606,12 @@ def test_change_password_rolls_back_on_commit_error(monkeypatch) -> None:
         def commit(self) -> None:
             raise RuntimeError("commit fail")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
-    monkeypatch.setattr(use_cases, "validate_password_policy", lambda _: True)
-    monkeypatch.setattr(use_cases, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
+    monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     with pytest.raises(RuntimeError, match="commit fail"):
-        use_cases.change_password(1, "NovaSenha123!", FailingUoW())
+        services.change_password(1, "NovaSenha123!", FailingUoW())
 
 
 def test_delete_user_rolls_back_on_repo_error(monkeypatch) -> None:
@@ -625,10 +625,10 @@ def test_delete_user_rolls_back_on_repo_error(monkeypatch) -> None:
         def delete(self, _user: object) -> None:
             raise RuntimeError("delete fail")
 
-    monkeypatch.setattr(use_cases, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     uow = DummyUoW()
     with pytest.raises(RuntimeError, match="delete fail"):
-        use_cases.delete_user(1, uow)
+        services.delete_user(1, uow)
 
     assert uow.rolled_back is True

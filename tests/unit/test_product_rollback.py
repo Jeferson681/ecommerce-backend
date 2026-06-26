@@ -1,6 +1,6 @@
 import pytest
 
-from backend.app.modules.product import use_cases
+from backend.app.modules.product import services
 from backend.app.modules.product.schemas import ProductCreate, ProductUpdate
 
 
@@ -42,14 +42,14 @@ def test_create_rolls_back_and_propagates(monkeypatch):
             self.name = name
             self.category = category
 
-    monkeypatch.setattr(use_cases, "Product", DummyProduct)
-    monkeypatch.setattr(use_cases, "ProductRepository", FailingRepo)
+    monkeypatch.setattr(services, "Product", DummyProduct)
+    monkeypatch.setattr(services, "ProductRepository", FailingRepo)
 
     uow = DummyUoW()
     data = ProductCreate(name="x", description="d", price=1.0, stock_quantity=1)
 
     with pytest.raises(RuntimeError):
-        use_cases.create_product(data, uow)
+        services.create_product(data, uow)
 
     assert uow.rolled_back is True
 
@@ -65,7 +65,7 @@ def test_update_rolls_back_on_exception(monkeypatch):
 
         # update is no longer required in use case; simulate commit failure instead
 
-    monkeypatch.setattr(use_cases, "ProductRepository", Repo)
+    monkeypatch.setattr(services, "ProductRepository", Repo)
 
     class FailingUoW(DummyUoW):
         def commit(self):
@@ -75,7 +75,7 @@ def test_update_rolls_back_on_exception(monkeypatch):
     update = ProductUpdate(name="n")
 
     with pytest.raises(RuntimeError):
-        use_cases.update_product(1, update, uow)
+        services.update_product(1, update, uow)
 
     assert uow.rolled_back is True
 
@@ -91,11 +91,11 @@ def test_delete_rolls_back_on_exception(monkeypatch):
         def delete(self, product):
             raise RuntimeError("delete fail")
 
-    monkeypatch.setattr(use_cases, "ProductRepository", Repo)
+    monkeypatch.setattr(services, "ProductRepository", Repo)
 
     uow = DummyUoW()
 
     with pytest.raises(RuntimeError):
-        use_cases.delete_product(1, uow)
+        services.delete_product(1, uow)
 
     assert uow.rolled_back is True

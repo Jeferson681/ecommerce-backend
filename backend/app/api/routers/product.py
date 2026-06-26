@@ -11,7 +11,7 @@ from backend.app.modules.product.schemas import (
     ProductRead,
     ProductUpdate,
 )
-from backend.app.modules.product.use_cases import (
+from backend.app.modules.product.services import (
     create_product,
     delete_product,
     get_product,

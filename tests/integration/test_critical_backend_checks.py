@@ -15,11 +15,11 @@ from backend.app.modules.product.domain.models import Product
 from backend.app.modules.user.domain.models import User
 
 
-def setup_module(module: object) -> None:
+@pytest.fixture(autouse=True)
+def _clean_database():
+    """Ensure a clean database state for each test."""
     Base.metadata.create_all(bind=engine)
-
-
-def teardown_module(module: object) -> None:
+    yield
     Base.metadata.drop_all(bind=engine)
 
 
