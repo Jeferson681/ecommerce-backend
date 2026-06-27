@@ -104,7 +104,9 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## Start Frontend
+## Start Frontend (Optional)
+
+The integrated frontend provides a visual interface for API demonstration and manual validation of backend functionality.
 
 Open a new terminal.
 

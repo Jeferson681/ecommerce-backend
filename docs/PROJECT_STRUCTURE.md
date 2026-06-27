@@ -44,7 +44,7 @@ backend/
 │       ├── dependencies.py
 │       └── unit_of_work.py
 │
-├── frontend/                            # Next.js storefront (manual testing)
+├── frontend/                            # Next.js demo frontend (visual API demonstration and manual validation)
 ├── tests/                               # Unit, integration and workflow tests
 │   ├── unit/
 │   ├── integration/

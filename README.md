@@ -62,7 +62,7 @@ for complete instructions on:
 - Configuration
 - Database migrations
 - Backend execution
-- Frontend execution
+- Demo frontend (optional)
 - Test execution
 - Development workflow
 
