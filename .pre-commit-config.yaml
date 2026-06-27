@@ -1,7 +1,7 @@
 repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.16
+    rev: v0.15.20
     hooks:
       - id: ruff
         args:
@@ -10,9 +10,7 @@ repos:
 
       - id: ruff-format
 
-  # REMOVIDO: Black é redundante com ruff-format.
-  # ruff-format é Black-compatible e executa antes.
-  # Manter ambos causa loop de formatação.
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.1.0
     hooks:
