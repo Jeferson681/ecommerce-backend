@@ -152,6 +152,92 @@ def test_transaction_rollback_on_exception(monkeypatch):
 
 
 @pytest.mark.integration
+def test_rollback_after_commit_phase_failure(monkeypatch):
+    """Verify that rollback() works after a commit-phase failure.
+
+    Regression guard for BUG-002: UnitOfWork.rollback() was a no-op when
+    session.is_active was False after a failed commit. The fix removed the
+    is_active guard so that rollback() always resets the session, allowing
+    subsequent queries (e.g. delete_by_key) to execute.
+    """
+    from backend.app.uow.unit_of_work import UnitOfWork
+
+    app = create_app()
+    client = TestClient(app)
+    session = SessionLocal()
+
+    user = _create_user(session, "commit-tx@example.com")
+    product = _create_product(session, "sku-commit", stock=5)
+    token = create_access_token({"sub": str(user.id)})
+
+    # Add an item to cart
+    r = client.post(
+        "/cart/items",
+        json={"product_id": product.id, "quantity": 1},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 201
+
+    # Track commit count and fail on the second commit (the one at line 162).
+    # The first commit at line 101 (idempotency reservation) must succeed.
+    commit_count = 0
+    original_commit = UnitOfWork.commit
+
+    def failing_commit(self):
+        nonlocal commit_count
+        commit_count += 1
+        if commit_count == 2:
+            # Force commit-phase failure: first flush succeeds, then raise
+            self.session.flush()
+            raise Exception("simulated commit failure")
+        return original_commit(self)
+
+    monkeypatch.setattr(UnitOfWork, "commit", failing_commit)
+
+    with pytest.raises(Exception, match="simulated commit failure"):
+        client.post(
+            "/orders/checkout",
+            json={"payment_method_id": "pm_card_visa"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Idempotency-Key": "commit-fail-key",
+            },
+        )
+
+    monkeypatch.undo()
+
+    # Verify cart and stock are intact after the rollback (before any retry).
+    # The rollback must undo the cart deletion and stock decrement.
+    r3 = client.get("/cart", headers={"Authorization": f"Bearer {token}"})
+    assert r3.status_code == 200, (
+        f"Cart should exist after rollback. Got {r3.status_code}: {r3.text[:200]}"
+    )
+    cart = r3.json()
+    assert cart["items"] and cart["items"][0]["product_id"] == product.id
+
+    session.close()
+    verify_session = SessionLocal()
+    fresh_product = verify_session.get(Product, product.id)
+    verify_session.close()
+    assert fresh_product is not None
+    assert fresh_product.stock_quantity == 5
+
+    # The idempotency key should have been cleaned up despite the commit failure.
+    # Retry with the same key should NOT return 400 "already in progress".
+    r2 = client.post(
+        "/orders/checkout",
+        json={"payment_method_id": "pm_card_visa"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Idempotency-Key": "commit-fail-key",
+        },
+    )
+    assert r2.status_code != 400, (
+        f"Idempotency key should have been released. Got {r2.status_code}: {r2.text[:200]}"
+    )
+
+
+@pytest.mark.integration
 def test_concurrent_checkouts_no_oversell():
     app = create_app()
     client = TestClient(app)

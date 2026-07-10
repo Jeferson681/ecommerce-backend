@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.core.database import Base, SessionLocal, engine
@@ -20,6 +21,8 @@ from backend.app.main import app
 from backend.app.modules.auth.tokens import create_access_token
 from backend.app.modules.order.domain.models import Order
 from backend.app.modules.payment.domain.models import PaymentStatus
+from backend.app.modules.payment.gateway.base import PaymentGatewayResult
+from backend.app.modules.payment.gateway.stripe_gateway import StripeGateway
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.user.domain.models import User, UserRole
 
@@ -120,3 +123,56 @@ class TestCheckoutCreatesPayment:
         assert fetched_cart is None
 
         session.close()
+
+    def test_checkout_passes_idempotency_key_to_gateway(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify the idempotency key from the request header reaches the gateway.
+
+        Regression guard for BUG-001: the checkout use case must pass the
+        idempotency_key to process_payment(), not only to the local idempotency
+        repository. Without this, Stripe's PaymentIntent.create() is called
+        with idempotency_key=None, creating a double-charge risk.
+        """
+        captured_keys: list[str | None] = []
+
+        def tracking_process_payment(
+            self: StripeGateway,
+            *,
+            request: object,
+            idempotency_key: str | None = None,
+        ) -> PaymentGatewayResult:
+            captured_keys.append(idempotency_key)
+            return PaymentGatewayResult(
+                provider_payment_id="pi_captured",
+                status=PaymentStatus.APPROVED,
+            )
+
+        monkeypatch.setattr(StripeGateway, "process_payment", tracking_process_payment)
+
+        session = SessionLocal()
+        user = _create_user(session, "capture-key@example.com")
+        token = create_access_token({"sub": str(user.id)})
+        product = _create_product(session)
+        session.close()
+
+        client.post(
+            "/cart/items",
+            json={"product_id": product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        idem_key = "capture-key-1"
+        resp = client.post(
+            "/orders/checkout",
+            json={"payment_method_id": "pm_card_visa"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Idempotency-Key": idem_key,
+            },
+        )
+
+        assert resp.status_code == 201
+        assert idem_key in captured_keys, (
+            f"Expected idempotency_key {idem_key!r} in captured keys: {captured_keys}"
+        )
