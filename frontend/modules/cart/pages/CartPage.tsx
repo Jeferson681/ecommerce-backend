@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 
 export default function CartPage() {
-  const { items, subtotal, isEmpty, updateQuantity, removeItem } = useCart();
+  const { items, subtotal, isEmpty, updateQuantity, removeItem, isUpdating } = useCart();
   const hasToken = useSyncExternalStore(
     tokenStorage.subscribe,
     () => Boolean(tokenStorage.getAccessToken()),
@@ -56,6 +56,7 @@ export default function CartPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                      disabled={isUpdating}
                       className="h-8 w-8"
                     >
                       <Minus className="h-3 w-3" />
@@ -65,6 +66,7 @@ export default function CartPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                      disabled={isUpdating}
                       className="h-8 w-8"
                     >
                       <Plus className="h-3 w-3" />
@@ -73,6 +75,7 @@ export default function CartPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeItem(item.product.id)}
+                      disabled={isUpdating}
                       className="h-8 w-8 text-zinc-400 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -98,17 +101,6 @@ export default function CartPage() {
                 <span>Total</span>
                 <span>{formatMoney(subtotal)}</span>
               </div>
-              <Button asChild className="w-full rounded-sm bg-[#ffd814] text-sm font-medium text-[#111] hover:bg-[#f7ca00] border-0">
-                <Link href={checkoutHref}>{checkoutLabel}</Link>
-              </Button>
-              {!hasToken && (
-                <p className="text-xs text-zinc-500 text-center">
-                  Already have an account?{" "}
-                  <Link href="/login?next=/checkout" className="text-[#007185] hover:text-[#c7511f]">
-                    Sign in
-                  </Link>
-                </p>
-              )}
             </CardContent>
           </Card>
         </div>

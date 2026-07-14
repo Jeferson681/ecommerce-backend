@@ -1,24 +1,31 @@
-name: Lint
+name: Integration Tests
 
 on:
     push:
         branches:
+            - develop
             - main
             - "feat/**"
     pull_request:
         branches:
+            - develop
             - main
 
 jobs:
-    lint:
+    integration:
         runs-on: ubuntu-latest
+        env:
+            STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+            STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
 
         steps:
             - name: Checkout
               uses: actions/checkout@v4
 
             - name: Set up Python
-              uses: actions/setup-python@v4
+              uses: actions/setup-python@v5
               with:
                   python-version: "3.13"
 
@@ -36,6 +43,6 @@ jobs:
                   python -m pip install -r requirements.txt
                   python -m pip install -r requirements-dev.txt
 
-            - name: Run pre-commit
+            - name: Run integration tests
               run: |
-                  pre-commit run --all-files
+                  python -m pytest -q -m integration

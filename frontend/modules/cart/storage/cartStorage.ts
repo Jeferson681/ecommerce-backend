@@ -21,6 +21,7 @@ let cachedRaw: string | null = null;
 let cachedItems: CartItem[] = EMPTY_ITEMS;
 let authSyncAttached = false;
 let syncInFlight: Promise<void> | null = null;
+const isUpdating = { value: false };
 
 function readItems(): CartItem[] {
   if (globalThis.window === undefined) return EMPTY_ITEMS;
@@ -179,6 +180,10 @@ export const cartStorage = {
     return readItems();
   },
 
+  get isUpdating(): boolean {
+    return isUpdating.value;
+  },
+
   subscribe(listener: Listener): () => void {
     if (globalThis.window === undefined) return () => undefined;
 
@@ -225,11 +230,15 @@ export const cartStorage = {
     writeItems(nextItems);
 
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
+      isUpdating.value = true;
       void addCartItem(product.id, quantity)
         .then(() => refreshFromServer())
         .catch((err) => {
           console.error("cartStorage: failed to sync addItem to server", err);
           // Don't rollback — keep items locally so they can be retried later
+        })
+        .finally(() => {
+          isUpdating.value = false;
         });
     }
   },
@@ -249,18 +258,26 @@ export const cartStorage = {
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
       if (cachedItem?.id) {
         if (quantity > 0) {
+          isUpdating.value = true;
           void updateCartItem(cachedItem.id, quantity)
             .then(() => refreshFromServer())
             .catch((err) => {
               console.error("cartStorage: failed to sync updateQuantity to server", err);
               writeItems(previousItems);
+            })
+            .finally(() => {
+              isUpdating.value = false;
             });
         } else {
+          isUpdating.value = true;
           void removeCartItem(cachedItem.id)
             .then(() => refreshFromServer())
             .catch((err) => {
               console.error("cartStorage: failed to sync removeItem to server", err);
               writeItems(previousItems);
+            })
+            .finally(() => {
+              isUpdating.value = false;
             });
         }
       } else {
@@ -278,11 +295,15 @@ export const cartStorage = {
 
     if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
       if (cachedItem?.id) {
+        isUpdating.value = true;
         void removeCartItem(cachedItem.id)
           .then(() => refreshFromServer())
           .catch((err) => {
             console.error("cartStorage: failed to sync removeItem to server", err);
             writeItems(previousItems);
+          })
+          .finally(() => {
+            isUpdating.value = false;
           });
       } else {
         void refreshFromServer();
