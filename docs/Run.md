@@ -81,7 +81,7 @@ JWT_REFRESH_TOKEN_EXPIRES_DAYS=7
 ## Run Database Migrations
 
 ```powershell
-alembic upgrade head
+python -m alembic upgrade head
 ```
 
 ---

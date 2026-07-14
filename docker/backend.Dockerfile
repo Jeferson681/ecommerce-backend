@@ -22,8 +22,11 @@ RUN useradd -m -u 1000 appuser
 
 COPY --from=builder /root/.local /home/appuser/.local
 COPY backend/ ./backend/
+COPY alembic.ini .
+COPY alembic/ ./alembic/
+COPY docker/backend-entrypoint.sh /app/entrypoint.sh
 
-RUN chown -R appuser:appuser /app
+RUN chmod +x /app/entrypoint.sh && chown -R appuser:appuser /app
 USER appuser
 
 ENV PATH=/home/appuser/.local/bin:$PATH
@@ -43,4 +46,4 @@ LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.revision=$COMMIT
 LABEL org.opencontainers.image.created=$BUILD_DATE
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/entrypoint.sh"]

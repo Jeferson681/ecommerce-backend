@@ -4,7 +4,6 @@ FROM node:20-alpine AS build
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-COPY frontend/yarn.lock ./
 
 # Detect package manager
 RUN if [ -f package-lock.json ]; then \
@@ -26,7 +25,7 @@ RUN addgroup -g 1001 -S nginx || true && \
     adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx nginx || true
 
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/frontend/dist /usr/share/nginx/html
+COPY --from=build /app/frontend/out /usr/share/nginx/html
 
 RUN chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html
 
