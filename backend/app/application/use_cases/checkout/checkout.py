@@ -139,6 +139,7 @@ def checkout(
             payment_method_id=payment_method_id,
             uow=uow,
             gateway=gateway,
+            idempotency_key=idempotency_key,
         )
 
         if payment.status == PaymentStatus.APPROVED:

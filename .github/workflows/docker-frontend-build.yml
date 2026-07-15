@@ -1,0 +1,23 @@
+name: Docker Frontend Build
+
+on:
+    push:
+        branches:
+            - develop
+            - main
+            - "feat/**"
+    pull_request:
+        branches:
+            - develop
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Build frontend image
+              run: docker build -t ecommerce-frontend:test -f docker/frontend.Dockerfile .

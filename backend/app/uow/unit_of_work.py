@@ -55,7 +55,7 @@ class UnitOfWork:
         self.session.commit()
 
     def rollback(self) -> None:
-        if self._session is not None and self._session.is_active:
+        if self._session is not None:
             self._session.rollback()
 
     def flush(self) -> None:

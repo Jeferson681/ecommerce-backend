@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = "ecommerce-backend"
     JWT_AUDIENCE: str = "ecommerce-frontend"
 
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
 
 @lru_cache
 def get_settings() -> Settings:

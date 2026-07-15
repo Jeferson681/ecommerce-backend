@@ -1,0 +1,23 @@
+name: Docker Backend Build
+
+on:
+    push:
+        branches:
+            - develop
+            - main
+            - "feat/**"
+    pull_request:
+        branches:
+            - develop
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Build backend image
+              run: docker build -t ecommerce-backend:test -f docker/backend.Dockerfile .
