@@ -25,7 +25,6 @@ export function useCart() {
       updateQuantity: cartStorage.updateQuantity,
       removeItem: cartStorage.removeItem,
       clear: cartStorage.clear,
-      isUpdating: cartStorage.isUpdating,
     };
   }, [items]);
 }
