@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 
 export default function CartPage() {
-  const { items, subtotal, isEmpty, updateQuantity, removeItem, isUpdating } = useCart();
+  const { items, subtotal, isEmpty, updateQuantity, removeItem } = useCart();
   const hasToken = useSyncExternalStore(
     tokenStorage.subscribe,
     () => Boolean(tokenStorage.getAccessToken()),
@@ -56,7 +56,6 @@ export default function CartPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                      disabled={isUpdating}
                       className="h-8 w-8"
                     >
                       <Minus className="h-3 w-3" />
@@ -66,7 +65,6 @@ export default function CartPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                      disabled={isUpdating}
                       className="h-8 w-8"
                     >
                       <Plus className="h-3 w-3" />
@@ -75,7 +73,6 @@ export default function CartPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeItem(item.product.id)}
-                      disabled={isUpdating}
                       className="h-8 w-8 text-zinc-400 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -101,6 +98,9 @@ export default function CartPage() {
                 <span>Total</span>
                 <span>{formatMoney(subtotal)}</span>
               </div>
+              <Button asChild className="w-full">
+                <Link href={checkoutHref}>{checkoutLabel}</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
