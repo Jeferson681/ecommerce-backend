@@ -10,12 +10,12 @@ Authentication · Checkout · Payment Processing · Stripe Integration · Idempo
 
 An e-commerce backend API that handles the complete purchase flow:
 
-- Product catalog
-- Shopping cart management
-- Checkout processing
-- Order management
-- Stripe payments
-- Payment retry for failed transactions
+- Product Catalog
+- Shopping Cart management
+- Checkout Processing
+- Order Management
+- Stripe Payments
+- Payment Retry for failed transactions
 
 ---
 
@@ -48,12 +48,72 @@ Python 3.13 · FastAPI · SQLAlchemy 2.x · Pydantic v2 · Alembic · Stripe API
 
 ---
 
+
+## UX Evidence Gallery
+
+The gallery presents a curated set of screenshots that illustrate the application's primary functional flow. The included evidences represent the user's Happy Path and show key interactions such as searching, checkout and payment confirmation. This is intended to help recruiters, clients and evaluators quickly understand the product without needing to run the project locally.
+
+➡️ **[View complete UX Evidence Gallery](docs/UX_EVIDENCE_GALLERY.md)**
+
+### Gallery Preview
+
+<table>
+<tr>
+<td align="center" width="33%">
+<a href="docs/assets/UX-Gallery/01_home.png">
+<img src="docs/assets/UX-Gallery/01_home.png" width="250" alt="Home">
+</a><br>
+<b>Home</b>
+</td>
+
+<td align="center" width="33%">
+<a href="docs/assets/UX-Gallery/02_product_search.png">
+<img src="docs/assets/UX-Gallery/02_product_search.png" width="250" alt="Product Search">
+</a><br>
+<b>Product Search</b>
+</td>
+
+<td align="center" width="33%">
+<a href="docs/assets/UX-Gallery/03_product_detail.png">
+<img src="docs/assets/UX-Gallery/03_product_detail.png" width="250" alt="Product Detail">
+</a><br>
+<b>Product Detail</b>
+</td>
+</tr>
+
+<tr>
+<td align="center">
+<a href="docs/assets/UX-Gallery/08_shopping_cart.png">
+<img src="docs/assets/UX-Gallery/08_shopping_cart.png" width="250" alt="Shopping Cart">
+</a><br>
+<b>Shopping Cart</b>
+</td>
+
+<td align="center">
+<a href="docs/assets/UX-Gallery/09_checkout.png">
+<img src="docs/assets/UX-Gallery/09_checkout.png" width="250" alt="Checkout">
+</a><br>
+<b>Checkout</b>
+</td>
+
+<td align="center">
+<a href="docs/assets/UX-Gallery/10_payment_approved.png">
+<img src="docs/assets/UX-Gallery/10_payment_approved.png" width="250" alt="Payment Approved">
+</a><br>
+<b>Payment Approved</b>
+</td>
+</tr>
+</table>
+
+The complete functional flow—including authentication, validations, account management and order history—is documented in the **UX Evidence Gallery**.
+
+
 ## Running the Project
 
 See:
 
 ```text
-docs/RUN.md
+docs/Run.md
 ```
 
 for complete instructions on:
@@ -70,7 +130,7 @@ for complete instructions on:
 
 ## Documentation
 
-- `docs/RUN.md` — setup and execution guide
+- `docs/Run.md` — setup and execution guide
 - `docs/ARCHITECTURE.md` — architecture overview
 - `docs/DECISIONS.md` — architectural decisions
 - `docs/ENDPOINTS.md` — API reference

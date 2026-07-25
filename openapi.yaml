@@ -1,0 +1,1802 @@
+openapi: 3.1.0
+info:
+  title: ecommerce-backend
+  description: |
+    E-commerce backend API with authentication, cart, orders, payments, and admin operations.
+    
+    ## Authentication
+    Most endpoints require a Bearer JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <access_token>
+    ```
+    
+    ## Rate Limiting
+    - `/auth/token`: 5 requests/minute
+    - `/auth/refresh`: 10 requests/minute
+    
+    ## Idempotency
+    Checkout and retry-payment endpoints require an `Idempotency-Key` header for safe retries.
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: auth
+    description: Authentication and token management
+  - name: users
+    description: User profile management
+  - name: products
+    description: Product catalog operations
+  - name: cart
+    description: Shopping cart operations
+  - name: orders
+    description: Order and checkout operations
+  - name: webhooks
+    description: Payment provider webhooks
+  - name: admin
+    description: Administrative operations (admin only)
+  - name: health
+    description: Health check endpoints
+
+security:
+  - BearerAuth: []
+
+paths:
+  /healthz:
+    get:
+      tags:
+        - health
+      summary: Liveness probe
+      description: Lightweight check that the application is running
+      operationId: healthz
+      security: []
+      responses:
+        "200":
+          description: Application is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+              examples:
+                success:
+                  value:
+                    status: "ok"
+
+  /readyz:
+    get:
+      tags:
+        - health
+      summary: Readiness probe
+      description: Check application readiness including database connectivity
+      operationId: readyz
+      security: []
+      responses:
+        "200":
+          description: Application is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - checks
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  checks:
+                    type: object
+                    required:
+                      - database
+                    properties:
+                      database:
+                        type: string
+                        example: "ok"
+              examples:
+                ready:
+                  value:
+                    status: "ok"
+                    checks:
+                      database: "ok"
+                degraded:
+                  value:
+                    status: "degraded"
+                    checks:
+                      database: "error: connection refused"
+
+  /auth/token:
+    post:
+      tags:
+        - auth
+      summary: Authenticate user and obtain tokens
+      description: Exchange email and password for access and refresh tokens
+      operationId: tokenEndpoint
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              login:
+                summary: Login example
+                value:
+                  email: "user@example.com"
+                  password: "SecurePass123!"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "429":
+          $ref: '#/components/responses/RateLimitError'
+
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Logout user
+      description: Revoke refresh token and logout user
+      operationId: logoutEndpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        "204":
+          description: Logout successful
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: Refresh access token
+      description: Exchange refresh token for new access and refresh token pair
+      operationId: refreshEndpoint
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        "200":
+          description: Token refresh successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "429":
+          $ref: '#/components/responses/RateLimitError'
+
+  /users/me:
+    get:
+      tags:
+        - users
+      summary: Get current user profile
+      description: Retrieve the authenticated user's profile information
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /users:
+    get:
+      tags:
+        - users
+      summary: List all users
+      description: List all users with pagination and filtering (admin only)
+      operationId: listUsers
+      responses:
+        "200":
+          description: List of users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+    post:
+      tags:
+        - users
+      summary: Create new user
+      description: Register a new user account
+      operationId: createUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+            examples:
+              createUser:
+                summary: Create user example
+                value:
+                  first_name: "John"
+                  last_name: "Doe"
+                  email: "john.doe@example.com"
+                  password: "SecurePass123!"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/ConflictError'
+
+  /users/{user_id}:
+    get:
+      tags:
+        - users
+      summary: Get user by ID
+      description: Retrieve a specific user profile (owner or admin only)
+      operationId: getUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique identifier of the user
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags:
+        - users
+      summary: Update user profile
+      description: Update user profile data (owner or admin only)
+      operationId: updateUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique identifier of the user
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+            examples:
+              updateUser:
+                summary: Update user example
+                value:
+                  first_name: "John"
+                  last_name: "Updated"
+      responses:
+        "200":
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - users
+      summary: Delete user account
+      description: Delete or deactivate a user account (owner or admin only)
+      operationId: deleteUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique identifier of the user
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "204":
+          description: User deleted successfully
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+
+  /users/{user_id}/change-password:
+    patch:
+      tags:
+        - users
+      summary: Change user password
+      description: Change account password (owner only)
+      operationId: changePassword
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique identifier of the user
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserChangePassword'
+            examples:
+              changePassword:
+                summary: Change password example
+                value:
+                  new_password: "NewSecurePass123!"
+      responses:
+        "200":
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+
+  /products:
+    get:
+      tags:
+        - products
+      summary: List products
+      description: Retrieve a list of products with optional filtering, sorting, and pagination
+      operationId: listProducts
+      security: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query for product name
+          schema:
+            type: string
+            minLength: 1
+          example: "laptop"
+        - name: category
+          in: query
+          description: Filter by product category
+          schema:
+            type: string
+            minLength: 1
+          example: "electronics"
+        - name: sort
+          in: query
+          description: Sort order for results
+          schema:
+            type: string
+            enum:
+              - price_asc
+              - price_desc
+              - newest
+          example: "price_asc"
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 20
+      responses:
+        "200":
+          description: List of products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductRead'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags:
+        - products
+      summary: Create new product
+      description: Create a new product (admin only)
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+            examples:
+              createProduct:
+                summary: Create product example
+                value:
+                  name: "Laptop Pro X"
+                  description: "High-performance laptop with 16GB RAM"
+                  category: "electronics"
+                  price: 1299.99
+                  stock_quantity: 50
+      responses:
+        "201":
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRead'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+
+  /products/{product_id}:
+    get:
+      tags:
+        - products
+      summary: Get product by ID
+      description: Retrieve a specific product by its ID
+      operationId: getProduct
+      security: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          description: Unique identifier of the product
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRead'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags:
+        - products
+      summary: Update product
+      description: Update an existing product (admin only)
+      operationId: updateProduct
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          description: Unique identifier of the product
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+            examples:
+              updateProduct:
+                summary: Update product example
+                value:
+                  price: 1199.99
+                  stock_quantity: 45
+      responses:
+        "200":
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRead'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - products
+      summary: Delete product
+      description: Remove or deactivate a product (admin only)
+      operationId: deleteProduct
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          description: Unique identifier of the product
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "204":
+          description: Product deleted successfully
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+
+  /cart:
+    get:
+      tags:
+        - cart
+      summary: Get shopping cart
+      description: Retrieve the current user's shopping cart
+      operationId: getCart
+      responses:
+        "200":
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+
+  /cart/items:
+    post:
+      tags:
+        - cart
+      summary: Add item to cart
+      description: Add a new item to the shopping cart
+      operationId: addCartItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemCreate'
+            examples:
+              addItem:
+                summary: Add item example
+                value:
+                  product_id: 1
+                  quantity: 2
+      responses:
+        "201":
+          description: Item added to cart successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItemRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "409":
+          $ref: '#/components/responses/ConflictError'
+
+  /cart/items/{item_id}:
+    patch:
+      tags:
+        - cart
+      summary: Update cart item
+      description: Update the quantity of an item in the cart
+      operationId: updateCartItem
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          description: Unique identifier of the cart item
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemUpdate'
+            examples:
+              updateItem:
+                summary: Update item example
+                value:
+                  quantity: 3
+      responses:
+        "200":
+          description: Cart item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItemRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - cart
+      summary: Remove item from cart
+      description: Remove an item from the shopping cart
+      operationId: removeCartItem
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          description: Unique identifier of the cart item
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "204":
+          description: Item removed from cart successfully
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+
+  /cart/merge:
+    post:
+      tags:
+        - cart
+      summary: Merge cart items
+      description: Merge multiple cart items into the user's cart
+      operationId: mergeCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CartItemCreate'
+            examples:
+              mergeItems:
+                summary: Merge items example
+                value:
+                  - product_id: 1
+                    quantity: 2
+                  - product_id: 3
+                    quantity: 1
+      responses:
+        "200":
+          description: Cart merged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /orders:
+    get:
+      tags:
+        - orders
+      summary: List user orders
+      description: Retrieve all orders for the authenticated user
+      operationId: listOrders
+      responses:
+        "200":
+          description: List of orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags:
+        - orders
+        - checkout
+        - payments
+      summary: Checkout
+      description: Convert cart items into an order with payment
+      operationId: checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentMethodRequest'
+            examples:
+              checkout:
+                summary: Checkout example
+                value:
+                  payment_method_id: "pm_card_visa"
+      responses:
+        "201":
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderRead'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "409":
+          $ref: '#/components/responses/ConflictError'
+        "422":
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: Unique key to ensure idempotent checkout requests
+          required: true
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+  /orders/{order_id}:
+    get:
+      tags:
+        - orders
+      summary: Get order by ID
+      description: Retrieve details of a specific order (owner or admin only)
+      operationId: getOrder
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          description: Unique identifier of the order
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: Order retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+
+  /orders/{order_id}/retry-payment:
+    post:
+      tags:
+        - orders
+        - payments
+      summary: Retry payment for order
+      description: Retry payment for a failed order
+      operationId: retryPayment
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          description: Unique identifier of the order
+          schema:
+            type: integer
+            example: 1
+        - name: Idempotency-Key
+          in: header
+          description: Unique key to ensure idempotent payment retry requests
+          required: true
+          schema:
+            type: string
+          example: "660e8400-e29b-41d4-a716-446655440001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentMethodRequest'
+            examples:
+              retryPayment:
+                summary: Retry payment example
+                value:
+                  payment_method_id: "pm_card_visa"
+      responses:
+        "200":
+          description: Payment retry initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderRead'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+        "409":
+          $ref: '#/components/responses/ConflictError'
+      security:
+        - BearerAuth: []
+
+  /webhooks/stripe:
+    post:
+      tags:
+        - webhooks
+      summary: Stripe webhook endpoint
+      description: Receive and process Stripe payment webhooks
+      operationId: stripeWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Stripe event payload (structure depends on event type)
+      responses:
+        "200":
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - received
+                properties:
+                  received:
+                    type: boolean
+                    example: true
+        "400":
+          $ref: '#/components/responses/ValidationError'
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          description: Stripe webhook signature for verification
+          required: false
+          schema:
+            type: string
+          example: "t=1234567890,v1=abcdef123456,v0=789012abcdef"
+
+  /admin/orders:
+    get:
+      tags:
+        - admin
+      summary: List all orders (admin)
+      description: Retrieve all orders across the platform (admin only)
+      operationId: adminListOrders
+      responses:
+        "200":
+          description: List of all orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+
+  /admin/payments:
+    get:
+      tags:
+        - admin
+      summary: List all payments (admin)
+      description: Retrieve all payments across the platform (admin only)
+      operationId: adminListPayments
+      responses:
+        "200":
+          description: List of all payments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "403":
+          $ref: '#/components/responses/ForbiddenError'
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User email address
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 24
+          description: 'User password (must meet password policy: uppercase, lowercase, digit, special character)'
+          example: "SecurePass123!"
+    
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+        - token_type
+      properties:
+        access_token:
+          type: string
+          description: JWT access token for API authentication
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refresh_token:
+          type: string
+          description: JWT refresh token for obtaining new access tokens
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          default: "bearer"
+          description: Token type (always "bearer")
+          example: "bearer"
+        expires_in:
+          type: integer
+          nullable: true
+          description: Access token expiration time in seconds (may be null if not specified)
+          example: 1800
+    
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Valid refresh token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    
+    UserCreate:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+        - password
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's first name (whitespace will be trimmed)
+          example: "John"
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's last name (whitespace will be trimmed)
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User's email address (will be lowercased and trimmed)
+          example: "john.doe@example.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 24
+          description: 'User password (must meet policy: uppercase, lowercase, digit, special character from !@#$%^&*()-+)'
+          example: "SecurePass123!"
+    
+    UserUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's first name (whitespace will be trimmed)
+          example: "John"
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's last name (whitespace will be trimmed)
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User's email address (will be lowercased and trimmed)
+          example: "john.doe@example.com"
+        is_active:
+          type: boolean
+          description: Whether the user account is active
+          example: true
+    
+    UserRead:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - role
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique user identifier
+          example: 1
+        first_name:
+          type: string
+          description: User's first name
+          example: "John"
+        last_name:
+          type: string
+          description: User's last name
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "john.doe@example.com"
+        role:
+          type: string
+          enum:
+            - user
+            - admin
+          description: User role (determines permissions)
+          example: "user"
+        is_active:
+          type: boolean
+          description: Whether the user account is active
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user was last updated
+          example: "2024-01-20T14:25:00Z"
+    
+    UserChangePassword:
+      type: object
+      required:
+        - new_password
+      properties:
+        new_password:
+          type: string
+          minLength: 8
+          maxLength: 24
+          description: 'New password (must meet policy: uppercase, lowercase, digit, special character)'
+          example: "NewSecurePass123!"
+    
+    ProductCreate:
+      type: object
+      required:
+        - name
+        - price
+        - stock_quantity
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Product name (whitespace will be trimmed)
+          example: "Laptop Pro X"
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          nullable: true
+          description: Product description (whitespace will be trimmed)
+          example: "High-performance laptop with 16GB RAM"
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+          description: Product category (whitespace will be trimmed)
+          example: "electronics"
+        price:
+          type: number
+          format: decimal
+          minimum: 0.01
+          description: Product price (must be greater than 0)
+          example: 1299.99
+        stock_quantity:
+          type: integer
+          minimum: 0
+          description: Available stock quantity
+          example: 50
+    
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          nullable: true
+          description: Product name (whitespace will be trimmed)
+          example: "Laptop Pro X"
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          nullable: true
+          description: Product description (whitespace will be trimmed)
+          example: "High-performance laptop with 16GB RAM"
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+          description: Product category (whitespace will be trimmed)
+          example: "electronics"
+        price:
+          type: number
+          format: decimal
+          minimum: 0.01
+          nullable: true
+          description: Product price (must be greater than 0)
+          example: 1199.99
+        stock_quantity:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: Available stock quantity
+          example: 45
+        is_active:
+          type: boolean
+          nullable: true
+          description: Whether the product is active and available for purchase
+          example: true
+    
+    ProductRead:
+      type: object
+      required:
+        - id
+        - name
+        - price
+        - stock_quantity
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique product identifier
+          example: 1
+        name:
+          type: string
+          description: Product name
+          example: "Laptop Pro X"
+        description:
+          type: string
+          nullable: true
+          description: Product description
+          example: "High-performance laptop with 16GB RAM"
+        category:
+          type: string
+          nullable: true
+          description: Product category
+          example: "electronics"
+        price:
+          type: number
+          format: decimal
+          description: Product price
+          example: 1299.99
+        stock_quantity:
+          type: integer
+          description: Available stock quantity
+          example: 50
+        is_active:
+          type: boolean
+          description: Whether the product is active and available for purchase
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the product was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the product was last updated
+          example: "2024-01-20T14:25:00Z"
+    
+    CartItemCreate:
+      type: object
+      required:
+        - product_id
+      properties:
+        product_id:
+          type: integer
+          minimum: 1
+          description: Unique identifier of the product to add
+          example: 1
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Quantity of the product to add
+          example: 2
+    
+    CartItemUpdate:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          description: New quantity for the cart item
+          example: 3
+    
+    CartItemRead:
+      type: object
+      required:
+        - id
+        - cart_id
+        - product_id
+        - quantity
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique cart item identifier
+          example: 1
+        cart_id:
+          type: integer
+          description: Identifier of the cart containing this item
+          example: 1
+        product_id:
+          type: integer
+          description: Identifier of the product
+          example: 1
+        quantity:
+          type: integer
+          description: Quantity of the product in the cart
+          example: 2
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the item was added to cart
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the item was last updated
+          example: "2024-01-20T14:25:00Z"
+    
+    CartRead:
+      type: object
+      required:
+        - id
+        - user_id
+        - created_at
+        - updated_at
+        - items
+      properties:
+        id:
+          type: integer
+          description: Unique cart identifier
+          example: 1
+        user_id:
+          type: integer
+          description: Identifier of the user who owns the cart
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the cart was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the cart was last updated
+          example: "2024-01-20T14:25:00Z"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemRead'
+          description: List of items in the cart
+          example: []
+    
+    OrderItemRead:
+      type: object
+      required:
+        - id
+        - order_id
+        - product_id
+        - quantity
+        - price
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique order item identifier
+          example: 1
+        order_id:
+          type: integer
+          description: Identifier of the parent order
+          example: 1
+        product_id:
+          type: integer
+          description: Identifier of the product
+          example: 1
+        quantity:
+          type: integer
+          description: Quantity of the product ordered
+          example: 2
+        price:
+          type: number
+          format: decimal
+          description: Price per unit at the time of order
+          example: 1299.99
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order item was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order item was last updated
+          example: "2024-01-20T14:25:00Z"
+    
+    OrderRead:
+      type: object
+      required:
+        - id
+        - user_id
+        - status
+        - created_at
+        - updated_at
+        - items
+        - payments
+      properties:
+        id:
+          type: integer
+          description: Unique order identifier
+          example: 1
+        user_id:
+          type: integer
+          description: Identifier of the user who placed the order
+          example: 1
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was last updated
+          example: "2024-01-20T14:25:00Z"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemRead'
+          description: List of items in the order
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRead'
+          description: List of payments associated with the order
+    
+    OrderStatus:
+      type: string
+      enum:
+        - pending
+        - paid
+        - cancelled
+        - refunded
+      description: Current status of the order
+      example: "pending"
+    
+    PaymentMethodRequest:
+      type: object
+      required:
+        - payment_method_id
+      properties:
+        payment_method_id:
+          type: string
+          description: Payment method identifier from payment provider (e.g., Stripe)
+          example: "pm_card_visa"
+    
+    PaymentRead:
+      type: object
+      required:
+        - id
+        - order_id
+        - user_id
+        - amount
+        - status
+        - provider
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique payment identifier
+          example: 1
+        order_id:
+          type: integer
+          description: Identifier of the associated order
+          example: 1
+        user_id:
+          type: integer
+          description: Identifier of the user who made the payment
+          example: 1
+        amount:
+          type: number
+          format: decimal
+          description: Payment amount
+          example: 1299.99
+        status:
+          type: string
+          description: Current payment status
+          example: "pending"
+        provider:
+          type: string
+          description: Payment provider name
+          example: "stripe"
+        provider_payment_id:
+          type: string
+          nullable: true
+          description: Payment identifier from the provider
+          example: "pi_1234567890"
+        provider_status:
+          type: string
+          nullable: true
+          description: Status from the payment provider
+          example: "requires_confirmation"
+        provider_reference:
+          type: string
+          nullable: true
+          description: Reference identifier from the provider
+          example: "ch_1234567890"
+        failure_reason:
+          type: string
+          nullable: true
+          description: Reason for payment failure (if applicable)
+          example: "insufficient_funds"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the payment was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the payment was last updated
+          example: "2024-01-20T14:25:00Z"
+
+  responses:
+    UnauthorizedError:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "AuthenticationError"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "Invalid or expired token."
+          examples:
+            missingToken:
+              summary: Missing authorization header
+              value:
+                error:
+                  type: "HTTPException"
+                  message: "Missing authorization header."
+            invalidToken:
+              summary: Invalid token
+              value:
+                error:
+                  type: "HTTPException"
+                  message: "Invalid or expired token."
+            invalidCredentials:
+              summary: Invalid login credentials
+              value:
+                error:
+                  type: "AuthenticationError"
+                  message: "Invalid email or password."
+    
+    ForbiddenError:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "HTTPException"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "Admin access required."
+          examples:
+            adminRequired:
+              summary: Admin access required
+              value:
+                error:
+                  type: "HTTPException"
+                  message: "Admin access required."
+    
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "NotFoundError"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "User not found."
+          examples:
+            userNotFound:
+              summary: User not found
+              value:
+                error:
+                  type: "NotFoundError"
+                  message: "User not found."
+            orderNotFound:
+              summary: Order not found
+              value:
+                error:
+                  type: "NotFoundError"
+                  message: "Order not found."
+            productNotFound:
+              summary: Product not found
+              value:
+                error:
+                  type: "NotFoundError"
+                  message: "Product not found."
+    
+    ValidationError:
+      description: Validation error - Invalid request data
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "ValidationError"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "Invalid request data."
+          examples:
+            invalidRequest:
+              summary: Invalid request data
+              value:
+                error:
+                  type: "ValidationError"
+                  message: "Invalid request data."
+    
+    ConflictError:
+      description: Conflict - Resource already exists or business rule violation
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "EmailAlreadyExistsError"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "Email already exists."
+          examples:
+            emailExists:
+              summary: Email already exists
+              value:
+                error:
+                  type: "EmailAlreadyExistsError"
+                  message: "Email already exists."
+            cartItemExists:
+              summary: Cart item already exists
+              value:
+                error:
+                  type: "ValidationError"
+                  message: "Cart item already exists."
+    
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "RateLimitExceeded"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "Rate limit exceeded. Please try again later."
+          examples:
+            rateLimited:
+              summary: Rate limit exceeded
+              value:
+                error:
+                  type: "RateLimitExceeded"
+                  message: "Rate limit exceeded. Please try again later."
+    
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+            properties:
+              error:
+                type: object
+                required:
+                  - type
+                  - message
+                properties:
+                  type:
+                    type: string
+                    description: Error type/class name
+                    example: "InternalServerError"
+                  message:
+                    type: string
+                    description: Human-readable error message
+                    example: "An internal server error occurred."
+          examples:
+            serverError:
+              summary: Internal server error
+              value:
+                error:
+                  type: "InternalServerError"
+                  message: "An internal server error occurred."
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token authentication.
+        
+        Obtain a token by calling `/auth/token` with email and password.
+        
+        Include the token in the Authorization header:
+        ```
+        Authorization: Bearer <access_token>
+        ```
+        
+        The token contains the user ID in the `sub` claim and expires after 30 minutes by default.
