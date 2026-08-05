@@ -31,13 +31,17 @@ Open `http://localhost:3000`.
 
 API base URL is fixed in [core/config/api.ts](core/config/api.ts).
 
-## Implemented module
+## Implemented modules
 
-Only the `user` module is implemented right now.
+The frontend mirrors the backend domains and implements the following modules:
 
-Routes:
-- `/` redirects to `/users`
-- `/users` list + delete
-- `/users/new` create
-- `/users/[id]` details
-- `/users/[id]/edit` edit (uses `PUT /users/:id`)
+- `auth` — login, signup, logout, session storage
+- `user` — profile management
+- `product` — product listing, search, and detail
+- `cart` — shopping cart operations (client state + API)
+- `order` — orders and checkout
+- `payment` — Stripe payment integration
+- `account` — account overview and order history
+- `storefront` — landing page and product discovery
+
+Routes are defined under `app/` and delegate to module pages.

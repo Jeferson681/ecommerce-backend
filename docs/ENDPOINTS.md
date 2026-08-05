@@ -8,7 +8,8 @@ Complete reference of all HTTP endpoints in the current codebase.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/healthz` | — | Health check |
+| `GET` | `/healthz` | — | Liveness probe — application is running |
+| `GET` | `/readyz` | — | Readiness probe — database connectivity |
 
 ---
 

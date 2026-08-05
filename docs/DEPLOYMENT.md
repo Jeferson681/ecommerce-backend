@@ -50,7 +50,7 @@ This starts three services:
 |---|---|---|
 | PostgreSQL | `ecommerce-postgres` | 5432 (internal) |
 | Backend (FastAPI) | `ecommerce-backend` | 8000 |
-| Frontend (nginx) | `ecommerce-frontend` | 3000 |
+| Frontend (Next.js) | `ecommerce-frontend` | 3000 |
 
 ### 4. Verify Deployment
 
@@ -91,7 +91,7 @@ curl http://localhost:8000/readyz
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:8000` | Frontend API URL |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Frontend API URL |
 | `CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated allowed CORS origins |
 
 ### Build Metadata (Optional)
@@ -277,4 +277,8 @@ docker compose exec backend alembic upgrade head
 
 ### Frontend returns 404 on page refresh
 
-The nginx configuration handles SPA routing via `try_files` — this is pre-configured in `frontend/nginx.conf`. If issues persist, verify the nginx config is correct.
+The frontend in the Docker image runs the Next.js production server (`npm start`), which handles client-side routing natively. If the frontend returns 404 on page refresh, check:
+
+- The backend is reachable from the frontend container (see `NEXT_PUBLIC_API_URL`).
+- The frontend container is healthy (`docker compose ps frontend`).
+- The Next.js build completed successfully (check logs with `docker compose logs frontend`).

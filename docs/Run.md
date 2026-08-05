@@ -125,7 +125,7 @@ npm ci
 Start the development server:
 
 ```powershell
-npm run dev -- --webpack
+npm run dev
 ```
 
 Frontend:
@@ -185,6 +185,25 @@ pre-commit run --all-files
 ```
 
 This executes all configured formatting, linting, and static analysis hooks.
+
+---
+
+## Makefile Commands
+
+On Linux/macOS (or with `make` available on Windows via WSL/Chocolatey), the following commands are available:
+
+```text
+make install          Install backend dependencies
+make lint             Run ruff linter and pre-commit
+make format           Format code with ruff-format
+make test             Run full test suite with coverage
+make test-unit        Run unit tests only
+make test-integration Run integration tests only
+make run              Start uvicorn dev server
+make docker-up        Start all services with docker compose
+make docker-down      Stop all services
+make docker-build     Rebuild docker images
+```
 
 ---
 

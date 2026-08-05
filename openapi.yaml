@@ -3,17 +3,17 @@ info:
   title: ecommerce-backend
   description: |
     E-commerce backend API with authentication, cart, orders, payments, and admin operations.
-    
+
     ## Authentication
     Most endpoints require a Bearer JWT token in the Authorization header:
     ```
     Authorization: Bearer <access_token>
     ```
-    
+
     ## Rate Limiting
     - `/auth/token`: 5 requests/minute
     - `/auth/refresh`: 10 requests/minute
-    
+
     ## Idempotency
     Checkout and retry-payment endpoints require an `Idempotency-Key` header for safe retries.
   version: 1.0.0
@@ -970,7 +970,7 @@ components:
           maxLength: 24
           description: 'User password (must meet password policy: uppercase, lowercase, digit, special character)'
           example: "SecurePass123!"
-    
+
     TokenResponse:
       type: object
       required:
@@ -996,7 +996,7 @@ components:
           nullable: true
           description: Access token expiration time in seconds (may be null if not specified)
           example: 1800
-    
+
     RefreshTokenRequest:
       type: object
       required:
@@ -1006,7 +1006,7 @@ components:
           type: string
           description: Valid refresh token
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    
+
     UserCreate:
       type: object
       required:
@@ -1039,7 +1039,7 @@ components:
           maxLength: 24
           description: 'User password (must meet policy: uppercase, lowercase, digit, special character from !@#$%^&*()-+)'
           example: "SecurePass123!"
-    
+
     UserUpdate:
       type: object
       properties:
@@ -1065,7 +1065,7 @@ components:
           type: boolean
           description: Whether the user account is active
           example: true
-    
+
     UserRead:
       type: object
       required:
@@ -1116,7 +1116,7 @@ components:
           format: date-time
           description: Timestamp when the user was last updated
           example: "2024-01-20T14:25:00Z"
-    
+
     UserChangePassword:
       type: object
       required:
@@ -1128,7 +1128,7 @@ components:
           maxLength: 24
           description: 'New password (must meet policy: uppercase, lowercase, digit, special character)'
           example: "NewSecurePass123!"
-    
+
     ProductCreate:
       type: object
       required:
@@ -1167,7 +1167,7 @@ components:
           minimum: 0
           description: Available stock quantity
           example: 50
-    
+
     ProductUpdate:
       type: object
       properties:
@@ -1210,7 +1210,7 @@ components:
           nullable: true
           description: Whether the product is active and available for purchase
           example: true
-    
+
     ProductRead:
       type: object
       required:
@@ -1263,7 +1263,7 @@ components:
           format: date-time
           description: Timestamp when the product was last updated
           example: "2024-01-20T14:25:00Z"
-    
+
     CartItemCreate:
       type: object
       required:
@@ -1280,7 +1280,7 @@ components:
           default: 1
           description: Quantity of the product to add
           example: 2
-    
+
     CartItemUpdate:
       type: object
       required:
@@ -1291,7 +1291,7 @@ components:
           minimum: 1
           description: New quantity for the cart item
           example: 3
-    
+
     CartItemRead:
       type: object
       required:
@@ -1328,7 +1328,7 @@ components:
           format: date-time
           description: Timestamp when the item was last updated
           example: "2024-01-20T14:25:00Z"
-    
+
     CartRead:
       type: object
       required:
@@ -1362,7 +1362,7 @@ components:
             $ref: '#/components/schemas/CartItemRead'
           description: List of items in the cart
           example: []
-    
+
     OrderItemRead:
       type: object
       required:
@@ -1405,7 +1405,7 @@ components:
           format: date-time
           description: Timestamp when the order item was last updated
           example: "2024-01-20T14:25:00Z"
-    
+
     OrderRead:
       type: object
       required:
@@ -1447,7 +1447,7 @@ components:
           items:
             $ref: '#/components/schemas/PaymentRead'
           description: List of payments associated with the order
-    
+
     OrderStatus:
       type: string
       enum:
@@ -1457,7 +1457,7 @@ components:
         - refunded
       description: Current status of the order
       example: "pending"
-    
+
     PaymentMethodRequest:
       type: object
       required:
@@ -1467,7 +1467,7 @@ components:
           type: string
           description: Payment method identifier from payment provider (e.g., Stripe)
           example: "pm_card_visa"
-    
+
     PaymentRead:
       type: object
       required:
@@ -1579,7 +1579,7 @@ components:
                 error:
                   type: "AuthenticationError"
                   message: "Invalid email or password."
-    
+
     ForbiddenError:
       description: Forbidden - Insufficient permissions
       content:
@@ -1610,7 +1610,7 @@ components:
                 error:
                   type: "HTTPException"
                   message: "Admin access required."
-    
+
     NotFoundError:
       description: Resource not found
       content:
@@ -1653,7 +1653,7 @@ components:
                 error:
                   type: "NotFoundError"
                   message: "Product not found."
-    
+
     ValidationError:
       description: Validation error - Invalid request data
       content:
@@ -1684,7 +1684,7 @@ components:
                 error:
                   type: "ValidationError"
                   message: "Invalid request data."
-    
+
     ConflictError:
       description: Conflict - Resource already exists or business rule violation
       content:
@@ -1721,7 +1721,7 @@ components:
                 error:
                   type: "ValidationError"
                   message: "Cart item already exists."
-    
+
     RateLimitError:
       description: Rate limit exceeded
       content:
@@ -1752,7 +1752,7 @@ components:
                 error:
                   type: "RateLimitExceeded"
                   message: "Rate limit exceeded. Please try again later."
-    
+
     InternalServerError:
       description: Internal server error
       content:
@@ -1791,12 +1791,12 @@ components:
       bearerFormat: JWT
       description: |
         JWT Bearer token authentication.
-        
+
         Obtain a token by calling `/auth/token` with email and password.
-        
+
         Include the token in the Authorization header:
         ```
         Authorization: Bearer <access_token>
         ```
-        
+
         The token contains the user ID in the `sub` claim and expires after 30 minutes by default.

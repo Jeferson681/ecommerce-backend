@@ -123,6 +123,18 @@ testpaths = ["tests"]
 source = ["backend.app"]
 omit = ["tests/*"]
 
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 70
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise RuntimeError",
+    "raise NotImplementedError",
+]
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
