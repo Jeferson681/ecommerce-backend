@@ -18,6 +18,7 @@ def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
         name=product_data.name,
         description=product_data.description,
         category=product_data.category,
+        image_url=product_data.image_url,
         price=product_data.price,
         stock_quantity=product_data.stock_quantity,
     )

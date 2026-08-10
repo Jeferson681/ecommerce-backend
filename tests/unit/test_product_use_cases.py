@@ -37,6 +37,7 @@ class DummyRepo:
             name="old",
             description="old",
             category="old-category",
+            image_url=None,
             price=1.0,
             stock_quantity=1,
             is_active=True,
@@ -76,10 +77,13 @@ def test_create_product_calls_repo_and_commit(monkeypatch):
 
     # monkeypatch Product class used in use_cases to accept stock_quantity
     class DummyProduct:
-        def __init__(self, name, description, category, price, stock_quantity):
+        def __init__(
+            self, name, description, category, image_url, price, stock_quantity
+        ):
             self.name = name
             self.description = description
             self.category = category
+            self.image_url = image_url
             self.price = price
             self.stock_quantity = stock_quantity
 

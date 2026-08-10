@@ -38,9 +38,12 @@ class DummyUoW:
 def test_create_rolls_back_and_propagates(monkeypatch):
     # make Product constructor simple
     class DummyProduct:
-        def __init__(self, name, description, category, price, stock_quantity):
+        def __init__(
+            self, name, description, category, image_url, price, stock_quantity
+        ):
             self.name = name
             self.category = category
+            self.image_url = image_url
 
     monkeypatch.setattr(services, "Product", DummyProduct)
     monkeypatch.setattr(services, "ProductRepository", FailingRepo)
