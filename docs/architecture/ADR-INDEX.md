@@ -10,7 +10,7 @@ This directory contains Architecture Decision Records (ADRs) documenting the sig
 | ADR-002 | SQLAlchemy ORM | ORM choice for accelerated development |
 | ADR-003 | Unit of Work | Centralized transaction management |
 | ADR-004 | Repository Pattern | Data access abstraction |
-| ADR-005 | Services as Application Layer | Use cases within Services |
+| ADR-005 | Selective Application Layer for Cross-Domain Use Cases | Cross-domain use cases in Application layer |
 | ADR-006 | Routers Without Business Logic | HTTP-only routers |
 | ADR-007 | Shared Core | Cross-cutting concerns |
 | ADR-008 | Single Database | One database for the monolith |

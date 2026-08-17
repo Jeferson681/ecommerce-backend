@@ -6,11 +6,16 @@ that run ``-m integration`` and ``-m "not integration"`` correctly separate
 unit and integration tests without requiring per-file markers.
 """
 
+from pathlib import Path
+
 import pytest
 
 
 def pytest_collection_modifyitems(config, items):
     """Apply the ``integration`` marker to all tests in this directory."""
+    integration_dir = Path(__file__).parent.resolve()
     for item in items:
-        if item.get_closest_marker("integration") is None:
-            item.add_marker(pytest.mark.integration)
+        # Only mark tests that actually live under tests/integration.
+        if integration_dir in Path(str(item.fspath)).resolve().parents:
+            if item.get_closest_marker("integration") is None:
+                item.add_marker(pytest.mark.integration)

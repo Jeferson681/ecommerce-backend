@@ -1,4 +1,4 @@
-# ADR-005: Services as Application Layer
+# ADR-005: Selective Application Layer for Cross-Domain Use Cases
 
 ## Status
 
@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The project needed to decide where to place use case orchestration logic. A separate Application layer was considered, but the project has a closed scope (MVP) and the team evaluated the cost-benefit of adding another abstraction layer.
+The project needed to decide where to place use case orchestration logic. A separate Application layer was considered, and the team evaluated the cost-benefit of adding another abstraction layer.
 
 ## Problem
 
@@ -17,24 +17,40 @@ Where should use case orchestration live:
 
 ## Decision
 
-Keep use cases within the **Services layer**:
-- No separate Application layer was created
-- Services orchestrate domain operations and coordinate repositories
-- Use cases are implemented as functions within service modules
-- This avoids creating contracts and complexity without proportional gain for an MVP
+The project has a **selective Application Layer**:
+
+```text
+backend/app/application/use_cases/
+```
+
+It exists specifically to concentrate **cross-domain use cases** — application flows that coordinate operations involving multiple modules/entities and that do not naturally belong to a single domain module.
+
+The Application Layer is **not** described as a mandatory layer for all use cases.
+
+### Architectural rule
+
+- Use cases that clearly belong to a single context/module remain inside that module.
+- Use cases that coordinate multiple modules/entities may be placed in `backend/app/application/use_cases/`.
+
+### Existing examples
+
+- `checkout`
+- `retry_payment`
+- `webhook`
+
+These use cases have a cross-cutting/orchestrating nature and justify their location in the Application Layer.
 
 ## Justification
 
-- **Appropriate scope**: The project is an MVP with closed scope; additional layers add complexity without immediate benefit
-- **Single responsibility**: Services already have clear responsibilities (orchestration, not business rules)
-- **Simplicity**: Fewer layers mean less boilerplate and easier navigation
-- **Not DDD purism**: The decision is pragmatic, not a rejection of DDD principles
-- **Future flexibility**: If the project grows, services can be refactored into a proper Application layer
+- **Cross-domain coordination**: Checkout, retry payment, and webhook processing coordinate multiple modules (cart, product, order, payment, idempotency) and do not belong to a single domain.
+- **Selective use**: Single-domain use cases remain inside their owning module, avoiding an unnecessary mandatory Application layer.
+- **Clear separation**: Routers remain thin HTTP adapters; cross-domain orchestration is explicit where it provides real value.
+- **Pragmatic scope**: The Application Layer is introduced only where multiple domains participate, not as a blanket architectural requirement.
 
 ## Consequences
 
-- Services contain orchestration logic (e.g., checkout, retry_payment)
-- Domain logic remains in domain models and services
-- Routers remain thin, delegating to services
-- No Application/UseCase classes or interfaces
-- The pattern is consistent across all modules
+- The Application Layer exists at `backend/app/application/use_cases/`.
+- It is used selectively for cross-domain use cases (`checkout`, `retry_payment`, `webhook`).
+- Single-domain use cases remain inside their owning module services.
+- Routers remain thin, delegating to module services or application use cases.
+- The pattern is consistent across the project.

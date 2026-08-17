@@ -24,13 +24,18 @@ backend/
 │   ├── core/                            # Cross-cutting concerns
 │   │   ├── config.py
 │   │   ├── database.py
-│   │   └── exceptions.py
+│   │   ├── exceptions.py
+│   │   └── rate_limit.py
 │   │
 │   ├── idempotency/                     # Idempotency key management
 │   │   ├── domain/models.py
 │   │   ├── helpers.py
 │   │   ├── repositories/
 │   │   └── service.py
+│   │
+│   ├── infrastructure/                  # Infrastructure Layer
+│   │   └── db/
+│   │       └── dependencies.py          # DB engine/session (get_db)
 │   │
 │   ├── modules/                         # Domain modules
 │   │   ├── auth/
@@ -39,6 +44,14 @@ backend/
 │   │   ├── payment/
 │   │   ├── product/
 │   │   └── user/
+│   │
+│   ├── observability/                   # Observability components
+│   │   ├── health/
+│   │   │   └── health_check.py          # /healthz and /readyz probes
+│   │   ├── logging/
+│   │   │   ├── config.py                # Centralized logging setup
+│   │   │   └── request_logger.py        # Structured request logging middleware
+│   │   └── middleware/
 │   │
 │   └── uow/                             # Unit of Work transaction manager
 │       ├── dependencies.py
@@ -49,6 +62,12 @@ backend/
 │   ├── unit/
 │   ├── integration/
 │   └── workflows/
+│
+├── docs/                                # Project documentation
+│   ├── assets/                          # Static assets (UX Evidence Gallery images)
+│   │   ├── README.md
+│   │   └── UX-Gallery/
+│   └── ...
 │
 └── alembic/                             # Database migrations
 ```

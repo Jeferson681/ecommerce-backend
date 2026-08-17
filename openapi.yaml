@@ -742,6 +742,8 @@ paths:
                   $ref: '#/components/schemas/OrderRead'
         "401":
           $ref: '#/components/responses/UnauthorizedError'
+
+  /orders/checkout:
     post:
       tags:
         - orders
