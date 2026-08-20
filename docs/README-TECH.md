@@ -24,20 +24,11 @@ The architecture prioritizes consistency, simplicity, and maintainability while 
 
 # Architectural Overview
 
-The system follows a layered architecture composed of:
+The system follows a layered architecture composed of Presentation, Application, Domain Modules, and Infrastructure.
 
-- Presentation
-- Application
-- Domain Modules
-- Infrastructure
+Business functionality is organized around domain-oriented modules: simple single-domain workflows remain inside their owning module, and only workflows coordinating multiple domains execute through the Application layer.
 
-Business functionality is organized around domain-oriented modules.
-
-Simple single-domain workflows remain inside their owning module.
-
-Only workflows coordinating multiple domains execute through the Application layer.
-
-This keeps CRUD operations simple while making orchestration explicit where it provides real value.
+For the complete description of the layers, responsibilities, and architectural boundaries, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 
@@ -232,7 +223,8 @@ Examples include:
 | Document | Purpose |
 |----------|---------|
 | ARCHITECTURE.md | Layers, transaction boundaries, workflow model, and architecture overview |
-| DECISIONS.md | Architectural decisions and accepted trade-offs |
+| DECISIONS.md | Consolidated summary of architectural decisions and accepted trade-offs |
+| architecture/ADR-INDEX.md | Index of detailed Architecture Decision Records |
 | ENDPOINTS.md | Complete HTTP API reference |
 | PROJECT_STRUCTURE.md | Repository organization and module layout |
 | RUN.md | Setup and development workflow |
@@ -246,6 +238,7 @@ Examples include:
 1. README-TECH.md
 2. ARCHITECTURE.md
 3. DECISIONS.md
+4. architecture/ADR-INDEX.md
 
 ## Working on the Codebase
 
@@ -253,7 +246,8 @@ Examples include:
 2. PROJECT_STRUCTURE.md
 3. ARCHITECTURE.md
 4. DECISIONS.md
-5. RUN.md
+5. architecture/ADR-INDEX.md
+6. RUN.md
 
 ## Consuming the API
 

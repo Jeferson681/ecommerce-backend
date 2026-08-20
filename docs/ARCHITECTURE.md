@@ -1,5 +1,8 @@
 # Architecture
 
+> **Navigation note:** This document describes the current architecture of the system.
+> Detailed architectural decisions have their own ADRs — [`docs/architecture/adr/`](./architecture/adr/) is the detailed source for the history and rationale of each decision, and [`docs/DECISIONS.md`](./DECISIONS.md) provides a consolidated summary of those decisions.
+
 ## Overview
 
 The system follows a layered architecture organized around domain modules.

@@ -16,6 +16,6 @@ def get_payment_gateway() -> PaymentGateway:
 
 def get_uow(
     session: Annotated[Session, Depends(get_db)],
-) -> Generator[UnitOfWork, None, None]:
+) -> Generator[UnitOfWork]:
     with UnitOfWork(lambda: session) as uow:
         yield uow
