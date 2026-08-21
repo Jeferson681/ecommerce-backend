@@ -1,6 +1,6 @@
 """create refresh_tokens and idempotency_keys tables
 
-Revision ID: 0013_create_refresh_tokens_and_idempotency_keys
+Revision ID: 0013_refresh_idempotency
 Revises: 0012_add_image_url_to_products
 Create Date: 2026-08-14 00:00:00.000000
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "0013_create_refresh_tokens_and_idempotency_keys"
+revision = "0013_refresh_idempotency"
 down_revision = "0012_add_image_url_to_products"
 branch_labels = None
 depends_on = None
