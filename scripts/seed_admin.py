@@ -12,7 +12,7 @@ def seed_admin():
     admin = db.query(User).filter(User.email == "admin@ecommerce.com").first()
 
     if admin:
-        print("Admin já existe.")
+        print("Admin already exists.")
         return
 
     admin = User(
@@ -26,7 +26,7 @@ def seed_admin():
     db.add(admin)
     db.commit()
 
-    print("Admin criado.")
+    print("Admin created.")
 
 
 if __name__ == "__main__":

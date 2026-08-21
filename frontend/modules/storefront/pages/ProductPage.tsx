@@ -56,12 +56,21 @@ export default async function ProductPage({ productId }: ProductPageProps) {
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         {/* Image column */}
         <div className="aspect-square rounded-sm border border-zinc-200 bg-white flex items-center justify-center p-8">
-          <div className="text-center">
-            <div className="mx-auto mb-3 h-24 w-24 rounded-full bg-zinc-100 flex items-center justify-center">
-              <span className="text-4xl font-bold text-zinc-300">{product.name.charAt(0)}</span>
+          {product.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="h-full w-full object-contain"
+            />
+          ) : (
+            <div className="text-center">
+              <div className="mx-auto mb-3 h-24 w-24 rounded-full bg-zinc-100 flex items-center justify-center">
+                <span className="text-4xl font-bold text-zinc-300">{product.name.charAt(0)}</span>
+              </div>
+              <span className="text-xs text-zinc-400 uppercase tracking-wider">Product Image</span>
             </div>
-            <span className="text-xs text-zinc-400 uppercase tracking-wider">Product Image</span>
-          </div>
+          )}
         </div>
 
         {/* Info column */}

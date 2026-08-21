@@ -1,5 +1,7 @@
 # Architectural Decisions
 
+> **Navigation note:** This document is the **consolidated summary** of the project's architectural decisions. Each decision has detailed documentation in [`docs/architecture/adr/`](./architecture/adr/) — the ADRs are the detailed reference for context, justification, alternatives, and consequences. This file exists to allow a quick reading of the main decisions without opening every ADR.
+
 This document records the major architectural decisions that shape the system.
 
 Each decision captures:

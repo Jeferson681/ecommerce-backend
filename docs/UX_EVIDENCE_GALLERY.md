@@ -94,19 +94,27 @@ Account dashboard where users can see profile information, recent activity and q
 
 ---
 
-## 12 Order History
+## 12 Stripe Payment Failed
 
-List of past orders showing status, totals and navigation to order details. Useful for audit, support and user self-service.
+Screen displayed when a payment attempt fails, showing the error state and allowing the user to retry the payment.
 
-![Order History](assets/UX-Gallery/12_order_history.png)
+![Stripe Payment Failed](assets/UX-Gallery/12_stripe-payment-failed.png)
 
 ---
 
-## 13 Order Details
+## 13 Order History
+
+List of past orders showing status, totals and navigation to order details. Useful for audit, support and user self-service.
+
+![Order History](assets/UX-Gallery/13_order_history.png)
+
+---
+
+## 14 Order Details
 
 Detailed view for a single order, including items, shipping and payment information. This completes the documented Happy Path from discovery to order review.
 
-![Order Details](assets/UX-Gallery/13_order_details.png)
+![Order Details](assets/UX-Gallery/14_order_details.png)
 
 ---
 

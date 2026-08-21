@@ -8,7 +8,8 @@ Complete reference of all HTTP endpoints in the current codebase.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/healthz` | — | Health check |
+| `GET` | `/healthz` | — | Liveness probe — application is running |
+| `GET` | `/readyz` | — | Readiness probe — database connectivity |
 
 ---
 
@@ -20,9 +21,12 @@ Complete reference of all HTTP endpoints in the current codebase.
 | `GET` | `/users/me` | Bearer | Get current authenticated user |
 | `GET` | `/users/{user_id}` | Bearer | Get user by ID (owner or admin) |
 | `PATCH` | `/users/{user_id}` | Bearer | Update user profile (owner or admin) |
-| `POST` | `/users/{user_id}/change-password` | Bearer | Change account password (owner only) |
+| `PATCH` | `/users/{user_id}/change-password` | Bearer | Change account password (owner only) |
 | `DELETE` | `/users/{user_id}` | Bearer | Delete user account (owner or admin) |
 | `GET` | `/users` | Bearer + Admin | List all users (admin only) |
+
+**Note:**
+- The `change-password` endpoint and its underlying logic are implemented, but the complete usage/integration flow is not yet finalized due to its dependency on the account confirmation/authentication mechanism that will be integrated later.
 
 ---
 

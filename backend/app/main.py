@@ -28,11 +28,15 @@ from backend.app.core.exceptions import (
 )
 from backend.app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from backend.app.observability.health.health_check import healthz, readyz
+from backend.app.observability.logging.config import setup_logging
 from backend.app.observability.logging.request_logger import (
     StructuredRequestLoggingMiddleware,
 )
 
 logger = logging.getLogger(__name__)
+
+# Configure centralized logging (idempotent — safe to call multiple times).
+setup_logging()
 
 
 @asynccontextmanager

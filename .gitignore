@@ -55,6 +55,8 @@ Thumbs.db
 # Database files
 *.sqlite3
 *.db
+ecommerce.db
+test_debug.db
 
 # Private docs
 docs/private_docs/

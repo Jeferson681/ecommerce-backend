@@ -8,7 +8,7 @@ It deletes users matching common test patterns and seeded products.
 import os
 import sys
 
-# Adiciona a raiz do projeto ao sys.path ANTES dos imports do backend
+# Adds the project root to sys.path BEFORE the backend imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sqlalchemy import or_

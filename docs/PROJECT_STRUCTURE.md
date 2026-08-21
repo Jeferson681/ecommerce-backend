@@ -1,96 +1,77 @@
 # Project Structure
 
-Complete directory tree of the backend codebase.
+Navigation map of the repository — where each major component lives.
 
 ```text
-backend/
-├── app/
-│   ├── main.py                          # FastAPI app factory + lifespan
-│   │
-│   ├── api/routers/                     # Presentation Layer (HTTP)
-│   │   ├── admin.py                     # Admin endpoints
-│   │   ├── auth.py                      # Token login/logout/refresh
-│   │   ├── cart.py                      # Cart CRUD + merge
-│   │   ├── order.py                     # Checkout, retry-payment, order queries
-│   │   ├── payment_webhook.py           # Stripe webhook receiver
-│   │   ├── product.py                   # Product catalog CRUD
-│   │   └── user.py                      # User CRUD
-│   │
-│   ├── application/use_cases/           # Cross-domain workflow orchestration only
-│   │   ├── checkout/
-│   │   ├── retry_payment/
-│   │   └── webhook/
-│   │
-│   ├── core/                            # Cross-cutting concerns
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   └── exceptions.py
-│   │
-│   ├── idempotency/                     # Idempotency key management
-│   │   ├── domain/models.py
-│   │   ├── helpers.py
-│   │   ├── repositories/
-│   │   └── service.py
-│   │
-│   ├── modules/                         # Domain modules
-│   │   ├── auth/
-│   │   ├── cart/
-│   │   ├── order/
-│   │   ├── payment/
-│   │   ├── product/
-│   │   └── user/
-│   │
-│   └── uow/                             # Unit of Work transaction manager
-│       ├── dependencies.py
-│       └── unit_of_work.py
+ecommerce-backend/
+├── backend/                        # FastAPI backend (API + domain)
+│   └── app/
+│       ├── main.py                 # Application entry point
+│       ├── api/                    # HTTP / presentation layer
+│       ├── application/            # Cross-domain use cases
+│       ├── modules/                # Domain modules
+│       ├── core/                   # Shared application components
+│       ├── infrastructure/         # Infrastructure layer
+│       ├── idempotency/            # Idempotency key management
+│       ├── observability/          # Logging and health probes
+│       └── uow/                    # Unit of Work transaction manager
 │
-├── frontend/                            # Next.js demo frontend (visual API demonstration and manual validation)
-├── tests/                               # Unit, integration and workflow tests
+├── frontend/                       # Next.js storefront
+│   ├── app/                        #   Routes and pages
+│   ├── core/                       #   Shared configuration and utilities
+│   ├── modules/                    #   Feature modules
+│   ├── shared/                     #   UI primitives and layout
+│   └── public/                     #   Static assets
+│
+├── alembic/                        # Database migrations
+│   └── versions/
+│
+├── tests/                          # Test suite
 │   ├── unit/
 │   ├── integration/
 │   └── workflows/
 │
-└── alembic/                             # Database migrations
+├── docs/                           # Documentation
+│   ├── architecture/               #   ADRs and architecture decisions
+│   └── assets/                     #   UX evidence and supporting assets
+│
+├── .github/                        # CI/CD workflows
+│   └── workflows/
+│
+├── docker/                         # Dockerfiles and entrypoint scripts
+├── scripts/                        # Maintenance and seeding scripts
+│
+├── docker-compose.yml              # Service orchestration
+├── openapi.yaml                    # API contract
+├── pyproject.toml                  # Python project configuration
+├── requirements.txt                # Runtime dependencies
+├── requirements-dev.txt            # Development dependencies
+├── Makefile                        # Development commands
+├── pytest.ini                      # Pytest markers
+├── .pre-commit-config.yaml         # Code quality hooks
+├── .env.example                    # Environment variable template
+└── README.md                       # Project overview
 ```
 
----
+## Where to find things
 
-# Module Anatomy
+| Component | Location |
+|-----------|----------|
+| HTTP endpoints | `backend/app/api/` |
+| Domain modules and business logic | `backend/app/modules/` |
+| Cross-domain use cases | `backend/app/application/use_cases/` |
+| Shared application components | `backend/app/core/` |
+| Database persistence | `backend/app/infrastructure/` |
+| Idempotency key management | `backend/app/idempotency/` |
+| Logging and health probes | `backend/app/observability/` |
+| Transaction management | `backend/app/uow/` |
+| Frontend storefront | `frontend/` |
+| Database migrations | `alembic/` |
+| Tests | `tests/` |
+| Documentation and ADRs | `docs/` |
+| CI/CD automation | `.github/workflows/` |
+| Docker deployment | `docker/`, `docker-compose.yml` |
+| API contract | `openapi.yaml` |
+| Python configuration | `pyproject.toml`, `requirements*.txt` |
 
-Each domain module owns its business workflows and follows a consistent structure.
-
-```text
-modules/{entity}/
-├── domain/models.py       # SQLAlchemy aggregate root
-├── repositories/          # Persistence layer
-├── schemas.py             # Request/response DTOs
-└── services.py            # Module use cases and business workflows
-```
-
-Module services:
-
-- own CRUD workflows;
-- own domain-specific business rules;
-- instantiate their own repositories when appropriate;
-- may manage transactions through the provided UnitOfWork.
-
----
-
-# Cross-Domain Orchestration
-
-Only workflows involving multiple business domains live in `application/use_cases/`.
-
-```text
-application/use_cases/
-├── checkout/              # Cart → Product → Order → Payment → Idempotency
-├── retry_payment/         # Order → Payment → Idempotency
-└── webhook/               # Payment → Order
-```
-
-Application use cases:
-
-- coordinate multiple domain modules;
-- define transaction boundaries across domains;
-- sequence business workflows;
-
-They do **not** own domain-specific business rules, which remain inside the corresponding module services.
+For architectural rationale and how components relate, see `docs/architecture/`.

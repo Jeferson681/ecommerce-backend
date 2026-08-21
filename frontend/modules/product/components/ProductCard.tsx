@@ -25,16 +25,25 @@ export function ProductCard({ product }: ProductCardProps) {
         href={`/products/${product.id}`}
         className="relative flex aspect-square items-center justify-center bg-white p-6 overflow-hidden"
       >
-        {/* Marketplace-style product placeholder with category colors */}
-        <div className="flex h-full w-full items-center justify-center rounded-sm bg-gradient-to-br from-zinc-50 to-zinc-100">
-          <div className="text-center">
-            <div className="mx-auto mb-2 h-16 w-16 rounded-full bg-zinc-200 flex items-center justify-center">
-              <span className="text-2xl font-bold text-zinc-400">
-                {product.name.charAt(0)}
-              </span>
+        {/* Product image or fallback placeholder */}
+        {product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center rounded-sm bg-gradient-to-br from-zinc-50 to-zinc-100">
+            <div className="text-center">
+              <div className="mx-auto mb-2 h-16 w-16 rounded-full bg-zinc-200 flex items-center justify-center">
+                <span className="text-2xl font-bold text-zinc-400">
+                  {product.name.charAt(0)}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Discount badge */}
         {hasDiscount ? (
