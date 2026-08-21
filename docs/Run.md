@@ -125,7 +125,7 @@ npm ci
 Start the development server:
 
 ```powershell
-npm run dev
+npm run dev -- --webpack
 ```
 
 Frontend:
