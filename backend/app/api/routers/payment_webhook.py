@@ -35,7 +35,7 @@ async def stripe_webhook_endpoint(
         process_provider_webhook(
             gateway=gateway,
             payload_bytes=await request.body(),
-            stripe_signature=stripe_sig,
+            signature=stripe_sig,
             uow=uow,
         )
 

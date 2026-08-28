@@ -18,19 +18,19 @@ from backend.app.uow.unit_of_work import UnitOfWork
 
 def process_provider_webhook(
     payload_bytes: bytes,
-    stripe_signature: str | None,
+    signature: str | None,
     uow: UnitOfWork,
     *,
     gateway: PaymentGateway,
 ) -> None:
     """
-    Synchronize payment state from Stripe webhook.
+    Synchronize payment state from a provider webhook.
     """
 
     payload = process_gateway_webhook(
         gateway=gateway,
         payload_bytes=payload_bytes,
-        signature=stripe_signature,
+        signature=signature,
     )
 
     if payload.provider_payment_id is None:
