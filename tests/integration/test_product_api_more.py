@@ -23,6 +23,7 @@ def _admin_headers(email: str = "admin-product-more@example.com") -> dict[str, s
     session.commit()
     session.refresh(admin)
     token = create_access_token({"sub": str(admin.id)})
+    session.close()
     return {"Authorization": f"Bearer {token}"}
 
 

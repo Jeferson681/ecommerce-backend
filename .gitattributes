@@ -1,0 +1,4 @@
+# Shell scripts must remain LF in the working tree.
+# Prevents Windows core.autocrlf from converting them to CRLF,
+# which would break execution inside Linux containers.
+*.sh text eol=lf

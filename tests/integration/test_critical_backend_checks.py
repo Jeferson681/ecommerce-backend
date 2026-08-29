@@ -68,6 +68,7 @@ def test_ownership_api_protection():
         headers={"Authorization": f"Bearer {token_b}"},
     )
     assert r2.status_code == 404
+    session.close()
 
 
 @pytest.mark.integration
@@ -91,6 +92,7 @@ def test_jwt_missing_malformed_and_expired():
     expired = create_access_token({"sub": str(user.id)}, expires_delta=-1)
     r3 = client.get("/cart", headers={"Authorization": f"Bearer {expired}"})
     assert r3.status_code == 401
+    session.close()
 
 
 @pytest.mark.integration
@@ -286,6 +288,7 @@ def test_concurrent_checkouts_no_oversell():
     # Ensure product not oversold
     session.refresh(product)
     assert product.stock_quantity >= 0
+    session.close()
 
 
 @pytest.mark.integration
@@ -329,6 +332,7 @@ def test_idempotency_risk_duplicate_orders():
 
     # The second may succeed or fail depending on state; the test documents the behavior (risk)
     assert r2.status_code in (201, 400, 404, 500)
+    session.close()
 
 
 @pytest.mark.integration
@@ -348,6 +352,7 @@ def test_repository_pagination_edge_case():
     assert len(all_users) == 2
     next_page = repo.list(limit=2, offset=2)
     assert len(next_page) >= 1
+    session.close()
 
 
 @pytest.mark.integration
@@ -372,3 +377,4 @@ def test_db_constraint_unique_cart_item():
     session.add(ci2)
     with pytest.raises(IntegrityError):
         session.commit()
+    session.close()
