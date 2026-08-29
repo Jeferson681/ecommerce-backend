@@ -7,12 +7,27 @@ from sqlalchemy import select
 from backend.app.core.database import Base, SessionLocal, engine
 from backend.app.idempotency.domain.models import IdempotencyKey
 from backend.app.idempotency.repositories import IdempotencyRepository
+from backend.app.modules.user.domain.models import User
 
 DEFAULT_EXPIRATION_HOURS = 24
 
 
 def setup_module(module: object) -> None:
     Base.metadata.create_all(bind=engine)
+    session = SessionLocal()
+    try:
+        session.add(
+            User(
+                id=1,
+                first_name="Save",
+                last_name="User",
+                email="save-user@example.com",
+                password_hash="x",
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
 
 
 def teardown_module(module: object) -> None:

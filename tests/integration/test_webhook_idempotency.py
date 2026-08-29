@@ -53,6 +53,19 @@ def _create_order_and_payment_in_db(
             Payment,
             PaymentStatus,
         )
+        from backend.app.modules.user.domain.models import User
+
+        if db.get(User, 999) is None:
+            db.add(
+                User(
+                    id=999,
+                    first_name="Webhook",
+                    last_name="User",
+                    email="webhook-user-999@example.com",
+                    password_hash="x",
+                )
+            )
+            db.commit()
 
         order = Order(user_id=999, status="pending")
         db.add(order)

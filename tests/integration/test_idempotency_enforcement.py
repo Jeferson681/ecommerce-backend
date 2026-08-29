@@ -15,6 +15,7 @@ from backend.app.modules.payment.repositories.payment_repository import (
     PaymentRepository,
 )
 from backend.app.modules.product.domain.models import Product
+from backend.app.modules.user.domain.models import User
 
 client = TestClient(app)
 
@@ -36,6 +37,17 @@ def _setup_cart_and_product(user_id: int) -> None:
     session.add(product)
     session.commit()
     session.refresh(product)
+
+    session.add(
+        User(
+            id=user_id,
+            first_name="Test",
+            last_name="User",
+            email=f"idem-user-{user_id}@example.com",
+            password_hash="x",
+        )
+    )
+    session.commit()
 
     cart = Cart(user_id=user_id)
     session.add(cart)

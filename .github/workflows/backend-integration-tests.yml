@@ -14,11 +14,27 @@ on:
 jobs:
     integration:
         runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgres:17-alpine
+                env:
+                    POSTGRES_DB: ecommerce_test
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U postgres -d ecommerce_test"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
         env:
             STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
             STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
             STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
             JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+            DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/ecommerce_test
 
         steps:
             - name: Checkout
@@ -42,6 +58,15 @@ jobs:
                   python -m pip install --upgrade pip
                   python -m pip install -r requirements.txt
                   python -m pip install -r requirements-dev.txt
+
+            # Validate that the Alembic migrations apply cleanly on the real
+            # PostgreSQL dialect before the suite runs (alembic/env.py reads
+            # DATABASE_URL from the environment). The suite schema itself is
+            # still created by the existing create_all fixture in
+            # tests/conftest.py (checkfirst, so it coexists with migrations).
+            - name: Run migrations on PostgreSQL
+              run: |
+                  python -m alembic upgrade head
 
             - name: Run integration tests
               run: |

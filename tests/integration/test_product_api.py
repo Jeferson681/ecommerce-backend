@@ -21,6 +21,7 @@ def _admin_headers() -> dict[str, str]:
     session.commit()
     session.refresh(admin)
     token = create_access_token({"sub": str(admin.id)})
+    session.close()
     return {"Authorization": f"Bearer {token}"}
 
 

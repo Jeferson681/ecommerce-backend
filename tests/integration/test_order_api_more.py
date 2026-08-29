@@ -51,6 +51,7 @@ def test_checkout_returns_404_when_no_cart() -> None:
         },
     )
     assert resp.status_code == 404
+    session.close()
 
 
 def test_checkout_returns_400_when_cart_empty() -> None:
@@ -72,6 +73,7 @@ def test_checkout_returns_400_when_cart_empty() -> None:
         },
     )
     assert resp.status_code == 400
+    session.close()
 
 
 def test_checkout_returns_400_on_insufficient_stock() -> None:
@@ -105,3 +107,4 @@ def test_checkout_returns_400_on_insufficient_stock() -> None:
         },
     )
     assert resp.status_code == 400
+    session.close()

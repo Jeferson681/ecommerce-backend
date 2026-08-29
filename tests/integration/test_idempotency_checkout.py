@@ -11,6 +11,7 @@ from backend.app.main import app
 from backend.app.modules.cart.domain.models import Cart, CartItem
 from backend.app.modules.order.repositories.order_repository import OrderRepository
 from backend.app.modules.product.domain.models import Product
+from backend.app.modules.user.domain.models import User
 
 client = TestClient(app)
 
@@ -35,6 +36,16 @@ def test_concurrent_checkout_only_creates_single_order() -> None:
     session.commit()
     session.refresh(product)
 
+    user = User(
+        id=42,
+        first_name="Conc",
+        last_name="User",
+        email="conc-user-42@example.com",
+        password_hash="x",
+    )
+    session.add(user)
+    session.commit()
+
     cart = Cart(user_id=42)
     session.add(cart)
     session.commit()
@@ -43,6 +54,7 @@ def test_concurrent_checkout_only_creates_single_order() -> None:
     item = CartItem(cart_id=cart.id, product_id=product.id, quantity=1)
     session.add(item)
     session.commit()
+    session.close()
 
     # make requests act as user 42 (no uow override; let DI create sessions per request)
     app.dependency_overrides[get_current_user_id] = lambda: 42
@@ -80,3 +92,4 @@ def test_concurrent_checkout_only_creates_single_order() -> None:
     order_repo = OrderRepository(session2)
     orders = order_repo.list_by_user(42)
     assert len(orders) == 1
+    session2.close()
