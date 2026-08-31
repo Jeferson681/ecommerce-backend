@@ -1,32 +1,21 @@
-"""Script to delete expired idempotency keys.
+"""Manual fallback for temporary-data cleanup.
 
 Run manually or via cron: `python scripts/cleanup_idempotency.py`.
 
-This script creates a short-lived Session, invokes the repository method
-`delete_expired`, and commits the transaction. The repository itself does
-not manage commits.
+Delegates to the same application use case used by the automatic in-app
+scheduler: expired idempotency records and expired/revoked refresh tokens
+are removed in a single transaction.
 """
 
-from datetime import UTC, datetime
-
-from backend.app.core.database import SessionLocal
-from backend.app.idempotency.repositories.idempotency_repository import (
-    IdempotencyRepository,
+from backend.app.application.use_cases.maintenance.cleanup import (
+    run_temporary_data_cleanup_now,
 )
 
 
 def main():
-    now = datetime.now(UTC)
-
-    session = SessionLocal()
-    try:
-        repo = IdempotencyRepository(session)
-        # begin a transaction to ensure atomic delete
-        with session.begin():
-            deleted = repo.delete_expired(now)
-        print(f"Deleted {deleted} expired idempotency keys")
-    finally:
-        session.close()
+    result = run_temporary_data_cleanup_now()
+    print(f"Deleted {result['idempotency_keys']} expired idempotency keys")
+    print(f"Deleted {result['refresh_tokens']} expired/revoked refresh tokens")
 
 
 if __name__ == "__main__":
