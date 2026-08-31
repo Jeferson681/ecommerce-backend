@@ -63,8 +63,15 @@ def update_item(
 ) -> CartItemRead:
     cart_repository = CartRepository(uow.session)
     cart_item_repository = CartItemRepository(uow.session)
+    product_repository = ProductRepository(uow.session)
     cart = get_cart_or_raise(cart_repository, user_id)
     cart_item = get_cart_item_or_raise(cart_item_repository, cart.id, item_id)
+
+    # The new quantity replaces the current one, so it must respect the same
+    # stock rules enforced when adding items (prevents over-stocking via PATCH).
+    validate_product_for_purchase(
+        product_repository, cart_item.product_id, quantity=item_data.quantity
+    )
 
     try:
         cart_item.quantity = item_data.quantity
@@ -83,6 +90,20 @@ def clear_cart(
     cart: Cart,
 ) -> None:
     repository.delete(cart)
+
+
+def clear_user_cart(user_id: int, uow: UnitOfWork) -> None:
+    """Delete the user's cart together with all of its items."""
+    cart_repository = CartRepository(uow.session)
+    cart = get_cart_or_raise(cart_repository, user_id)
+
+    try:
+        clear_cart(cart_repository, cart)
+        uow.commit()
+
+    except Exception:
+        uow.rollback()
+        raise
 
 
 def remove_item(item_id: int, user_id: int, uow: UnitOfWork) -> None:
