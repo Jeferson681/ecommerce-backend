@@ -605,6 +605,19 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         "404":
           $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - cart
+      summary: Clear cart
+      description: Remove the current user's cart together with all of its items
+      operationId: clearCart
+      responses:
+        "204":
+          description: Cart cleared successfully
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
 
   /cart/items:
     post:

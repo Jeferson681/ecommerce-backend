@@ -65,8 +65,9 @@ Complete reference of all HTTP endpoints in the current codebase.
 |--------|------|------|-------------|
 | `GET` | `/cart` | Bearer | Get current user's cart |
 | `POST` | `/cart/items` | Bearer | Add item to cart (auto-creates cart if needed) |
-| `PATCH` | `/cart/items/{item_id}` | Bearer | Update item quantity |
+| `PATCH` | `/cart/items/{item_id}` | Bearer | Update item quantity (validated against available stock) |
 | `DELETE` | `/cart/items/{item_id}` | Bearer | Remove item from cart |
+| `DELETE` | `/cart` | Bearer | Clear the current user's cart (removes the cart and all items) |
 | `POST` | `/cart/merge` | Bearer | Merge local/anonymous items into authenticated cart |
 
 ---

@@ -40,3 +40,9 @@ export async function removeCartItem(itemId: number): Promise<void> {
     method: "DELETE",
   });
 }
+
+export async function clearCart(): Promise<void> {
+  return apiFetch<void>("/cart", {
+    method: "DELETE",
+  });
+}

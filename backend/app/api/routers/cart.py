@@ -13,6 +13,7 @@ from backend.app.modules.cart.schemas import (
 )
 from backend.app.modules.cart.services import (
     add_item,
+    clear_user_cart,
     get_cart,
     merge_cart_items,
     remove_item,
@@ -62,6 +63,15 @@ def remove_item_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> None:
     remove_item(item_id, user_id, uow)
+
+
+@router.delete("", status_code=204)
+def clear_cart_endpoint(
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> None:
+    """Remove the current user's cart together with all of its items."""
+    clear_user_cart(user_id, uow)
 
 
 @router.post("/merge", response_model=CartRead)
