@@ -178,3 +178,64 @@ def test_get_products_supports_query_category_and_sort():
     assert composed_resp.status_code == 200
     assert len(composed_resp.json()) == 1
     assert composed_resp.json()[0]["name"] == "Blue Shirt"
+
+
+# =============================================================================
+# Pagination
+# =============================================================================
+
+
+def test_list_products_paginated_returns_metadata():
+    admin_headers = _admin_headers("admin-pag-meta@example.com")
+    for i in range(5):
+        resp = client.post(
+            "/products",
+            json={
+                "name": f"Paginated Product {i}",
+                "description": "d",
+                "price": 1.0,
+                "stock_quantity": 10,
+            },
+            headers=admin_headers,
+        )
+        assert resp.status_code == 201
+
+    resp = client.get("/products", params={"page": 1, "per_page": 3})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body, dict)
+    assert set(body) == {"items", "total", "page", "per_page", "total_pages"}
+    assert body["page"] == 1
+    assert body["per_page"] == 3
+    assert len(body["items"]) == 3
+    assert body["total"] >= 5
+    assert body["total_pages"] == (body["total"] + 2) // 3
+
+
+def test_list_products_single_page_param_uses_default_per_page():
+    resp = client.get("/products", params={"page": 1})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body, dict)
+    assert body["page"] == 1
+    assert body["per_page"] == 24
+    assert "items" in body
+
+
+def test_list_products_paginated_generates_next_page():
+    resp = client.get("/products", params={"page": 2, "per_page": 3})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["page"] == 2
+    assert 0 <= len(body["items"]) <= 3
+
+
+def test_list_products_paginated_count_respects_filters():
+    resp = client.get("/products", params={"q": "shirt", "page": 1, "per_page": 2})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body, dict)
+    assert body["total"] == 1
+    assert body["total_pages"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["name"] == "Blue Shirt"

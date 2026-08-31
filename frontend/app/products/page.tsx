@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { productService } from "@/modules/product/services/productService";
+import type { ProductPage } from "@/modules/product/types/product";
 import { ProductCard } from "@/modules/product/components/ProductCard";
 
 
@@ -35,6 +36,8 @@ const priceRanges = [
   { label: "$200 & above", value: "200-999999" },
 ];
 
+const PER_PAGE = 20;
+
 export default async function Page({
   searchParams,
 }: {
@@ -44,27 +47,31 @@ export default async function Page({
   const categoryFilter = typeof params.category === "string" ? params.category : null;
   const priceFilter = typeof params.price === "string" ? params.price : null;
   const sortFilter = typeof params.sort === "string" ? params.sort : null;
+  const rawPage = Array.isArray(params.page) ? params.page[0] : params.page;
+  const parsedPage = Number.parseInt(rawPage ?? "1", 10);
+  const currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
-  let products: Awaited<ReturnType<typeof productService.list>> = [];
+  let productPage: ProductPage | null = null;
   let loadError = false;
 
   try {
-    products = await productService.list();
+    productPage = await productService.listPage({
+      page: currentPage,
+      per_page: PER_PAGE,
+      // Sidebar slugs are search terms, not database category values: reuse the
+      // same name/description matching the page used before, now server-side.
+      q: categoryFilter ? categoryFilter.replace(/-/g, " ") : undefined,
+      sort: mapSortToApi(sortFilter),
+    });
   } catch {
-    products = [];
+    productPage = null;
     loadError = true;
   }
 
-  let activeProducts = products.filter((p) => p.is_active);
+  let activeProducts = (productPage?.items ?? []).filter((p) => p.is_active);
 
-  // Category filter
-  if (categoryFilter) {
-    activeProducts = activeProducts.filter(
-      (p) => p.name.toLowerCase().includes(categoryFilter.replace("-", " ")) || (p.description ?? "").toLowerCase().includes(categoryFilter.replace("-", " "))
-    );
-  }
-
-  // Price filter
+  // Price range stays a client-side refinement of the current page: the API
+  // contract does not expose a price filter and it is out of scope here.
   if (priceFilter) {
     const range = parsePriceRange(priceFilter);
     if (range) {
@@ -76,18 +83,8 @@ export default async function Page({
     }
   }
 
-  // Sort
-  if (sortFilter === "price-asc") {
-    activeProducts.sort((a, b) => Number(a.price) - Number(b.price));
-  } else if (sortFilter === "price-desc") {
-    activeProducts.sort((a, b) => Number(b.price) - Number(a.price));
-  } else if (sortFilter === "name") {
-    activeProducts.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sortFilter === "stock") {
-    activeProducts.sort((a, b) => b.stock_quantity - a.stock_quantity);
-  }
-
-  const totalCount = activeProducts.length;
+  const totalCount = priceFilter ? activeProducts.length : (productPage?.total ?? activeProducts.length);
+  const totalPages = productPage?.total_pages ?? 1;
 
   return (
     <div className="space-y-4">
@@ -202,7 +199,7 @@ export default async function Page({
                   { label: "Featured", value: null },
                   { label: "Price: Low", value: "price-asc" },
                   { label: "Price: High", value: "price-desc" },
-                  { label: "Name", value: "name" },
+                  { label: "Newest", value: "newest" },
                 ].map((option) => {
                   const isActive = sortFilter === option.value || (!sortFilter && option.value === null);
                   const href = buildSortUrl(categoryFilter, priceFilter, option.value);
@@ -259,10 +256,56 @@ export default async function Page({
               ))}
             </div>
           )}
+
+          {/* Pagination */}
+          {totalPages > 1 ? (
+            <nav className="mt-4 flex items-center justify-between border-t border-zinc-200 pt-3" aria-label="Pagination">
+              {currentPage > 1 ? (
+                <Link
+                  href={buildPageUrl(categoryFilter, priceFilter, sortFilter, currentPage - 1)}
+                  className="rounded-sm px-3 py-1.5 text-xs font-medium text-[#007185] hover:bg-zinc-100 hover:underline"
+                >
+                  &larr; Previous
+                </Link>
+              ) : (
+                <span className="rounded-sm px-3 py-1.5 text-xs font-medium text-zinc-300">&larr; Previous</span>
+              )}
+              <span className="text-xs text-zinc-500">
+                Page {currentPage} of {totalPages}
+              </span>
+              {currentPage < totalPages ? (
+                <Link
+                  href={buildPageUrl(categoryFilter, priceFilter, sortFilter, currentPage + 1)}
+                  className="rounded-sm px-3 py-1.5 text-xs font-medium text-[#007185] hover:bg-zinc-100 hover:underline"
+                >
+                  Next &rarr;
+                </Link>
+              ) : (
+                <span className="rounded-sm px-3 py-1.5 text-xs font-medium text-zinc-300">Next &rarr;</span>
+              )}
+            </nav>
+          ) : null}
         </div>
       </div>
     </div>
   );
+}
+
+function mapSortToApi(sort: string | null): "price_asc" | "price_desc" | "newest" | undefined {
+  if (sort === "price-asc") return "price_asc";
+  if (sort === "price-desc") return "price_desc";
+  if (sort === "newest") return "newest";
+  return undefined; // Featured -> backend default ordering
+}
+
+function buildPageUrl(category: string | null, price: string | null, sort: string | null, page: number): string {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (price) params.set("price", price);
+  if (sort) params.set("sort", sort);
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `/products?${qs}` : "/products";
 }
 
 function buildSortUrl(category: string | null, price: string | null, sort: string | null): string {

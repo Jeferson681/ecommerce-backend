@@ -445,13 +445,19 @@ paths:
           example: 20
       responses:
         "200":
-          description: List of products retrieved successfully
+          description: |
+            List of products retrieved successfully. When `page` and/or
+            `per_page` are provided, returns a paginated envelope with
+            metadata (items, total, page, per_page, total_pages); otherwise
+            returns a plain array of products.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ProductRead'
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/ProductRead'
+                  - $ref: '#/components/schemas/ProductPage'
         "400":
           $ref: '#/components/responses/ValidationError'
     post:
@@ -1273,6 +1279,37 @@ components:
           format: date-time
           description: Timestamp when the product was last updated
           example: "2024-01-20T14:25:00Z"
+
+    ProductPage:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - per_page
+        - total_pages
+      properties:
+        items:
+          type: array
+          description: Products on the current page
+          items:
+            $ref: '#/components/schemas/ProductRead'
+        total:
+          type: integer
+          description: Total number of products matching the filters
+          example: 37
+        page:
+          type: integer
+          description: Current page number (1-based)
+          example: 1
+        per_page:
+          type: integer
+          description: Number of items per page
+          example: 24
+        total_pages:
+          type: integer
+          description: Total number of pages available
+          example: 2
 
     CartItemCreate:
       type: object

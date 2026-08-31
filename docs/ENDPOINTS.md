@@ -41,7 +41,7 @@ Complete reference of all HTTP endpoints in the current codebase.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/products` | — | List products with optional filters |
+| `GET` | `/products` | — | List products with optional filters; paginated envelope (`items`/`total`/`page`/`per_page`/`total_pages`) when `page`/`per_page` provided |
 | `GET` | `/products/{product_id}` | — | Get product by ID |
 | `POST` | `/products` | Bearer + Admin | Create a new product |
 | `PATCH` | `/products/{product_id}` | Bearer + Admin | Update an existing product |
@@ -54,7 +54,7 @@ Complete reference of all HTTP endpoints in the current codebase.
 | `q` | `string` | Search query (name and description) |
 | `category` | `string` | Filter by category |
 | `sort` | `enum` | Sort order: `price_asc`, `price_desc`, `newest` |
-| `page` | `int` | Page number (1-based) |
+| `page` | `int` | Page number (1-based). If only `page` is provided, `per_page` defaults to 24. |
 | `per_page` | `int` | Items per page (max 100) |
 
 ---

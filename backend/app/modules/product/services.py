@@ -7,10 +7,13 @@ from backend.app.modules.product.repositories.product_repository import (
 )
 from backend.app.modules.product.schemas import (
     ProductCreate,
+    ProductPage,
     ProductRead,
     ProductUpdate,
 )
 from backend.app.uow.unit_of_work import UnitOfWork
+
+DEFAULT_PRODUCTS_PER_PAGE = 24
 
 
 def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
@@ -50,25 +53,43 @@ def list_products(
     query: str | None = None,
     category: str | None = None,
     sort: str | None = None,
-) -> list[ProductRead]:
-    """List products optionally paginated.
+) -> list[ProductRead] | ProductPage:
+    """List products with optional filtering, sorting and pagination.
 
-    If `page` and `per_page` are provided pagination is applied.
+    When `page` and/or `per_page` are provided a paginated envelope with
+    metadata (total, page, per_page, total_pages) is returned. The missing
+    parameter defaults to page=1 and per_page=24. Otherwise the full list is
+    returned, preserving the non-paginated contract.
     """
     repository = ProductRepository(uow.session)
 
-    if page is not None and per_page is not None:
+    if page is not None or per_page is not None:
+        resolved_page = page if page is not None else 1
+        resolved_per_page = (
+            per_page if per_page is not None else DEFAULT_PRODUCTS_PER_PAGE
+        )
         # convert to zero-based offset
-        offset = (page - 1) * per_page
+        offset = (resolved_page - 1) * resolved_per_page
         products = repository.list(
             offset=offset,
-            limit=per_page,
+            limit=resolved_per_page,
             query=query,
             category=category,
             sort=sort,
         )
-    else:
-        products = repository.list(query=query, category=category, sort=sort)
+        total = repository.count(query=query, category=category)
+        total_pages = (
+            (total + resolved_per_page - 1) // resolved_per_page if total else 0
+        )
+        return ProductPage(
+            items=[ProductRead.model_validate(product) for product in products],
+            total=total,
+            page=resolved_page,
+            per_page=resolved_per_page,
+            total_pages=total_pages,
+        )
+
+    products = repository.list(query=query, category=category, sort=sort)
 
     return [ProductRead.model_validate(product) for product in products]
 
