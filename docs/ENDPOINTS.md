@@ -21,12 +21,9 @@ Complete reference of all HTTP endpoints in the current codebase.
 | `GET` | `/users/me` | Bearer | Get current authenticated user |
 | `GET` | `/users/{user_id}` | Bearer | Get user by ID (owner or admin) |
 | `PATCH` | `/users/{user_id}` | Bearer | Update user profile (owner or admin) |
-| `PATCH` | `/users/{user_id}/change-password` | Bearer | Change account password (owner only) |
+| `PATCH` | `/users/{user_id}/change-password` | Bearer | Change account password with current-password confirmation (owner only) |
 | `DELETE` | `/users/{user_id}` | Bearer | Delete user account (owner or admin) |
 | `GET` | `/users` | Bearer + Admin | List all users (admin only) |
-
-**Note:**
-- The `change-password` endpoint and its underlying logic are implemented, but the complete usage/integration flow is not yet finalized due to its dependency on the account confirmation/authentication mechanism that will be integrated later.
 
 ---
 
@@ -36,7 +33,7 @@ Complete reference of all HTTP endpoints in the current codebase.
 |--------|------|------|-------------|
 | `POST` | `/auth/token` | — | Login — receive access + refresh tokens |
 | `POST` | `/auth/refresh` | — | Exchange refresh token for new access token |
-| `POST` | `/auth/logout` | Bearer | Validate refresh token (no-op revocation) |
+| `POST` | `/auth/logout` | Bearer | Revoke the submitted refresh token and end the current session |
 
 ---
 

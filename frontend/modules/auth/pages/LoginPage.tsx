@@ -31,7 +31,7 @@ export default function LoginPage() {
 
     try {
       const tokens = await authService.login({ email: email.trim(), password });
-      tokenStorage.setAccessToken(tokens.access_token);
+      tokenStorage.setTokens(tokens.access_token, tokens.refresh_token);
       router.push(next);
     } catch (err) {
       setError(getUserErrorMessage(err));
