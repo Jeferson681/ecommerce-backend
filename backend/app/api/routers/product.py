@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.product.schemas import (
     ProductCreate,
+    ProductPage,
     ProductRead,
     ProductUpdate,
 )
@@ -32,7 +33,7 @@ def get_product_endpoint(
     return get_product(product_id, uow)
 
 
-@router.get("", response_model=list[ProductRead])
+@router.get("", response_model=list[ProductRead] | ProductPage)
 def list_products_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
     q: Annotated[str | None, Query(min_length=1)] = None,
@@ -43,8 +44,14 @@ def list_products_endpoint(
     ] = None,
     page: Annotated[int | None, Query(ge=1)] = None,
     per_page: Annotated[int | None, Query(ge=1, le=100)] = None,
-) -> list[ProductRead]:
-    """Endpoint to list products. Supports optional pagination via `page` and `per_page` query params."""
+) -> list[ProductRead] | ProductPage:
+    """List products.
+
+    Supports filtering via `q`, `category` and `sort`. When `page` and/or
+    `per_page` are provided, returns a paginated envelope with metadata
+    (`items`, `total`, `page`, `per_page`, `total_pages`); otherwise returns
+    the full list.
+    """
     return list_products(
         uow,
         page=page,

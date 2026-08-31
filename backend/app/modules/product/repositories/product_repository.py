@@ -1,9 +1,13 @@
 """Product repository for managing product data."""
 
-from sqlalchemy import desc, or_, select, update as sa_update
+from typing import Any, TypeVar
+
+from sqlalchemy import Select, desc, func, or_, select, update as sa_update
 from sqlalchemy.orm import Session
 
 from backend.app.modules.product.domain.models import Product
+
+_T = TypeVar("_T", bound=tuple[Any, ...])
 
 
 class ProductRepository:
@@ -24,6 +28,27 @@ class ProductRepository:
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
+    def _apply_filters(
+        self,
+        statement: Select[_T],
+        query: str | None = None,
+        category: str | None = None,
+    ) -> Select[_T]:
+        """Apply the shared query/category filters to a select statement."""
+        if query:
+            query_value = f"%{query.strip()}%"
+            statement = statement.where(
+                or_(
+                    Product.name.ilike(query_value),
+                    Product.description.ilike(query_value),
+                )
+            )
+
+        if category:
+            statement = statement.where(Product.category == category.strip())
+
+        return statement
+
     def list(
         self,
         offset: int | None = None,
@@ -36,19 +61,7 @@ class ProductRepository:
 
         If `offset`/`limit` are None the full list is returned.
         """
-        statement = select(Product)
-
-        if query:
-            query_value = f"%{query.strip()}%"
-            statement = statement.where(
-                or_(
-                    Product.name.ilike(query_value),
-                    Product.description.ilike(query_value),
-                )
-            )
-
-        if category:
-            statement = statement.where(Product.category == category.strip())
+        statement = self._apply_filters(select(Product), query, category)
 
         if sort == "price_asc":
             statement = statement.order_by(Product.price.asc(), Product.id.asc())
@@ -66,6 +79,17 @@ class ProductRepository:
 
         result = self.session.execute(statement)
         return list(result.scalars().all())
+
+    def count(
+        self,
+        query: str | None = None,
+        category: str | None = None,
+    ) -> int:
+        """Return the number of products matching the given filters."""
+        statement = self._apply_filters(select(func.count(Product.id)), query, category)
+        total = self.session.execute(statement).scalar_one()
+
+        return int(total)
 
     def delete(self, product: Product) -> None:
         self.session.delete(product)
