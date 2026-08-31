@@ -22,6 +22,10 @@ export default function MyProfilePage() {
   const [lastName, setLastName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     userService.me()
@@ -47,6 +51,22 @@ export default function MyProfilePage() {
       setSaveError(getUserErrorMessage(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profile) return;
+    setPasswordError(null);
+    setIsChangingPassword(true);
+    try {
+      await userService.changePassword(profile.id, currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err) {
+      setPasswordError(getUserErrorMessage(err));
+    } finally {
+      setIsChangingPassword(false);
     }
   }
 
@@ -95,6 +115,39 @@ export default function MyProfilePage() {
               <Button onClick={() => setEditing(true)}>Edit profile</Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="mb-4 text-base font-semibold">Change password</h2>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Current password</label>
+              <Input
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New password</label>
+              <Input
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+              />
+            </div>
+            {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+            <Button
+              type="submit"
+              disabled={isChangingPassword || !currentPassword || !newPassword}
+            >
+              {isChangingPassword ? "Changing..." : "Change password"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
 

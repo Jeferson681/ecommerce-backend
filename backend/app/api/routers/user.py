@@ -109,6 +109,7 @@ def change_password_endpoint(
     """
     return change_user_password(
         user_id=user_id,
+        current_password=password_data.current_password,
         new_password=password_data.new_password,
         uow=uow,
         requesting_user_id=user_id_current,

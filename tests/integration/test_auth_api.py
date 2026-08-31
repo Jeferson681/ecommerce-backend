@@ -196,6 +196,44 @@ def test_get_users_me_with_invalid_token() -> None:
     assert resp.status_code == 401
 
 
+def test_inactive_user_cannot_log_in_or_access_protected_endpoints() -> None:
+    password = "Password123!"
+    email = "inactive-user@mail.com"
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Inactive",
+            "last_name": "User",
+            "email": email,
+            "password": password,
+        },
+    )
+    assert create_resp.status_code == 201
+    user_id = create_resp.json()["id"]
+
+    login_resp = client.post("/auth/token", json={"email": email, "password": password})
+    assert login_resp.status_code == 200
+    access_token = login_resp.json()["access_token"]
+
+    deactivate_resp = client.patch(
+        f"/users/{user_id}",
+        json={"is_active": False},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert deactivate_resp.status_code == 200
+
+    denied_login = client.post(
+        "/auth/token", json={"email": email, "password": password}
+    )
+    assert denied_login.status_code == 401
+
+    denied_access = client.get(
+        "/users/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert denied_access.status_code == 401
+
+
 # ===========================================================================
 # Refresh Token Rotation — Integration Tests
 # ===========================================================================

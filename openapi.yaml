@@ -379,6 +379,7 @@ paths:
               changePassword:
                 summary: Change password example
                 value:
+                  current_password: "CurrentSecurePass123!"
                   new_password: "NewSecurePass123!"
       responses:
         "200":
@@ -1122,8 +1123,15 @@ components:
     UserChangePassword:
       type: object
       required:
+        - current_password
         - new_password
       properties:
+        current_password:
+          type: string
+          minLength: 8
+          maxLength: 24
+          description: Current account password required to confirm the change
+          example: "CurrentSecurePass123!"
         new_password:
           type: string
           minLength: 8

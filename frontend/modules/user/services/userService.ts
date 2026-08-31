@@ -35,10 +35,10 @@ export const userService = {
     });
   },
 
-  changePassword(id: number, newPassword: string): Promise<User> {
+  changePassword(id: number, currentPassword: string, newPassword: string): Promise<User> {
     return apiFetch<User>(`/users/${id}/change-password`, {
       method: "PATCH",
-      body: { new_password: newPassword },
+      body: { current_password: currentPassword, new_password: newPassword },
     });
   },
 };

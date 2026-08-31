@@ -67,4 +67,5 @@ class UserRead(BaseModel):
 
 
 class UserChangePassword(BaseModel):
+    current_password: str = Field(..., min_length=8, max_length=24)
     new_password: str = Field(..., min_length=8, max_length=24)
