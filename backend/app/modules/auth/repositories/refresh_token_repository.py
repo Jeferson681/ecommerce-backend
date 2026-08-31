@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from backend.app.modules.auth.domain.models import RefreshToken
@@ -35,3 +35,18 @@ class RefreshTokenRepository:
         )
         self.session.execute(stmt)
         self.session.flush()
+
+    def delete_expired_or_revoked(self, now: datetime) -> int:
+        """Delete refresh tokens that are revoked or expired.
+
+        Returns the number of rows deleted. The repository does not commit;
+        the caller is responsible for transaction lifecycle.
+        """
+        stmt = delete(RefreshToken).where(
+            or_(RefreshToken.revoked.is_(True), RefreshToken.expires_at < now)
+        )
+
+        result = self.session.execute(stmt)
+        self.session.flush()
+
+        return int(getattr(result, "rowcount", 0) or 0)

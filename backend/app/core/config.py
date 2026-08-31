@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Temporary-data maintenance: automatic in-app cleanup of expired
+    # idempotency records and expired/revoked refresh tokens.
+    CLEANUP_ENABLED: bool = True
+    CLEANUP_INTERVAL_HOURS: float = 24.0
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -76,6 +76,13 @@ JWT_ACCESS_TOKEN_EXPIRES_MINUTES=30
 JWT_REFRESH_TOKEN_EXPIRES_DAYS=7
 ```
 
+Maintenance configuration (optional — automatic temporary-data cleanup):
+
+```env
+CLEANUP_ENABLED=true
+CLEANUP_INTERVAL_HOURS=24
+```
+
 ---
 
 ## Run Database Migrations
@@ -100,6 +107,21 @@ http://127.0.0.1:8000
 
 Swagger UI
 http://127.0.0.1:8000/docs
+```
+
+---
+
+## Temporary-Data Maintenance
+
+Expired idempotency records and expired/revoked refresh tokens are removed
+automatically by the backend: the cleanup runs once at startup and then on
+every `CLEANUP_INTERVAL_HOURS` interval (24 hours by default). Set
+`CLEANUP_ENABLED=false` to disable it.
+
+To run the same cleanup manually (e.g., as an external cron fallback):
+
+```powershell
+python scripts/cleanup_idempotency.py
 ```
 
 ---
