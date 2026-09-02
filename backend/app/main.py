@@ -96,6 +96,9 @@ def create_app() -> "FastAPI":
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        # Expose the RFC 6750 expiry signal so browser clients can
+        # distinguish an expired access token from other 401 failures.
+        expose_headers=["WWW-Authenticate"],
     )
 
     # Structured request logging middleware (correlation ID + access logs)

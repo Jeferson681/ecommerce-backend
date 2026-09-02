@@ -51,6 +51,8 @@ export default async function Page({
   const parsedPage = Number.parseInt(rawPage ?? "1", 10);
   const currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
+  const priceRange = priceFilter ? parsePriceRange(priceFilter) : null;
+
   let productPage: ProductPage | null = null;
   let loadError = false;
 
@@ -61,6 +63,10 @@ export default async function Page({
       // Sidebar slugs are search terms, not database category values: reuse the
       // same name/description matching the page used before, now server-side.
       q: categoryFilter ? categoryFilter.replace(/-/g, " ") : undefined,
+      // Price range is applied server-side so `total`/`total_pages` and the
+      // returned page slice stay consistent with the filter.
+      min_price: priceRange?.[0],
+      max_price: priceRange?.[1],
       sort: mapSortToApi(sortFilter),
     });
   } catch {
@@ -68,22 +74,11 @@ export default async function Page({
     loadError = true;
   }
 
-  let activeProducts = (productPage?.items ?? []).filter((p) => p.is_active);
+  // `is_active` remains a client-side refinement: the catalog contract does
+  // not expose an active filter.
+  const activeProducts = (productPage?.items ?? []).filter((p) => p.is_active);
 
-  // Price range stays a client-side refinement of the current page: the API
-  // contract does not expose a price filter and it is out of scope here.
-  if (priceFilter) {
-    const range = parsePriceRange(priceFilter);
-    if (range) {
-      const [min, max] = range;
-      activeProducts = activeProducts.filter((p) => {
-        const price = Number(p.price);
-        return price >= min && price <= max;
-      });
-    }
-  }
-
-  const totalCount = priceFilter ? activeProducts.length : (productPage?.total ?? activeProducts.length);
+  const totalCount = productPage?.total ?? activeProducts.length;
   const totalPages = productPage?.total_pages ?? 1;
 
   return (

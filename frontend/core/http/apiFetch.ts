@@ -59,6 +59,18 @@ function setRefreshToken(token: string): void {
   getLocalStorage()?.setItem("refresh_token", token);
 }
 
+/**
+ * The API marks an access-token expiry with the RFC 6750 header
+ * `WWW-Authenticate: Bearer error="invalid_token"`. Only such a 401 may
+ * trigger the refresh flow — other 401s (invalid credentials, inactive
+ * user, malformed header) must surface as errors without refreshing.
+ */
+function isAccessTokenExpired(response: Response): boolean {
+  if (response.status !== 401) return false;
+  const wwwAuth = response.headers.get("WWW-Authenticate");
+  return wwwAuth !== null && wwwAuth.includes('error="invalid_token"');
+}
+
 async function attemptTokenRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
@@ -124,8 +136,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       );
     }
 
-    // If 401 and we have a refresh token, attempt refresh and retry once
-    if (response.status === 401 && getRefreshToken()) {
+    // Only an access-token expiry triggers refresh (retried once); any other
+    // 401 falls through and is surfaced as an error below.
+    if (isAccessTokenExpired(response) && getRefreshToken()) {
       const refreshed = await attemptTokenRefresh();
       if (refreshed) {
         // Retry with new token

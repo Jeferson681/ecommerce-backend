@@ -53,6 +53,8 @@ Complete reference of all HTTP endpoints in the current codebase.
 |-----------|------|-------------|
 | `q` | `string` | Search query (name and description) |
 | `category` | `string` | Filter by category |
+| `min_price` | `number` | Minimum price filter (inclusive). Applied before counting, so `total`/`total_pages` reflect the filter. |
+| `max_price` | `number` | Maximum price filter (inclusive). Applied before counting, so `total`/`total_pages` reflect the filter. |
 | `sort` | `enum` | Sort order: `price_asc`, `price_desc`, `newest` |
 | `page` | `int` | Page number (1-based). If only `page` is provided, `per_page` defaults to 24. |
 | `per_page` | `int` | Items per page (max 100) |

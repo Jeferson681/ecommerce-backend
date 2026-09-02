@@ -37,14 +37,12 @@ class StripeGateway:
         idempotency_key: str | None = None,
     ) -> PaymentGatewayResult:
         """
-        Process a payment.
+        Process a payment via the Stripe PaymentIntents API.
 
-        Real Stripe mode:
-            Requires STRIPE_SECRET_KEY and payment_method_id in
-            ``request.provider_data``.
-
-        Local mode:
-            Uses deterministic mock when no Stripe key exists.
+        Requires STRIPE_SECRET_KEY to be configured (fails fast when it is
+        missing) and a ``payment_method_id`` in ``request.provider_data``.
+        Final payment state is confirmed asynchronously by the Stripe
+        webhook (``process_webhook``).
         """
         if not settings.STRIPE_SECRET_KEY:
             raise ValueError("Stripe secret key is not configured")

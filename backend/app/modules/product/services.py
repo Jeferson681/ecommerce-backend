@@ -52,11 +52,15 @@ def list_products(
     per_page: int | None = None,
     query: str | None = None,
     category: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
     sort: str | None = None,
 ) -> list[ProductRead] | ProductPage:
     """List products with optional filtering, sorting and pagination.
 
-    When `page` and/or `per_page` are provided a paginated envelope with
+    All filters (`query`, `category`, `min_price`, `max_price`) are applied
+    before counting, so the envelope metadata always reflects the filtered
+    set. When `page` and/or `per_page` are provided a paginated envelope with
     metadata (total, page, per_page, total_pages) is returned. The missing
     parameter defaults to page=1 and per_page=24. Otherwise the full list is
     returned, preserving the non-paginated contract.
@@ -75,9 +79,16 @@ def list_products(
             limit=resolved_per_page,
             query=query,
             category=category,
+            min_price=min_price,
+            max_price=max_price,
             sort=sort,
         )
-        total = repository.count(query=query, category=category)
+        total = repository.count(
+            query=query,
+            category=category,
+            min_price=min_price,
+            max_price=max_price,
+        )
         total_pages = (
             (total + resolved_per_page - 1) // resolved_per_page if total else 0
         )
@@ -89,7 +100,13 @@ def list_products(
             total_pages=total_pages,
         )
 
-    products = repository.list(query=query, category=category, sort=sort)
+    products = repository.list(
+        query=query,
+        category=category,
+        min_price=min_price,
+        max_price=max_price,
+        sort=sort,
+    )
 
     return [ProductRead.model_validate(product) for product in products]
 

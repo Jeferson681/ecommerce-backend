@@ -239,3 +239,139 @@ def test_list_products_paginated_count_respects_filters():
     assert body["total_pages"] == 1
     assert len(body["items"]) == 1
     assert body["items"][0]["name"] == "Blue Shirt"
+
+
+# =============================================================================
+# Price filter (server-side)
+# =============================================================================
+
+
+def _seed_price_products(email: str, token: str) -> None:
+    admin_headers = _admin_headers(email)
+    for name, price in (
+        (f"{token} Alpha", 10.0),
+        (f"{token} Beta", 50.0),
+        (f"{token} Gamma", 90.0),
+    ):
+        resp = client.post(
+            "/products",
+            json={
+                "name": name,
+                "description": f"{token} product",
+                "category": f"price-{token}",
+                "price": price,
+                "stock_quantity": 5,
+            },
+            headers=admin_headers,
+        )
+        assert resp.status_code == 201
+
+
+def test_price_filter_without_pagination_returns_filtered_list():
+    _seed_price_products("admin-price-nopag@example.com", "PxNoPag")
+    resp = client.get(
+        "/products", params={"q": "PxNoPag", "min_price": 20, "max_price": 100}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    # Non-paginated contract preserved: plain list, price-filtered.
+    assert isinstance(body, list)
+    assert [item["name"] for item in body] == [
+        "PxNoPag Beta",
+        "PxNoPag Gamma",
+    ]
+
+
+def test_price_filter_paginated_metadata_respects_price():
+    _seed_price_products("admin-price-meta@example.com", "PxMeta")
+    resp = client.get(
+        "/products",
+        params={
+            "q": "PxMeta",
+            "min_price": 20,
+            "max_price": 100,
+            "page": 1,
+            "per_page": 2,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 2  # price filter applied before counting
+    assert body["total_pages"] == 1
+    assert [item["name"] for item in body["items"]] == [
+        "PxMeta Beta",
+        "PxMeta Gamma",
+    ]
+
+
+def test_price_filter_paginated_page_two():
+    _seed_price_products("admin-price-p2@example.com", "PxPage2")
+    resp = client.get(
+        "/products",
+        params={"q": "PxPage2", "min_price": 0, "page": 2, "per_page": 2},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 3
+    assert body["total_pages"] == 2
+    assert body["page"] == 2
+    assert [item["name"] for item in body["items"]] == ["PxPage2 Gamma"]
+
+
+def test_price_filter_min_only_and_max_only():
+    _seed_price_products("admin-price-bounds@example.com", "PxBound")
+    min_only = client.get(
+        "/products",
+        params={"q": "PxBound", "min_price": 50, "page": 1, "per_page": 10},
+    ).json()
+    assert min_only["total"] == 2
+    max_only = client.get(
+        "/products",
+        params={"q": "PxBound", "max_price": 10, "page": 1, "per_page": 10},
+    ).json()
+    assert max_only["total"] == 1
+    assert max_only["items"][0]["name"] == "PxBound Alpha"
+
+
+def test_price_filter_combined_with_category():
+    _seed_price_products("admin-price-cat@example.com", "PxCat")
+    resp = client.get(
+        "/products",
+        params={
+            "category": "price-PxCat",
+            "min_price": 0,
+            "max_price": 20,
+            "page": 1,
+            "per_page": 10,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name"] == "PxCat Alpha"
+
+
+def test_price_filter_inverted_range_returns_empty_page():
+    _seed_price_products("admin-price-inverted@example.com", "PxInv")
+    resp = client.get(
+        "/products",
+        params={
+            "q": "PxInv",
+            "min_price": 100,
+            "max_price": 5,
+            "page": 1,
+            "per_page": 10,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 0
+    assert body["total_pages"] == 0
+    assert body["items"] == []
+
+
+def test_price_filter_rejects_negative_values():
+    resp = client.get("/products", params={"min_price": -5})
+    assert resp.status_code == 422
+    resp = client.get("/products", params={"max_price": -1})
+    assert resp.status_code == 422

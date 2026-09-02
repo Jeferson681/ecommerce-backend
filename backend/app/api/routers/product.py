@@ -38,6 +38,8 @@ def list_products_endpoint(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
     q: Annotated[str | None, Query(min_length=1)] = None,
     category: Annotated[str | None, Query(min_length=1)] = None,
+    min_price: Annotated[float | None, Query(ge=0)] = None,
+    max_price: Annotated[float | None, Query(ge=0)] = None,
     sort: Annotated[
         Literal["price_asc", "price_desc", "newest"] | None,
         Query(),
@@ -47,7 +49,9 @@ def list_products_endpoint(
 ) -> list[ProductRead] | ProductPage:
     """List products.
 
-    Supports filtering via `q`, `category` and `sort`. When `page` and/or
+    Supports filtering via `q`, `category`, `min_price`/`max_price` and
+    `sort`. Price filters are applied before counting, so `total` and
+    `total_pages` always reflect the filtered set. When `page` and/or
     `per_page` are provided, returns a paginated envelope with metadata
     (`items`, `total`, `page`, `per_page`, `total_pages`); otherwise returns
     the full list.
@@ -58,6 +62,8 @@ def list_products_endpoint(
         per_page=per_page,
         query=q,
         category=category,
+        min_price=min_price,
+        max_price=max_price,
         sort=sort,
     )
 

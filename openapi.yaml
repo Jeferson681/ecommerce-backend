@@ -418,6 +418,24 @@ paths:
             type: string
             minLength: 1
           example: "electronics"
+        - name: min_price
+          in: query
+          description: >
+            Minimum product price filter (inclusive). Applied before
+            counting, so pagination metadata reflects the filtered set.
+          schema:
+            type: number
+            minimum: 0
+          example: 25
+        - name: max_price
+          in: query
+          description: >
+            Maximum product price filter (inclusive). Applied before
+            counting, so pagination metadata reflects the filtered set.
+          schema:
+            type: number
+            minimum: 0
+          example: 100
         - name: sort
           in: query
           description: Sort order for results
@@ -1599,6 +1617,16 @@ components:
   responses:
     UnauthorizedError:
       description: Unauthorized - Invalid or missing authentication token
+      headers:
+        WWW-Authenticate:
+          description: >
+            Present only when the 401 was caused by an expired access token
+            (RFC 6750). Clients may use this signal to attempt the
+            refresh-token flow. Other 401 responses (invalid credentials,
+            inactive user, malformed header) do not include this header.
+          schema:
+            type: string
+          example: 'Bearer error="invalid_token", error_description="The access token has expired"'
       content:
         application/json:
           schema:

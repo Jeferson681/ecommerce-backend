@@ -6,6 +6,8 @@ export type ProductListParams = {
   per_page?: number;
   q?: string;
   category?: string;
+  min_price?: number;
+  max_price?: number;
   sort?: string;
 };
 
@@ -20,6 +22,10 @@ export const productService = {
     if (params.per_page !== undefined) search.set("per_page", String(params.per_page));
     if (params.q) search.set("q", params.q);
     if (params.category) search.set("category", params.category);
+    if (params.min_price !== undefined)
+      search.set("min_price", String(params.min_price));
+    if (params.max_price !== undefined)
+      search.set("max_price", String(params.max_price));
     if (params.sort) search.set("sort", params.sort);
     const qs = search.toString();
     return apiFetch<ProductPage>(`/products${qs ? `?${qs}` : ""}`);
