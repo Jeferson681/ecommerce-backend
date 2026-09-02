@@ -1,8 +1,7 @@
 # scripts/seed_admin.py
 
-from backend.app.modules.auth.security import hash_password
-
 from backend.app.core.database import SessionLocal
+from backend.app.core.security import hash_password
 from backend.app.modules.user.domain.models import User, UserRole
 
 

@@ -57,6 +57,12 @@ class ValidationError(AppError):
     pass
 
 
+class ConflictError(AppError):
+    """Raised when a persistence operation conflicts with existing data."""
+
+    pass
+
+
 class AuthenticationError(AppError):
     """Raised when authentication fails."""
 

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'ecommerce.db'}"
     APP_NAME: str = "ecommerce-backend"
     DEBUG: bool = False
+    CREATE_SCHEMA_ON_STARTUP: bool = False
 
     STRIPE_WEBHOOK_SECRET: str | None = None
     STRIPE_SECRET_KEY: str | None = None

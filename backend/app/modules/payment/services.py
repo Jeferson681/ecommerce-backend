@@ -15,6 +15,7 @@ from backend.app.modules.payment.helpers import (
 from backend.app.modules.payment.repositories.payment_repository import (
     PaymentRepository,
 )
+from backend.app.modules.payment.schemas import PaymentRead
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
@@ -103,3 +104,12 @@ def get_failed_payment_for_order(
             return payment
 
     raise ValidationError(Messages.NO_FAILED_PAYMENT_FOUND)
+
+
+def list_all_payments(uow: UnitOfWork) -> list[PaymentRead]:
+    """List all payments for administrative consumers."""
+
+    repository = PaymentRepository(uow.session)
+    payments = repository.list()
+
+    return [PaymentRead.model_validate(payment) for payment in payments]

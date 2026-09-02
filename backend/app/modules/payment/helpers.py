@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+from pydantic import ValidationError as PydanticValidationError
+
+from backend.app.core.exceptions import ValidationError
 from backend.app.modules.payment.domain.models import Payment
 from backend.app.modules.payment.gateway.base import (
     PaymentGateway,
@@ -38,10 +41,13 @@ def process_gateway_webhook(
     payload_bytes: bytes,
     signature: str | None = None,
 ) -> PaymentWebhookPayload:
-    return gateway.process_webhook(
-        payload_bytes=payload_bytes,
-        signature=signature,
-    )
+    try:
+        return gateway.process_webhook(
+            payload_bytes=payload_bytes,
+            signature=signature,
+        )
+    except (KeyError, ValueError, PydanticValidationError) as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def apply_gateway_result(

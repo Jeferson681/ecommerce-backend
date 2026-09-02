@@ -1,6 +1,13 @@
 """Services for product management."""
 
-from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
+from sqlalchemy.exc import IntegrityError
+
+from backend.app.core.exceptions import (
+    ConflictError,
+    Messages,
+    NotFoundError,
+    ValidationError,
+)
 from backend.app.modules.product.domain.models import Product
 from backend.app.modules.product.repositories.product_repository import (
     ProductRepository,
@@ -31,6 +38,9 @@ def create_product(product_data: ProductCreate, uow: UnitOfWork) -> ProductRead:
     try:
         repository.create(product)
         uow.commit()
+    except IntegrityError as exc:
+        uow.rollback()
+        raise ConflictError("Integrity error while creating product.") from exc
     except Exception:
         uow.rollback()
         raise
@@ -125,6 +135,9 @@ def update_product(
 
     try:
         uow.commit()
+    except IntegrityError as exc:
+        uow.rollback()
+        raise ConflictError("Integrity error while updating product.") from exc
     except Exception:
         uow.rollback()
         raise
@@ -140,6 +153,11 @@ def delete_product(product_id: int, uow: UnitOfWork) -> None:
     try:
         product_repository.delete(product)
         uow.commit()
+    except IntegrityError as exc:
+        uow.rollback()
+        raise ConflictError(
+            "Product cannot be deleted because it has associated orders."
+        ) from exc
     except Exception:
         uow.rollback()
         raise
