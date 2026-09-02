@@ -3,12 +3,9 @@ name: Docker Frontend Build
 on:
     push:
         branches:
-            - develop
-            - main
-            - "feat/**"
+            - "**"
     pull_request:
         branches:
-            - develop
             - main
 
 jobs:
