@@ -1,47 +1,44 @@
 name: Smoke Test
 
 on:
-    push:
-        branches:
-            - develop
-            - main
-            - "feat/**"
-    pull_request:
-        branches:
-            - develop
-            - main
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
 
 jobs:
-    smoke-test:
-        runs-on: ubuntu-latest
+  smoke-test:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Prepare environment
-              run: cp .env.example .env
+      - name: Prepare environment
+        run: cp .env.example .env
 
-            - name: Start stack
-              run: docker compose up -d --build --wait
+      - name: Start stack
+        run: docker compose up -d --build --wait
 
-            - name: Test backend health endpoint
-              run: curl -f http://localhost:8000/healthz
+      - name: Test backend health endpoint
+        run: curl -f http://localhost:8000/healthz
 
-            - name: Test backend readiness endpoint
-              run: curl -f http://localhost:8000/readyz
+      - name: Test backend readiness endpoint
+        run: curl -f http://localhost:8000/readyz
 
-            - name: Test frontend serves content
-              run: curl -f http://localhost:3000/
+      - name: Test frontend serves content
+        run: curl -f http://localhost:3000/
 
-            - name: Show container status
-              if: failure()
-              run: docker compose ps
+      - name: Show container status
+        if: failure()
+        run: docker compose ps
 
-            - name: Show logs
-              if: failure()
-              run: docker compose logs
+      - name: Show logs
+        if: failure()
+        run: docker compose logs
 
-            - name: Shutdown stack
-              if: always()
-              run: docker compose down -v
+      - name: Shutdown stack
+        if: always()
+        run: docker compose down -v
