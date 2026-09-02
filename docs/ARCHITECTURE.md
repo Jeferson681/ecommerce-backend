@@ -163,4 +163,6 @@ Repositories never call:
 - commit()
 - rollback()
 
-Checkout and Retry
+Checkout and Retry Payment span multiple domain modules and are therefore owned by the Application layer. The Provider Webhook flow is Application-owned for the same reason.
+
+All other operations listed above are owned by their domain module and execute within a single UnitOfWork transaction.

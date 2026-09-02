@@ -28,6 +28,11 @@ jobs:
                   cd frontend
                   npm ci --no-audit --no-fund
 
+            - name: Lint
+              run: |
+                  cd frontend
+                  npm run lint
+
             - name: Build
               run: |
                   cd frontend

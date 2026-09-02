@@ -25,6 +25,13 @@ Implement a **Unit of Work (UoW)** pattern:
 - Services do not control transactions directly
 - Session lifecycle is managed by the UoW context manager
 
+Idempotency key claiming is a special case: the repository reserves a key using a
+nested transaction (`session.begin_nested()`), which is a **SAVEPOINT** inside the
+outer transaction. A uniqueness violation rolls back only the savepoint — the
+surrounding transaction remains valid and available for compensation. The
+repository never issues `commit()` or `rollback()`; the owner of the UnitOfWork
+still controls the transaction lifecycle.
+
 ## Justification
 
 - **Transactional consistency**: Ensures all operations in a workflow succeed or fail together

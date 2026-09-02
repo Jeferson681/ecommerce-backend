@@ -83,6 +83,17 @@ CLEANUP_ENABLED=true
 CLEANUP_INTERVAL_HOURS=24
 ```
 
+Database schema initialization (optional — Alembic is the schema authority):
+
+```env
+CREATE_SCHEMA_ON_STARTUP=false
+```
+
+Alembic owns the database schema. Set `CREATE_SCHEMA_ON_STARTUP=true` only for
+quick local runs without Docker/Alembic (e.g., `uvicorn` against an empty
+database) so the backend creates the tables at startup. The official Docker
+flow keeps this disabled — its entrypoint runs `alembic upgrade head`.
+
 ---
 
 ## Run Database Migrations

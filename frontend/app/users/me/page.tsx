@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { userService } from "@/modules/user/services/userService";
 import { getUserErrorMessage } from "@/core/exceptions/userMessage";
@@ -13,7 +12,6 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 
 export default function MyProfilePage() {
-  const router = useRouter();
   const [profile, setProfile] = useState<{ id: number; first_name: string; last_name: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -61,7 +61,9 @@ ecommerce-backend/
 | Domain modules and business logic | `backend/app/modules/` |
 | Cross-domain use cases | `backend/app/application/use_cases/` |
 | Shared application components | `backend/app/core/` |
-| Database persistence | `backend/app/infrastructure/` |
+| Database engine/session factory (canonical owner) | `backend/app/core/database.py` |
+| Database session dependency (FastAPI) | `backend/app/infrastructure/db/` |
+| FastAPI dependencies (DI wiring) | `backend/app/modules/auth/deps.py`, `backend/app/infrastructure/db/dependencies.py`, `backend/app/uow/dependencies.py` |
 | Idempotency key management | `backend/app/idempotency/` |
 | Logging and health probes | `backend/app/observability/` |
 | Transaction management | `backend/app/uow/` |

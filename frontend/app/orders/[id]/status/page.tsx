@@ -70,7 +70,9 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (!orderId) return;
 
-    loadOrder();
+    // Defer the initial poll to a microtask so setState never runs
+    // synchronously inside the effect body (react-hooks/set-state-in-effect).
+    void Promise.resolve().then(loadOrder);
 
     const interval = setInterval(loadOrder, POLL_INTERVAL_MS);
     const timeout = setTimeout(() => {
