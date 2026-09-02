@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError
+from jose.exceptions import ExpiredSignatureError
 
 from backend.app.modules.auth.tokens import decode_access_token
 from backend.app.modules.user.repositories.user_repository import UserRepository
@@ -12,7 +13,10 @@ from backend.app.uow.dependencies import get_uow
 from backend.app.uow.unit_of_work import UnitOfWork
 
 
-def get_current_user_id(authorization: Annotated[str | None, Header()] = None) -> int:
+def get_current_user_id(
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    authorization: Annotated[str | None, Header()] = None,
+) -> int:
     """Extract and validate user ID from JWT Bearer token.
 
     Parameters:
@@ -47,7 +51,27 @@ def get_current_user_id(authorization: Annotated[str | None, Header()] = None) -
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token payload.",
             )
-        return int(user_id)
+        current_user_id = int(user_id)
+        user = UserRepository(uow.session).get_by_id(current_user_id)
+        if user is None or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or inactive user.",
+            )
+        return current_user_id
+    except ExpiredSignatureError as e:
+        # RFC 6750 signal: lets clients distinguish an expired access token
+        # (refresh flow applies) from other 401 authentication failures.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token.",
+            headers={
+                "WWW-Authenticate": (
+                    'Bearer error="invalid_token", '
+                    'error_description="The access token has expired"'
+                )
+            },
+        ) from e
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

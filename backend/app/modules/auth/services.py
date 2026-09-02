@@ -25,7 +25,7 @@ def login(email: str, password: str, uow: UnitOfWork) -> TokenResponse:
     user = user_repo.get_by_email(email)
     if not user:
         raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
-    if not verify_password(password, user.password_hash):
+    if not user.is_active or not verify_password(password, user.password_hash):
         raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})

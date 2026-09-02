@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import traceback
 from collections.abc import AsyncIterator
@@ -15,8 +16,11 @@ from backend.app.api.routers.order import router as order_router
 from backend.app.api.routers.payment_webhook import router as payment_webhook_router
 from backend.app.api.routers.product import router as product_router
 from backend.app.api.routers.user import router as user_router
+from backend.app.application.use_cases.maintenance.scheduler import (
+    cleanup_scheduler_loop,
+)
 from backend.app.core.config import settings
-from backend.app.core.database import Base, engine
+from backend.app.core.database import Base, SessionLocal, engine
 from backend.app.core.exceptions import (
     AppError,
     AuthenticationError,
@@ -43,7 +47,29 @@ setup_logging()
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Ensure database tables exist for tests/local runs
     Base.metadata.create_all(bind=engine)
+
+    # Automatic maintenance: remove expired idempotency records and
+    # expired/revoked refresh tokens (runs once at startup, then on every
+    # interval). Disabled via CLEANUP_ENABLED=false.
+    stop_event = asyncio.Event()
+    cleanup_task: asyncio.Task[None] | None = None
+    if settings.CLEANUP_ENABLED:
+        cleanup_task = asyncio.create_task(
+            cleanup_scheduler_loop(
+                session_factory=SessionLocal,
+                interval_seconds=settings.CLEANUP_INTERVAL_HOURS * 3600.0,
+                stop_event=stop_event,
+            )
+        )
+
     yield
+
+    if cleanup_task is not None:
+        stop_event.set()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app() -> "FastAPI":
@@ -70,6 +96,9 @@ def create_app() -> "FastAPI":
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        # Expose the RFC 6750 expiry signal so browser clients can
+        # distinguish an expired access token from other 401 failures.
+        expose_headers=["WWW-Authenticate"],
     )
 
     # Structured request logging middleware (correlation ID + access logs)

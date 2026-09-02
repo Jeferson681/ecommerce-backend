@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 import pytest
 from jose import JWTError, jwt as jose_jwt
+from jose.exceptions import ExpiredSignatureError
 
 # Ensure JWT_SECRET_KEY is available before importing settings
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-for-unit-tests")
@@ -257,7 +258,9 @@ class TestExpiredToken:
                 expires_delta=1,
             )
 
-        with pytest.raises(JWTError, match="Invalid token"):
+        # Expired access tokens raise ExpiredSignatureError (a JWTError
+        # subclass) so callers can distinguish expiry from other failures.
+        with pytest.raises(ExpiredSignatureError):
             token_module.decode_access_token(token)
 
     def test_expired_refresh_token_fails(self) -> None:

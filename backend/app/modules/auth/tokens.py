@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError
 
 from backend.app.core.config import settings
 
@@ -99,6 +100,10 @@ def decode_access_token(token: str) -> dict[str, Any]:
             audience=settings.JWT_AUDIENCE,
         )
         return payload
+    except ExpiredSignatureError:
+        # Re-raise unchanged so callers can distinguish an expired access
+        # token from other invalid tokens.
+        raise
     except JWTError as e:
         raise JWTError(f"Invalid token: {str(e)}") from e
 

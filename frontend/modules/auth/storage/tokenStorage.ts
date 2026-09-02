@@ -1,4 +1,5 @@
 const ACCESS_TOKEN_KEY = "access_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
 const TOKEN_EVENT = "auth_token_changed";
 
 type Listener = () => void;
@@ -70,9 +71,30 @@ export const tokenStorage = {
     notify();
   },
 
+  getRefreshToken(): string | null {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  },
+
+  setRefreshToken(token: string): void {
+    if (typeof window === "undefined") return;
+    if (!decodeTokenPayload(token)) {
+      console.warn("tokenStorage: invalid token format, not storing");
+      return;
+    }
+    window.localStorage.setItem(REFRESH_TOKEN_KEY, token);
+    notify();
+  },
+
+  setTokens(accessToken: string, refreshToken: string): void {
+    this.setAccessToken(accessToken);
+    this.setRefreshToken(refreshToken);
+  },
+
   clear(): void {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY);
     notify();
   },
 };

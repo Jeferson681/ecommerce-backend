@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.core.database import Base, engine
 from backend.app.main import app
+from backend.app.modules.auth.tokens import create_access_token
 
 client = TestClient(app)
 
@@ -68,6 +69,49 @@ def test_post_auth_token_with_invalid_password() -> None:
     resp = client.post("/auth/token", json=payload)
 
     assert resp.status_code == 401
+
+
+def test_expired_access_token_signals_expiry_via_www_authenticate() -> None:
+    """Expired access token -> 401 with the RFC 6750 invalid_token signal.
+
+    This header is the only contract signal that authorizes the client to
+    attempt the refresh-token flow.
+    """
+    test_password = "Password123!"
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Eva",
+            "last_name": "Expirada",
+            "email": "eva-expired@mail.com",
+            "password": test_password,
+        },
+    )
+    assert create_resp.status_code == 201
+    user_id = create_resp.json()["id"]
+
+    expired_token = create_access_token({"sub": str(user_id)}, expires_delta=-1)
+    resp = client.get("/users/me", headers={"Authorization": f"Bearer {expired_token}"})
+
+    assert resp.status_code == 401
+    www_auth = resp.headers.get("WWW-Authenticate")
+    assert www_auth is not None
+    assert 'error="invalid_token"' in www_auth
+
+
+def test_invalid_access_token_does_not_signal_expiry() -> None:
+    """A malformed token must NOT carry the expiry signal (no refresh)."""
+    resp = client.get("/users/me", headers={"Authorization": "Bearer not-a-real-jwt"})
+    assert resp.status_code == 401
+    assert resp.headers.get("WWW-Authenticate") is None
+
+
+def test_login_failure_does_not_signal_token_expiry() -> None:
+    """Invalid-credentials 401 must NOT carry the expiry signal."""
+    payload = {"email": "no-such-user-401@mail.com", "password": "Password123!"}
+    resp = client.post("/auth/token", json=payload)
+    assert resp.status_code == 401
+    assert resp.headers.get("WWW-Authenticate") is None
 
 
 def test_post_auth_logout_with_valid_token() -> None:
@@ -194,6 +238,44 @@ def test_get_users_me_with_invalid_token() -> None:
     resp = client.get("/users/me", headers=headers)
 
     assert resp.status_code == 401
+
+
+def test_inactive_user_cannot_log_in_or_access_protected_endpoints() -> None:
+    password = "Password123!"
+    email = "inactive-user@mail.com"
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Inactive",
+            "last_name": "User",
+            "email": email,
+            "password": password,
+        },
+    )
+    assert create_resp.status_code == 201
+    user_id = create_resp.json()["id"]
+
+    login_resp = client.post("/auth/token", json={"email": email, "password": password})
+    assert login_resp.status_code == 200
+    access_token = login_resp.json()["access_token"]
+
+    deactivate_resp = client.patch(
+        f"/users/{user_id}",
+        json={"is_active": False},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert deactivate_resp.status_code == 200
+
+    denied_login = client.post(
+        "/auth/token", json={"email": email, "password": password}
+    )
+    assert denied_login.status_code == 401
+
+    denied_access = client.get(
+        "/users/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert denied_access.status_code == 401
 
 
 # ===========================================================================

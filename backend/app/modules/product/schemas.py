@@ -55,3 +55,13 @@ class ProductRead(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class ProductPage(BaseModel):
+    """Paginated product listing with metadata."""
+
+    items: list[ProductRead]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int

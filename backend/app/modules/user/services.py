@@ -1,12 +1,17 @@
 """Services for User management."""
 
 from backend.app.core.exceptions import (
+    AuthenticationError,
     EmailAlreadyExistsError,
     InvalidPasswordError,
     Messages,
     NotFoundError,
 )
-from backend.app.core.security import hash_password, validate_password_policy
+from backend.app.core.security import (
+    hash_password,
+    validate_password_policy,
+    verify_password,
+)
 from backend.app.modules.user.domain.models import User, UserRole
 from backend.app.modules.user.repositories.user_repository import UserRepository
 from backend.app.modules.user.schemas import UserCreate, UserRead, UserUpdate
@@ -124,6 +129,7 @@ def update_user(
 
 def change_password(
     user_id: int,
+    current_password: str,
     new_password: str,
     uow: UnitOfWork,
     requesting_user_id: int | None = None,
@@ -138,6 +144,9 @@ def change_password(
 
     if requesting_user_id is not None and requesting_user_id != user_id:
         raise NotFoundError(Messages.USER_NOT_FOUND)
+
+    if not verify_password(current_password, user.password_hash):
+        raise AuthenticationError(Messages.EMAIL_OR_PASSWORD_INVALID)
 
     if not validate_password_policy(new_password):
         raise InvalidPasswordError(Messages.INVALID_CREDENTIAL_POLICY)

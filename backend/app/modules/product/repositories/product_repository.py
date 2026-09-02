@@ -1,9 +1,13 @@
 """Product repository for managing product data."""
 
-from sqlalchemy import desc, or_, select, update as sa_update
+from typing import Any, TypeVar
+
+from sqlalchemy import Select, desc, func, or_, select, update as sa_update
 from sqlalchemy.orm import Session
 
 from backend.app.modules.product.domain.models import Product
+
+_T = TypeVar("_T", bound=tuple[Any, ...])
 
 
 class ProductRepository:
@@ -24,20 +28,15 @@ class ProductRepository:
         result = self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    def list(
+    def _apply_filters(
         self,
-        offset: int | None = None,
-        limit: int | None = None,
+        statement: Select[_T],
         query: str | None = None,
         category: str | None = None,
-        sort: str | None = None,
-    ) -> list[Product]:
-        """Return products optionally filtered, sorted and paginated.
-
-        If `offset`/`limit` are None the full list is returned.
-        """
-        statement = select(Product)
-
+        min_price: float | None = None,
+        max_price: float | None = None,
+    ) -> Select[_T]:
+        """Apply the shared query/category/price filters to a statement."""
         if query:
             query_value = f"%{query.strip()}%"
             statement = statement.where(
@@ -49,6 +48,32 @@ class ProductRepository:
 
         if category:
             statement = statement.where(Product.category == category.strip())
+
+        if min_price is not None:
+            statement = statement.where(Product.price >= min_price)
+
+        if max_price is not None:
+            statement = statement.where(Product.price <= max_price)
+
+        return statement
+
+    def list(
+        self,
+        offset: int | None = None,
+        limit: int | None = None,
+        query: str | None = None,
+        category: str | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        sort: str | None = None,
+    ) -> list[Product]:
+        """Return products optionally filtered, sorted and paginated.
+
+        If `offset`/`limit` are None the full list is returned.
+        """
+        statement = self._apply_filters(
+            select(Product), query, category, min_price, max_price
+        )
 
         if sort == "price_asc":
             statement = statement.order_by(Product.price.asc(), Product.id.asc())
@@ -66,6 +91,21 @@ class ProductRepository:
 
         result = self.session.execute(statement)
         return list(result.scalars().all())
+
+    def count(
+        self,
+        query: str | None = None,
+        category: str | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+    ) -> int:
+        """Return the number of products matching the given filters."""
+        statement = self._apply_filters(
+            select(func.count(Product.id)), query, category, min_price, max_price
+        )
+        total = self.session.execute(statement).scalar_one()
+
+        return int(total)
 
     def delete(self, product: Product) -> None:
         self.session.delete(product)

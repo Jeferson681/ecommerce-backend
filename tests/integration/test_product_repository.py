@@ -53,3 +53,33 @@ def test_create_and_get_and_list_and_delete():
 
     deleted = repo.get_by_id(p.id)
     assert deleted is None
+
+
+def test_count_respects_query_and_category_filters():
+    session = SessionLocal()
+    repo = ProductRepository(session)
+
+    repo.create(
+        Product(
+            name="Alpha", description="widget", price=Decimal("1.0"), category="tools"
+        )
+    )
+    repo.create(
+        Product(
+            name="Beta", description="other", price=Decimal("2.0"), category="tools"
+        )
+    )
+    repo.create(
+        Product(
+            name="Gamma",
+            description="widget pro",
+            price=Decimal("3.0"),
+            category="books",
+        )
+    )
+    session.commit()
+
+    assert repo.count(query="widget") == 2
+    assert repo.count(category="tools") == 2
+    assert repo.count(query="alpha") == 1
+    assert repo.count(query="widget", category="tools") == 1

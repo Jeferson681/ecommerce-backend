@@ -233,11 +233,14 @@ def test_change_password_happy_path(monkeypatch) -> None:
             return make_user(id=user_id, password_hash="hashed:old")
 
     monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(
+        services, "verify_password", lambda plain, hashed: plain == "OldPass1!"
+    )
     monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
     monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     uow = DummyUoW()
-    result = services.change_password(1, "NovaSenha123!", uow)
+    result = services.change_password(1, "OldPass1!", "NovaSenha123!", uow)
 
     assert uow.committed is True
     assert result.id == 1
@@ -365,7 +368,11 @@ class TestUserChangePasswordValidation:
             UserChangePassword(new_password="")
 
     def test_valid_password(self) -> None:
-        data = UserChangePassword(new_password="ValidPass123!")
+        data = UserChangePassword(
+            current_password="OldPass1!",
+            new_password="ValidPass123!",
+        )
+        assert data.current_password == "OldPass1!"
         assert data.new_password == "ValidPass123!"
 
 
@@ -445,7 +452,7 @@ def test_change_password_raises_not_found_when_missing(monkeypatch) -> None:
     monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
 
     with pytest.raises(NotFoundError, match="User not found"):
-        services.change_password(1, "NovaSenha123!", DummyUoW())
+        services.change_password(1, "OldPass1!", "NovaSenha123!", DummyUoW())
 
 
 def test_change_password_raises_invalid_policy(monkeypatch) -> None:
@@ -457,10 +464,11 @@ def test_change_password_raises_invalid_policy(monkeypatch) -> None:
             return make_user(id=user_id)
 
     monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "verify_password", lambda plain, hashed: True)
     monkeypatch.setattr(services, "validate_password_policy", lambda _: False)
 
     with pytest.raises(InvalidPasswordError, match="Credential does not meet"):
-        services.change_password(1, "weak", DummyUoW())
+        services.change_password(1, "OldPass1!", "weak", DummyUoW())
 
 
 def test_change_password_raises_not_found_for_different_user(monkeypatch) -> None:
@@ -478,7 +486,9 @@ def test_change_password_raises_not_found_for_different_user(monkeypatch) -> Non
     monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     with pytest.raises(NotFoundError, match="User not found"):
-        services.change_password(2, "NovaSenha123!", DummyUoW(), requesting_user_id=1)
+        services.change_password(
+            2, "OldPass1!", "NovaSenha123!", DummyUoW(), requesting_user_id=1
+        )
 
 
 def test_delete_user_raises_not_found_when_missing(monkeypatch) -> None:
@@ -613,11 +623,12 @@ def test_change_password_rolls_back_on_commit_error(monkeypatch) -> None:
             raise RuntimeError("commit fail")
 
     monkeypatch.setattr(services, "UserRepository", lambda s: Repo(s))
+    monkeypatch.setattr(services, "verify_password", lambda plain, hashed: True)
     monkeypatch.setattr(services, "validate_password_policy", lambda _: True)
     monkeypatch.setattr(services, "hash_password", lambda raw: f"hashed:{raw}")
 
     with pytest.raises(RuntimeError, match="commit fail"):
-        services.change_password(1, "NovaSenha123!", FailingUoW())
+        services.change_password(1, "OldPass1!", "NovaSenha123!", FailingUoW())
 
 
 def test_delete_user_rolls_back_on_repo_error(monkeypatch) -> None:

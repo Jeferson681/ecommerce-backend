@@ -21,12 +21,9 @@ Complete reference of all HTTP endpoints in the current codebase.
 | `GET` | `/users/me` | Bearer | Get current authenticated user |
 | `GET` | `/users/{user_id}` | Bearer | Get user by ID (owner or admin) |
 | `PATCH` | `/users/{user_id}` | Bearer | Update user profile (owner or admin) |
-| `PATCH` | `/users/{user_id}/change-password` | Bearer | Change account password (owner only) |
+| `PATCH` | `/users/{user_id}/change-password` | Bearer | Change account password with current-password confirmation (owner only) |
 | `DELETE` | `/users/{user_id}` | Bearer | Delete user account (owner or admin) |
 | `GET` | `/users` | Bearer + Admin | List all users (admin only) |
-
-**Note:**
-- The `change-password` endpoint and its underlying logic are implemented, but the complete usage/integration flow is not yet finalized due to its dependency on the account confirmation/authentication mechanism that will be integrated later.
 
 ---
 
@@ -36,7 +33,7 @@ Complete reference of all HTTP endpoints in the current codebase.
 |--------|------|------|-------------|
 | `POST` | `/auth/token` | — | Login — receive access + refresh tokens |
 | `POST` | `/auth/refresh` | — | Exchange refresh token for new access token |
-| `POST` | `/auth/logout` | Bearer | Validate refresh token (no-op revocation) |
+| `POST` | `/auth/logout` | Bearer | Revoke the submitted refresh token and end the current session |
 
 ---
 
@@ -44,7 +41,7 @@ Complete reference of all HTTP endpoints in the current codebase.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/products` | — | List products with optional filters |
+| `GET` | `/products` | — | List products with optional filters; paginated envelope (`items`/`total`/`page`/`per_page`/`total_pages`) when `page`/`per_page` provided |
 | `GET` | `/products/{product_id}` | — | Get product by ID |
 | `POST` | `/products` | Bearer + Admin | Create a new product |
 | `PATCH` | `/products/{product_id}` | Bearer + Admin | Update an existing product |
@@ -56,8 +53,10 @@ Complete reference of all HTTP endpoints in the current codebase.
 |-----------|------|-------------|
 | `q` | `string` | Search query (name and description) |
 | `category` | `string` | Filter by category |
+| `min_price` | `number` | Minimum price filter (inclusive). Applied before counting, so `total`/`total_pages` reflect the filter. |
+| `max_price` | `number` | Maximum price filter (inclusive). Applied before counting, so `total`/`total_pages` reflect the filter. |
 | `sort` | `enum` | Sort order: `price_asc`, `price_desc`, `newest` |
-| `page` | `int` | Page number (1-based) |
+| `page` | `int` | Page number (1-based). If only `page` is provided, `per_page` defaults to 24. |
 | `per_page` | `int` | Items per page (max 100) |
 
 ---
@@ -68,8 +67,9 @@ Complete reference of all HTTP endpoints in the current codebase.
 |--------|------|------|-------------|
 | `GET` | `/cart` | Bearer | Get current user's cart |
 | `POST` | `/cart/items` | Bearer | Add item to cart (auto-creates cart if needed) |
-| `PATCH` | `/cart/items/{item_id}` | Bearer | Update item quantity |
+| `PATCH` | `/cart/items/{item_id}` | Bearer | Update item quantity (validated against available stock) |
 | `DELETE` | `/cart/items/{item_id}` | Bearer | Remove item from cart |
+| `DELETE` | `/cart` | Bearer | Clear the current user's cart (removes the cart and all items) |
 | `POST` | `/cart/merge` | Bearer | Merge local/anonymous items into authenticated cart |
 
 ---

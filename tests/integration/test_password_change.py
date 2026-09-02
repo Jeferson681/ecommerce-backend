@@ -49,7 +49,7 @@ def test_password_change_succeeds() -> None:
     # Change password
     change_resp = client.patch(
         f"/users/{user_id}/change-password",
-        json={"new_password": "NewPass2@"},
+        json={"current_password": "OldPass1!", "new_password": "NewPass2@"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert change_resp.status_code == 200
@@ -107,7 +107,7 @@ def test_password_change_wrong_owner_fails() -> None:
     # Try to change user A's password while logged in as user B
     change_resp = client.patch(
         f"/users/{user_b_id + 1}/change-password",  # user A's ID
-        json={"new_password": "Hacked1@"},
+        json={"current_password": "PassB123!", "new_password": "Hacked1@"},
         headers={"Authorization": f"Bearer {token_b}"},
     )
     assert change_resp.status_code == 404
@@ -137,9 +137,37 @@ def test_password_change_weak_password_fails() -> None:
     # Try changing to a weak password
     change_resp = client.patch(
         f"/users/{user_id}/change-password",
-        json={"new_password": "weak"},
+        json={"current_password": "Strong1!", "new_password": "weak"},
         headers={"Authorization": f"Bearer {token}"},
     )
     # Pydantic validation enforces min_length on the request body and
     # returns 422 Unprocessable Entity for too-short passwords.
     assert change_resp.status_code == 422
+
+
+def test_password_change_with_incorrect_current_password_fails() -> None:
+    email = unique_email("wrong-current-pwd")
+    create_resp = client.post(
+        "/users",
+        json={
+            "first_name": "Current",
+            "last_name": "Password",
+            "email": email,
+            "password": "OldPass1!",
+        },
+    )
+    assert create_resp.status_code == 201
+    user_id = create_resp.json()["id"]
+
+    login_resp = client.post(
+        "/auth/token",
+        json={"email": email, "password": "OldPass1!"},
+    )
+    assert login_resp.status_code == 200
+
+    change_resp = client.patch(
+        f"/users/{user_id}/change-password",
+        json={"current_password": "WrongPass1!", "new_password": "NewPass2@"},
+        headers={"Authorization": f"Bearer {login_resp.json()['access_token']}"},
+    )
+    assert change_resp.status_code == 401

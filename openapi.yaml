@@ -379,6 +379,7 @@ paths:
               changePassword:
                 summary: Change password example
                 value:
+                  current_password: "CurrentSecurePass123!"
                   new_password: "NewSecurePass123!"
       responses:
         "200":
@@ -417,6 +418,24 @@ paths:
             type: string
             minLength: 1
           example: "electronics"
+        - name: min_price
+          in: query
+          description: >
+            Minimum product price filter (inclusive). Applied before
+            counting, so pagination metadata reflects the filtered set.
+          schema:
+            type: number
+            minimum: 0
+          example: 25
+        - name: max_price
+          in: query
+          description: >
+            Maximum product price filter (inclusive). Applied before
+            counting, so pagination metadata reflects the filtered set.
+          schema:
+            type: number
+            minimum: 0
+          example: 100
         - name: sort
           in: query
           description: Sort order for results
@@ -444,13 +463,19 @@ paths:
           example: 20
       responses:
         "200":
-          description: List of products retrieved successfully
+          description: |
+            List of products retrieved successfully. When `page` and/or
+            `per_page` are provided, returns a paginated envelope with
+            metadata (items, total, page, per_page, total_pages); otherwise
+            returns a plain array of products.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ProductRead'
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/ProductRead'
+                  - $ref: '#/components/schemas/ProductPage'
         "400":
           $ref: '#/components/responses/ValidationError'
     post:
@@ -594,6 +619,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CartRead'
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+        "404":
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - cart
+      summary: Clear cart
+      description: Remove the current user's cart together with all of its items
+      operationId: clearCart
+      responses:
+        "204":
+          description: Cart cleared successfully
         "401":
           $ref: '#/components/responses/UnauthorizedError'
         "404":
@@ -1122,8 +1160,15 @@ components:
     UserChangePassword:
       type: object
       required:
+        - current_password
         - new_password
       properties:
+        current_password:
+          type: string
+          minLength: 8
+          maxLength: 24
+          description: Current account password required to confirm the change
+          example: "CurrentSecurePass123!"
         new_password:
           type: string
           minLength: 8
@@ -1265,6 +1310,37 @@ components:
           format: date-time
           description: Timestamp when the product was last updated
           example: "2024-01-20T14:25:00Z"
+
+    ProductPage:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - per_page
+        - total_pages
+      properties:
+        items:
+          type: array
+          description: Products on the current page
+          items:
+            $ref: '#/components/schemas/ProductRead'
+        total:
+          type: integer
+          description: Total number of products matching the filters
+          example: 37
+        page:
+          type: integer
+          description: Current page number (1-based)
+          example: 1
+        per_page:
+          type: integer
+          description: Number of items per page
+          example: 24
+        total_pages:
+          type: integer
+          description: Total number of pages available
+          example: 2
 
     CartItemCreate:
       type: object
@@ -1541,6 +1617,16 @@ components:
   responses:
     UnauthorizedError:
       description: Unauthorized - Invalid or missing authentication token
+      headers:
+        WWW-Authenticate:
+          description: >
+            Present only when the 401 was caused by an expired access token
+            (RFC 6750). Clients may use this signal to attempt the
+            refresh-token flow. Other 401 responses (invalid credentials,
+            inactive user, malformed header) do not include this header.
+          schema:
+            type: string
+          example: 'Bearer error="invalid_token", error_description="The access token has expired"'
       content:
         application/json:
           schema:

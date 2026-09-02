@@ -1,9 +1,11 @@
 import type { Product } from "@/modules/product/types/product";
 import type { CartItem } from "@/modules/cart/types/cart";
 import { tokenStorage } from "@/modules/auth/storage/tokenStorage";
+import { ApiError } from "@/core/exceptions/ApiError";
 import { productService } from "@/modules/product/services/productService";
 import {
   addCartItem,
+  clearCart,
   getCart,
   removeCartItem,
   updateCartItem,
@@ -292,6 +294,15 @@ export const cartStorage = {
 
   clear(): void {
     writeItems([]);
+
+    if (globalThis.window !== undefined && tokenStorage.getAccessToken()) {
+      void clearCart().catch((err) => {
+        // 404 means the server cart is already gone (e.g. right after a
+        // successful checkout, which clears the cart server-side).
+        if (err instanceof ApiError && err.status === 404) return;
+        console.error("cartStorage: failed to sync clear to server", err);
+      });
+    }
   },
 
   refresh(): void {
