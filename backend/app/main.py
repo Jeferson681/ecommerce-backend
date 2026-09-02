@@ -25,6 +25,7 @@ from backend.app.core.exceptions import (
     AppError,
     AuthenticationError,
     AuthorizationError,
+    ConflictError,
     EmailAlreadyExistsError,
     Messages,
     NotFoundError,
@@ -45,8 +46,9 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Ensure database tables exist for tests/local runs
-    Base.metadata.create_all(bind=engine)
+    # Ensure database tables exist only when explicitly enabled for tests/local runs.
+    if settings.CREATE_SCHEMA_ON_STARTUP:
+        Base.metadata.create_all(bind=engine)
 
     # Automatic maintenance: remove expired idempotency records and
     # expired/revoked refresh tokens (runs once at startup, then on every
@@ -129,6 +131,8 @@ def create_app() -> "FastAPI":
         elif isinstance(exc, ValidationError):
             status_code = 400
         elif isinstance(exc, EmailAlreadyExistsError):
+            status_code = 400
+        elif isinstance(exc, ConflictError):
             status_code = 400
         return JSONResponse(
             status_code=status_code,

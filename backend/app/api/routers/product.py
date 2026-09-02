@@ -2,8 +2,7 @@
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, Query, status
 
 from backend.app.modules.auth.deps import require_admin
 from backend.app.modules.product.schemas import (
@@ -78,14 +77,7 @@ def create_product_endpoint(
 
     Access: admin only.
     """
-    try:
-        return create_product(product_data, uow)
-
-    except IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Integrity error while creating product.",
-        ) from e
+    return create_product(product_data, uow)
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
@@ -99,13 +91,7 @@ def update_product_endpoint(
 
     Access: admin only.
     """
-    try:
-        return update_product(product_id, product_data, uow)
-    except IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Integrity error while updating product.",
-        ) from e
+    return update_product(product_id, product_data, uow)
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -118,10 +104,4 @@ def delete_product_endpoint(
 
     Access: admin only.
     """
-    try:
-        delete_product(product_id, uow)
-    except IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Product cannot be deleted because it has associated orders.",
-        ) from e
+    delete_product(product_id, uow)

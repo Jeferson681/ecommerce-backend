@@ -3,7 +3,7 @@
 Responsibility: synchronize payment state from provider events.
 """
 
-from backend.app.core.exceptions import Messages, NotFoundError
+from backend.app.core.exceptions import Messages, NotFoundError, ValidationError
 from backend.app.modules.order.domain.models import OrderStatus
 from backend.app.modules.order.repositories.order_repository import OrderRepository
 from backend.app.modules.order.services import get_order_or_raise
@@ -34,7 +34,7 @@ def process_provider_webhook(
     )
 
     if payload.provider_payment_id is None:
-        raise ValueError("Webhook payload missing provider_payment_id")
+        raise ValidationError("Webhook payload missing provider_payment_id")
 
     payment_repository = PaymentRepository(uow.session)
     order_repository = OrderRepository(uow.session)

@@ -68,6 +68,15 @@ def list_orders(user_id: int, uow: UnitOfWork) -> list[OrderRead]:
     return [OrderRead.model_validate(order) for order in orders]
 
 
+def list_all_orders(uow: UnitOfWork) -> list[OrderRead]:
+    """List all orders for administrative consumers."""
+
+    repository = OrderRepository(uow.session)
+    orders = repository.list()
+
+    return [OrderRead.model_validate(order) for order in orders]
+
+
 def create_order_from_cart(
     cart_items: list[CartItem],
     product_map: dict[int, Product],
