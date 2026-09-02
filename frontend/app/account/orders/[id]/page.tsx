@@ -2,14 +2,7 @@
 
 import { useEffect, use, useState, useCallback } from "react";
 import Link from "next/link";
-import {
-  CheckCircle2,
-  Loader2,
-  XCircle,
-  AlertCircle,
-  RefreshCw,
-  CreditCard,
-} from "lucide-react";
+import { Loader2, AlertCircle, CreditCard } from "lucide-react";
 
 import { orderService } from "@/modules/order/services/orderService";
 import { getUserErrorMessage } from "@/core/exceptions/userMessage";
@@ -88,7 +81,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   }, [resolvedParams.id]);
 
   useEffect(() => {
-    loadOrder();
+    // Defer the initial fetch to a microtask so setState never runs
+    // synchronously inside the effect body (react-hooks/set-state-in-effect).
+    void Promise.resolve().then(loadOrder);
   }, [loadOrder]);
 
   async function handleRetryPayment(paymentMethodId: string) {

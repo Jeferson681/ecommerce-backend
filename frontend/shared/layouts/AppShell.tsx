@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import { AuthNav } from "@/shared/components/AuthNav";
 import { CartButton } from "@/modules/cart/components/CartButton";
@@ -13,9 +12,6 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
-  const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/admin");
-
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
       {/* Announcement bar */}
