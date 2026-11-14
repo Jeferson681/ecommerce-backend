@@ -69,6 +69,10 @@ frontend/dist/
 frontend/.vite/
 frontend/coverage/
 
+# Frontend and coverage artifacts
+.next/
+coverage/
+
 # Frontend caches
 .npm/
 .pnpm-store/
