@@ -1,13 +1,13 @@
 """Product repository for managing product data."""
 
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from sqlalchemy import Select, desc, func, or_, select, update as sa_update
 from sqlalchemy.orm import Session
 
 from backend.app.modules.product.domain.models import Product
 
-_T = TypeVar("_T", bound=tuple[Any, ...])
+_T = TypeVar("_T")
 
 
 class ProductRepository:
@@ -30,12 +30,12 @@ class ProductRepository:
 
     def _apply_filters(
         self,
-        statement: Select[_T],
+        statement: Select[tuple[_T]],
         query: str | None = None,
         category: str | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
-    ) -> Select[_T]:
+    ) -> Select[tuple[_T]]:
         """Apply the shared query/category/price filters to a statement."""
         if query:
             query_value = f"%{query.strip()}%"
